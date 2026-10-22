@@ -2,7 +2,7 @@
 
 Arc is a macOS desktop app for orchestrating coding agents across groups of projects. You organize project folders into named groups, and each group carries its own knowledge sections (notes, docs, playbooks, links, and custom sections) stored as plain files on disk, either inside the app's data folder or in a folder you link. Built with Electron, Svelte, and SQLite. Apple Silicon only.
 
-Test reports: https://tests.myedgenet.com
+Pre-release website: https://tests.myedgenet.com
 
 ## What it does
 
