@@ -736,6 +736,51 @@ describe('new sessions copy the Settings defaults', () => {
   })
 })
 
+describe('create with a brain model', () => {
+  it('uses the picked brain and saves it as the Settings default', async () => {
+    rig = await makeRig(dir())
+    const result = await rig.service.create(rig.groupId, 'hello there', 'plan_first', 3, {
+      provider: 'claude',
+      model: 'opus'
+    })
+    if (!('sessionId' in result)) throw new Error('expected a session id')
+    expect(rig.sessionsRepo.getById(result.sessionId)).toMatchObject({
+      brainProvider: 'claude',
+      brainModel: 'opus'
+    })
+    expect(rig.appSettingsRepo.get('providers.brain')).toEqual({
+      provider: 'claude',
+      model: 'opus'
+    })
+  })
+
+  it('without a brain copies the default and leaves it alone', async () => {
+    rig = await makeRig(dir())
+    rig.appSettingsRepo.set('providers.brain', { provider: 'claude', model: 'haiku' }, 1)
+    const sessionId = await start()
+    expect(rig.sessionsRepo.getById(sessionId)).toMatchObject({ brainModel: 'haiku' })
+    expect(rig.appSettingsRepo.get('providers.brain')).toEqual({
+      provider: 'claude',
+      model: 'haiku'
+    })
+  })
+
+  it('refuses an unknown model and creates nothing', async () => {
+    rig = await makeRig(dir())
+    await expect(
+      rig.service.create(rig.groupId, 'hello there', 'plan_first', 3, {
+        provider: 'claude',
+        model: 'gpt-9'
+      })
+    ).rejects.toBeInstanceOf(AppErrorException)
+    expect(rig.sessionsRepo.getById('x')).toBeUndefined()
+    expect(rig.appSettingsRepo.get('providers.brain')).toEqual({
+      provider: 'claude',
+      model: 'sonnet'
+    })
+  })
+})
+
 describe('set-config and the brain model', () => {
   it('resolveBrainModel uses the brain model, not the worker model', async () => {
     expect(resolveBrainModel('opus')).toBe('opus')

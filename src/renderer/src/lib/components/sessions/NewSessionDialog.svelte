@@ -1,6 +1,9 @@
 <script lang="ts">
+  import type { ModelRef } from '@shared/types/provider'
   import type { DirtyRepo, ResolveDirtyResult, SessionMode } from '@shared/types/session'
   import { messageFor } from '../../ipc/messages'
+  import { settings } from '../../stores/settings.svelte'
+  import BrainPicker from './BrainPicker.svelte'
   import DirtyTreeDialog from './DirtyTreeDialog.svelte'
   import Button from '../ui/Button.svelte'
   import ErrorText from '../ui/ErrorText.svelte'
@@ -22,6 +25,11 @@
   let request = $state('')
   let mode = $state<SessionMode>('plan_first')
   let limit = $state('3')
+  /** The user's pick; until then the dialog shows the Settings brain default. */
+  let picked = $state<ModelRef | null>(null)
+  const brain = $derived<ModelRef>(
+    picked ?? settings.values?.['providers.brain'] ?? { provider: 'claude', model: 'sonnet' }
+  )
   let attempted = $state(false)
   let busy = $state(false)
   let serverError = $state<string | null>(null)
@@ -43,7 +51,9 @@
         groupId,
         request: request.trim(),
         mode,
-        workerLimit: Number(limit)
+        workerLimit: Number(limit),
+        // Only a changed brain is sent; main saves it as the new default.
+        ...(picked ? { brainModel: $state.snapshot(picked) } : {})
       })
       if (!res.ok) {
         serverError = messageFor(res.error)
@@ -102,6 +112,7 @@
         bind:group={mode}
       />
     </fieldset>
+    <BrainPicker id="new-session-brain" value={brain} onchange={(ref) => (picked = ref)} />
     <Select id="new-session-limit" label="Worker limit" bind:value={limit} options={LIMITS} />
     {#if serverError}<ErrorText message={serverError} />{/if}
     <div class="flex justify-end gap-2">

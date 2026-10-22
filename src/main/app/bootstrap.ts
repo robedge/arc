@@ -921,6 +921,7 @@ function registerHandlers(): void {
     models,
     providers: getProviderStatus(),
     appSettings: appSettingsRepo,
+    onSettingsSaved: () => emit('settings:changed', appSettingsRepo.getAll()),
     registry: new AdapterRegistry({
       claude: new ClaudeAdapter({
         supervisor,
@@ -987,8 +988,8 @@ function registerHandlers(): void {
     attentionService.answer(requestId, answer)
   )
   handle('sessions:list', ({ groupId }) => sessions.list(groupId))
-  handle('sessions:create', ({ groupId, request, mode, workerLimit }) =>
-    sessions.create(groupId, request, mode, workerLimit)
+  handle('sessions:create', ({ groupId, request, mode, workerLimit, brainModel }) =>
+    sessions.create(groupId, request, mode, workerLimit, brainModel)
   )
   handle('sessions:open', ({ sessionId }) => sessions.open(sessionId))
   handle('commands:list', ({ sessionId }) => sessions.listCommands(sessionId, false))

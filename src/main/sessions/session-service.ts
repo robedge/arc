@@ -187,7 +187,9 @@ export interface SessionServiceDeps {
   /** The provider statuses; with it, a Codex worker is checked again just before it spawns. */
   providers?: WorkerManagerDeps['providers']
   /** The Settings defaults that new sessions copy; left out, Auto workers and a Claude · Sonnet brain. */
-  appSettings?: Pick<AppSettingsRepo, 'getProviderDefaults'> | undefined
+  appSettings?: Pick<AppSettingsRepo, 'getProviderDefaults' | 'set'> | undefined
+  /** Called after the service saved a Settings default (the New session brain pick); pushes `settings:changed`. */
+  onSettingsSaved?: (() => void) | undefined
   /** The sanitized plugin view for agents of these repositories; undefined when it could not be built. */
   getPluginViewDir?:
     ((repoPaths: readonly string[], role: LoadRole) => Promise<string | undefined>) | undefined
@@ -303,6 +305,8 @@ interface CreateParams {
   request: string
   mode: SessionMode
   workerLimit: number
+  /** The brain picked in the New session dialog; left out, the Settings default applies. */
+  brainModel?: ModelRef | undefined
 }
 
 /** What a `needsDirtyChoice` token stands for. */
@@ -423,15 +427,26 @@ export class SessionService {
     groupId: string,
     request: string,
     mode: SessionMode,
-    workerLimit: number
+    workerLimit: number,
+    brainModel?: ModelRef
   ): Promise<CreateSessionResult> {
     const text = request.trim()
     if (text === '') throw new AppErrorException('VALIDATION_FAILED')
+    // The same rule as `setConfig`: a Codex or Cursor brain must be one the provider lists now.
+    if (brainModel !== undefined && !this.models.has(brainModel)) {
+      throw new AppErrorException('VALIDATION_FAILED')
+    }
     if (!this.deps.groupsRepo.getById(groupId)) throw new AppErrorException('INTERNAL')
     // Nothing is persisted when Claude Code is unavailable: the renderer keeps the draft.
     await this.ensureCli()
 
-    const params: CreateParams = { groupId, request: text, mode, workerLimit }
+    const params: CreateParams = {
+      groupId,
+      request: text,
+      mode,
+      workerLimit,
+      ...(brainModel ? { brainModel } : {})
+    }
     const plan = await this.planFor(this.gitProjects(groupId))
     if (plan.dirtyRepos.length > 0) {
       return this.askDirty({ kind: 'create', params, plan, expiresAt: 0 }, plan.dirtyRepos)
@@ -491,10 +506,14 @@ export class SessionService {
     const now = this.now()
     const sessionId = this.newId()
     // A new session copies the Settings defaults; changing Settings later never touches it.
-    const defaults = this.deps.appSettings?.getProviderDefaults() ?? {
+    const stored = this.deps.appSettings?.getProviderDefaults() ?? {
       brain: { provider: 'claude' as const, model: 'sonnet' },
       workers: { mode: 'auto' as const }
     }
+    const picked = params.brainModel
+      ? { provider: params.brainModel.provider, model: normalizeModel(params.brainModel.model) }
+      : undefined
+    const defaults = { ...stored, brain: picked ?? stored.brain }
     this.deps.sessionsRepo.create({
       id: sessionId,
       groupId: params.groupId,
@@ -522,6 +541,11 @@ export class SessionService {
       }))
     )
     if (Object.keys(choices).length > 0) this.startChoices.set(sessionId, choices)
+    // The pick is remembered: the next New session dialog and the Providers page show it.
+    if (picked && this.deps.appSettings) {
+      this.deps.appSettings.set('providers.brain', picked, now)
+      this.deps.onSettingsSaved?.()
+    }
     this.deps.messagesRepo.append({
       sessionId,
       role: 'user',

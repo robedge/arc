@@ -195,7 +195,9 @@ export const channelSchemas = {
       groupId: z.string(),
       request: z.string().min(1),
       mode: z.enum(['plan_first', 'autonomous']),
-      workerLimit: z.number().int().min(1).max(6)
+      workerLimit: z.number().int().min(1).max(6),
+      // The brain picked in the dialog; saved as the Settings brain default.
+      brainModel: modelRefSchema.optional()
     })
     .strict(),
   'sessions:open': z.object({ sessionId: z.string() }).strict(),
