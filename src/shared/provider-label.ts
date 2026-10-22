@@ -50,7 +50,7 @@ export function cursorModelLabel(id: string): string {
 }
 
 /** "Sonnet" for the Claude alias, "Auto" for Cursor's default; a Claude full id or a Codex id is shown as it is. */
-function shownModel(ref: ModelRef): string {
+export function shownModel(ref: ModelRef): string {
   if (ref.provider === 'cursor') return cursorModelLabel(ref.model)
   if (ref.provider === 'claude' && CLAUDE_ALIASES.includes(ref.model)) {
     return ref.model.charAt(0).toUpperCase() + ref.model.slice(1)
@@ -61,6 +61,17 @@ function shownModel(ref: ModelRef): string {
 /** "Claude · Sonnet" or "Codex · gpt-5.5". */
 export function modelLabel(ref: ModelRef): string {
   return `${providerName(ref.provider)}${SEPARATOR}${shownModel(ref)}`
+}
+
+/** The sentence for a model the provider's plan does not include: "Cursor refused Auto: it isn't on your Cursor plan. ..." */
+export function planRefusedText(ref: ModelRef): string {
+  const name = providerName(ref.provider)
+  const shown = shownModel(ref)
+  const advice =
+    ref.provider === 'cursor' && shown !== 'Auto'
+      ? 'Choose Auto or another model.'
+      : 'Choose another model.'
+  return `${name} refused ${shown}: it isn't on your ${name} plan. ${advice}`
 }
 
 /** True when the agent runs somewhere other than where it was asked to. */

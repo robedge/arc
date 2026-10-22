@@ -42,9 +42,9 @@ import type {
 } from '../bridge/types'
 import type { BridgeRegistry } from '../bridge/bridge-server'
 import { toolsForRole } from '../bridge/tools/registry'
-import { runningOnLabel } from '@shared/provider-label'
 import { assertNever } from '@shared/assert-never'
-import { providerName } from '@shared/provider-label'
+import { planRefusedText, providerName, runningOnLabel } from '@shared/provider-label'
+import { PROVIDER_IDS } from '@shared/types/provider'
 import type { ModelRef, ProviderId, ProviderStatusMap } from '@shared/types/provider'
 import { workerRunningOn } from './running-on'
 import type { AttentionRequestRow } from '../db/repositories/attention-repo'
@@ -96,6 +96,11 @@ import { discardWorkingCopy } from './working-copy'
 import type { TerminalBacklog, TerminalChunk } from './terminal-log'
 
 export const RESOLVER_SLUG = 'merge-conflict'
+
+/** The card line of a queued worker whose provider waits for its usage limit. */
+function waitingActivity(provider: ProviderId): string {
+  return `Waiting for ${providerName(provider)} limit`
+}
 
 /** A worker's blocking calls (permission, questions) wait as long as the user takes. */
 export const WORKER_MCP_TOOL_TIMEOUT_MS = '43200000'
@@ -184,8 +189,8 @@ export interface WorkerHost {
    * the outcome, false when the brain has to be told the worker finished.
    */
   onWorkerDone?: (workerId: string) => boolean
-  /** The usage-limit wait shared with the brain: while it is paused no worker is started. */
-  rateLimit: Pick<RateLimitGate, 'paused' | 'hit' | 'cancel' | 'isWaiting'> &
+  /** The usage-limit wait shared with the brain: while a provider waits, no worker is started on it. */
+  rateLimit: Pick<RateLimitGate, 'isProviderWaiting' | 'hit' | 'cancel' | 'isWaiting'> &
     Partial<Pick<RateLimitGate, 'limitedProviders'>>
   /** Answers the worker never received because its call died with the process (oldest first). */
   undeliveredAnswers: (workerId: string) => AttentionRequestRow[]
@@ -673,13 +678,28 @@ export class WorkerManager {
     const { input } = request
     const projects = this.resolveRepos(input.repos)
     const limit = this.workerLimit()
-    const queued =
-      this.host.rateLimit.paused || this.deps.workersRepo.countActive(this.deps.sessionId) >= limit
+    const overLimit = this.deps.workersRepo.countActive(this.deps.sessionId) >= limit
+    // A worker whose provider waits for its limit runs on the stand-in when there is one (it has no
+    // conversation yet); only without one does it wait for the provider.
+    const standIn = this.host.rateLimit.isProviderWaiting(request.provider)
+      ? this.waitStandIn(request.provider, request.model, input.command)
+      : null
+    const provider = standIn?.provider ?? request.provider
+    const model = standIn?.model ?? request.model
+    const fallback =
+      standIn === null
+        ? request.fallback
+        : {
+            from: request.fallback?.from ?? { provider: request.provider, model: request.model },
+            reason: 'limit' as const
+          }
+    const heldBy = this.host.rateLimit.isProviderWaiting(provider) ? provider : null
+    const queued = overLimit || heldBy !== null
     const workerId = this.deps.newId()
     const now = this.deps.now()
     const number = this.deps.workersRepo.nextNumber(this.deps.sessionId)
     const slug = slugify(input.name)
-    const echo = { provider: request.provider, model: request.model, note: request.modelNote }
+    const echo = { provider, model, note: request.modelNote }
     if (request.blocked) this.failBlockedCommand(request, request.blocked, projects, number, slug)
     const row = this.deps.workersRepo.insert({
       id: workerId,
@@ -689,11 +709,11 @@ export class WorkerManager {
       task: input.task,
       command: input.command ?? null,
       projectIdsJson: JSON.stringify(projects.map((p) => p.projectId)),
-      provider: request.provider,
-      model: request.model,
-      ...this.fallbackColumns(request.fallback),
+      provider,
+      model,
+      ...this.fallbackColumns(fallback),
       status: queued ? 'queued' : 'starting',
-      activity: queued ? 'Queued' : 'Starting',
+      activity: !queued ? 'Starting' : heldBy !== null ? waitingActivity(heldBy) : 'Queued',
       failureReason: null,
       summary: null,
       providerSessionId: null,
@@ -703,16 +723,16 @@ export class WorkerManager {
       createdAt: now,
       updatedAt: now
     })
-    if (request.fallback) {
+    if (fallback) {
       this.host.logEvent(
         'provider-fallback',
         workerFallbackText(
           fallbackLabel(row),
-          request.fallback.reason,
-          request.fallback.from.provider,
+          fallback.reason,
+          fallback.from.provider,
           row.provider
         ),
-        { reason: request.fallback.reason },
+        { reason: fallback.reason },
         workerId
       )
     } else if (request.modelNote) {
@@ -723,8 +743,10 @@ export class WorkerManager {
     if (queued) {
       this.host.logEvent(
         'worker-queued',
-        `${labelOf(row)} queued (limit ${limit})`,
-        { limit },
+        heldBy === null
+          ? `${labelOf(row)} queued (limit ${limit})`
+          : `${labelOf(row)} queued: waiting for the ${providerName(heldBy)} usage limit`,
+        heldBy === null ? { limit } : { waitingFor: heldBy },
         workerId
       )
       return { workerId, status: 'queued', ...echo }
@@ -837,16 +859,18 @@ export class WorkerManager {
    * (Claude, then Codex) at the same tier, and says so. Only for a first start: a worker with a
    * conversation on its provider is never moved (`keepStopped`).
    */
-  private fallBack(row: WorkerRow, reason: FallbackReason): WorkerRow {
+  private fallBack(row: WorkerRow, reason: FallbackReason, target?: ModelRef): WorkerRow {
     const now = this.deps.now()
     const from = row.provider
-    const to = standInFor(
-      from,
-      this.deps.models.tierOf({ provider: from, model: row.model }),
-      this.deps.models,
-      this.deps.providers?.get() ?? {},
-      this.host.rateLimit.limitedProviders?.()
-    )
+    const to =
+      target ??
+      standInFor(
+        from,
+        this.deps.models.tierOf({ provider: from, model: row.model }),
+        this.deps.models,
+        this.deps.providers?.get() ?? {},
+        this.host.rateLimit.limitedProviders?.()
+      )
     this.deps.workersRepo.setTarget(row.id, to.provider, to.model, now)
     this.deps.workersRepo.setFallback(row.id, from, fallbackReasonText(reason, from), now)
     this.host.logEvent(
@@ -858,6 +882,32 @@ export class WorkerManager {
     this.pushNow(row.id)
     this.host.onChange()
     return this.deps.workersRepo.get(row.id) ?? row
+  }
+
+  /**
+   * Where a Codex or Cursor worker that has not run yet goes while its provider waits for the usage
+   * limit: the first ready provider of the chain that is not waiting itself, or null when there is
+   * none and the worker holds. A worker that runs a provider's own command does not move, as when
+   * the provider is unavailable.
+   */
+  private waitStandIn(
+    provider: ProviderId,
+    model: string,
+    command: string | null | undefined
+  ): ModelRef | null {
+    if (provider === 'claude' || command) return null
+    const waiting = new Set(this.host.rateLimit.limitedProviders?.() ?? [])
+    for (const id of PROVIDER_IDS) {
+      if (this.host.rateLimit.isProviderWaiting(id)) waiting.add(id)
+    }
+    const to = standInFor(
+      provider,
+      this.deps.models.tierOf({ provider, model }),
+      this.deps.models,
+      this.deps.providers?.get() ?? {},
+      waiting
+    )
+    return to.provider === provider || waiting.has(to.provider) ? null : to
   }
 
   /** A fresh Codex or Cursor start whose status is not ok runs on the stand-in from the start. */
@@ -1055,16 +1105,33 @@ export class WorkerManager {
 
   /**
    * Starts queued workers, oldest first, while the running count is under the limit. Called whenever
-   * a worker leaves a running status and when the limit changes. Lowering the limit never stops a
-   * running worker; it only delays the queue.
+   * a worker leaves a running status, when the limit changes and when a usage-limit wait ends. A
+   * worker whose provider waits for its limit moves to a stand-in when it has not run yet and one is
+   * ready, else stays queued; the ones behind it still start. Every queued card says why it waits.
+   * Lowering the limit never stops a running worker; it only delays the queue.
    */
   drain(): void {
-    if (this.disposed || this.stopping || this.host.rateLimit.paused) return
+    if (this.disposed || this.stopping) return
     const limit = this.workerLimit()
     let active = this.deps.workersRepo.countActive(this.deps.sessionId)
-    for (const row of this.deps.workersRepo.listBySession(this.deps.sessionId)) {
-      if (active >= limit) return
+    for (let row of this.deps.workersRepo.listBySession(this.deps.sessionId)) {
       if (row.status !== 'queued') continue
+      if (this.host.rateLimit.isProviderWaiting(row.provider)) {
+        // Never started, so it can run elsewhere; otherwise it holds for its provider.
+        const to = this.waitStandIn(row.provider, row.model, row.command)
+        if (to !== null && row.providerSessionId === null && !isResolverRow(row)) {
+          row = this.fallBack(row, 'limit', to)
+        }
+      }
+      // The card says why it waits: its provider's limit first, else the worker limit.
+      const activity = this.host.rateLimit.isProviderWaiting(row.provider)
+        ? waitingActivity(row.provider)
+        : 'Queued'
+      if (row.activity !== activity) {
+        this.deps.workersRepo.setActivity(row.id, activity, this.deps.now())
+        this.pushNow(row.id)
+      }
+      if (this.host.rateLimit.isProviderWaiting(row.provider) || active >= limit) continue
       active += 1
       this.deps.workersRepo.setStatus(row.id, 'starting', this.deps.now())
       this.deps.workersRepo.setActivity(row.id, 'Starting', this.deps.now())
@@ -1367,6 +1434,14 @@ export class WorkerManager {
     }
     // The row says which provider runs the worker, for a fresh start and for a resume alike.
     const provider = row.provider
+    // A Cursor command's file is read before anything starts: if it can't be read, no process is spawned.
+    const firstMessage = resume
+      ? resume.sessionId != null
+        ? resume.message
+        : resume.freshMessage
+      : (row.command ?? row.task)
+    const firstIsCommand = resume === undefined && row.command !== null
+    const firstText = await this.expandCursorCommand(row, projects, firstMessage, firstIsCommand)
     const pluginViewDir =
       provider === 'claude' && this.deps.getPluginViewDir
         ? await this.pluginViewDir(projects.map((p) => p.projectPath))
@@ -1452,29 +1527,55 @@ export class WorkerManager {
         ? await adapter.resume({ ...options, resume: { threadId: resume.sessionId } })
         : await adapter.start(options)
     run.handle = handle
-    const detachMcp = this.deps.personal?.mcp?.attachHandle(run.agentId, handle)
-    void this.consume(run, handle, resume?.sessionId != null, common.instructions).finally(() =>
-      detachMcp?.()
+    // Anything that fails once the process exists must not leave it running.
+    try {
+      const detachMcp = this.deps.personal?.mcp?.attachHandle(run.agentId, handle)
+      void this.consume(run, handle, resume?.sessionId != null, common.instructions).finally(() =>
+        detachMcp?.()
+      )
+      if (run.stopRequestedBy !== null) void handle.stop()
+      const written = await this.sendFirst(
+        handle,
+        row,
+        projects,
+        firstText,
+        firstIsCommand && firstText === firstMessage
+      )
+      if (!written) throw new Error('the worker process exited right away')
+    } catch (error: unknown) {
+      // The caller deletes the run and records the failure; the process's own exit must not overwrite it.
+      run.handle = undefined
+      void handle.stop()
+      throw error
+    }
+  }
+
+  /**
+   * A Cursor command's text with its file read and expanded (Arc's instructions block comes before the
+   * message, so the process is never given `/name`). Anything else is returned as it is.
+   */
+  private async expandCursorCommand(
+    row: WorkerRow,
+    projects: readonly SessionProjectRow[],
+    message: string,
+    isCommand: boolean
+  ): Promise<string> {
+    if (!isCommand || row.provider !== 'cursor' || !this.deps.cursorCommands) return message
+    const name = commandName(message)
+    if (name === null) return message
+    const resolved = await this.deps.cursorCommands.resolve(
+      name,
+      message.replace(/^\/\S+/, '').trim(),
+      projects.map((p) => p.projectPath)
     )
-    if (run.stopRequestedBy !== null) void handle.stop()
-    const written = await this.sendFirst(
-      handle,
-      row,
-      projects,
-      resume
-        ? resume.sessionId != null
-          ? resume.message
-          : resume.freshMessage
-        : (row.command ?? row.task),
-      resume === undefined && row.command !== null
-    )
-    if (!written) throw new Error('the worker process exited right away')
+    if (!resolved.ok) throw new Error(resolved.message)
+    return resolved.text
   }
 
   /**
    * The first message. A Codex worker does not read `/name` as a command, so its command is turned
-   * into a skill input or the expanded prompt text. A Cursor worker gets the command file's expanded
-   * text too, since Arc's instructions block comes before the message; everything else is sent as it is.
+   * into a skill input or the expanded prompt text. A Cursor command is expanded earlier
+   * (`expandCursorCommand`), before the process starts; everything else is sent as it is.
    */
   private async sendFirst(
     handle: AgentHandle,
@@ -1483,17 +1584,6 @@ export class WorkerManager {
     message: string,
     isCommand: boolean
   ): Promise<boolean> {
-    if (isCommand && row.provider === 'cursor' && this.deps.cursorCommands) {
-      const cursorName = commandName(message)
-      if (cursorName === null) return handle.send(message)
-      const cursorRun = await this.deps.cursorCommands.resolve(
-        cursorName,
-        message.replace(/^\/\S+/, '').trim(),
-        projects.map((p) => p.projectPath)
-      )
-      if (!cursorRun.ok) throw new Error(cursorRun.message)
-      return handle.send(cursorRun.text)
-    }
     if (!isCommand || row.provider !== 'codex' || !this.deps.codexCommands) {
       return handle.send(message)
     }
@@ -1587,6 +1677,8 @@ export class WorkerManager {
     try {
       for await (const event of handle.events) {
         log.event(event)
+        // A process whose start failed was dropped by `launch`: its exit says nothing about the worker.
+        if (run.handle !== handle) continue
         // A recorded turn, or a request of the running one, changes the worker's token total: the card gets it with the next push.
         if (usage?.onEvent(event)) this.schedulePush(run.workerId)
         await this.onEvent(run, handle, event)
@@ -1691,6 +1783,8 @@ export class WorkerManager {
     const limited = run.rateLimited
     await this.recordHeads(run)
     if (run.stopRequestedBy !== null) return
+    // The plan refusal already ended this worker: no nudge for a report_done it can never send.
+    if (run.failReason !== null) return
     // A turn that ended on the usage limit is not "forgot report_done": wait for the retry.
     if (limited || run.rateLimited) return
     // Background helpers keep running after the turn ends (spike S1, Q5): the worker is not idle,
@@ -1821,6 +1915,20 @@ export class WorkerManager {
     this.deps.log.warn(`worker W${run.number} error (${kind}): ${message}`)
     if (kind === 'auth') this.host.onSignedOut()
     if (kind === 'rate-limit') this.onRateLimit(run, undefined, run.handle?.provider)
+    if (kind === 'plan-refused') this.onPlanRefused(run)
+  }
+
+  /**
+   * The provider's plan does not include the worker's model, so waiting would not help. The worker
+   * fails with a sentence that names the model and the brain is told, like any failed worker; it
+   * does not silently move to another model.
+   */
+  private onPlanRefused(run: Running): void {
+    if (run.stopRequestedBy !== null || run.failReason !== null) return
+    const row = this.deps.workersRepo.get(run.workerId)
+    if (!row) return
+    run.failReason = planRefusedText({ provider: row.provider, model: row.model })
+    void run.handle?.stop()
   }
 
   /**

@@ -449,6 +449,8 @@ describe('usage limit', () => {
       repos: ['web']
     })
     expect(started.value['status']).toBe('queued')
+    expect(eventTexts(e, sessionId)).toContain('W2 docs queued: waiting for the Claude usage limit')
+    expect(worker(String(started.value['workerId']))?.activity).toBe('Waiting for Claude limit')
     expect(e.rig.adapter.handles.filter((h) => h.agentId.startsWith('worker-'))).toHaveLength(1)
 
     // The limit event and the error for the same wait made one retry, not two.
@@ -508,5 +510,65 @@ describe('usage limit', () => {
 
     expect(brain.sent.slice(sent)).toEqual(['Continue.'])
     expect(e.rig.signedOut).not.toHaveBeenCalled()
+  })
+
+  it('a brain turn that completes ends the wait: no stray Continue.', async () => {
+    await start()
+    if (!e) throw new Error('rig')
+    const brain = e.brain()
+    const sent = brain.sent.length
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    rateLimited(brain)
+    await settle(50)
+    brain.emit({ type: 'turn-result', ok: true, interrupted: false, durationMs: 1 })
+    await settle(5 * 60_000 + 10)
+
+    expect(brain.sent).toHaveLength(sent)
+  })
+
+  it('switching the brain model drops its wait and starts the workers it held', async () => {
+    const sessionId = await start()
+    if (!e) throw new Error('rig')
+    const brain = e.brain()
+    const sent = brain.sent.length
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    rateLimited(brain)
+    await settle(50)
+    const held = await e.call(e.brain(), 'spawn_worker', {
+      name: 'docs',
+      task: 'Do docs',
+      repos: ['web']
+    })
+    expect(held.value['status']).toBe('queued')
+
+    e.rig.service.setConfig(sessionId, { brainModel: { provider: 'claude', model: 'opus' } })
+    await vi.waitFor(() =>
+      expect(e?.rig.adapter.handles.filter((h) => h.agentId.startsWith('worker-'))).toHaveLength(1)
+    )
+    await settle(5 * 60_000 + 10)
+    expect(brain.sent.slice(sent)).not.toContain('Continue.')
+  })
+
+  it('a plan refusal is not a usage limit: the brain says so and does not wait', async () => {
+    const sessionId = await start()
+    if (!e) throw new Error('rig')
+    const brain = e.brain()
+    const sent = brain.sent.length
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    brain.emit({ type: 'error', kind: 'plan-refused', message: 'Upgrade your plan to continue' })
+    brain.emit({ type: 'turn-result', ok: false, interrupted: false, durationMs: 1 })
+    await settle(50)
+
+    expect(
+      eventTexts(e, sessionId).some((t) =>
+        /^Claude refused .+: it isn't on your Claude plan\. Choose another model\.$/.test(t)
+      )
+    ).toBe(true)
+    expect(eventTexts(e, sessionId).some((t) => t.includes('usage limit'))).toBe(false)
+    await settle(5 * 60_000 + 10)
+    expect(brain.sent).toHaveLength(sent)
   })
 })

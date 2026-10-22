@@ -48,6 +48,16 @@ export function isCursorLimitError(text: string): boolean {
   return LIMIT_WORDS.test(text)
 }
 
+/** True for Cursor's refusal of a model the account's plan does not include: waiting does not lift it. */
+export function isCursorPlanRefusal(text: string): boolean {
+  return /upgrade your plan/i.test(text)
+}
+
+/** `plan-refused` for the plan refusal, `rate-limit` for any other limit text. */
+function limitKind(text: string): 'plan-refused' | 'rate-limit' {
+  return isCursorPlanRefusal(text) ? 'plan-refused' : 'rate-limit'
+}
+
 function truncate(text: string): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
   return oneLine.length > SUMMARY_MAX ? `${oneLine.slice(0, SUMMARY_MAX - 1)}…` : oneLine
@@ -153,7 +163,7 @@ export interface CursorParser {
   parse(method: string, params: JsonObject): AgentEvent[]
   /**
    * The prompt ended: the pending message, then the turn's `usage` when Cursor reported tokens, then
-   * the `turn-result` (a plan-limit turn adds a `rate-limit` error first).
+   * the `turn-result` (a plan-refused turn adds a `plan-refused` error first).
    */
   endTurn(outcome: CursorTurnOutcome): AgentEvent[]
   /** The tool call as seen so far; the approvals read the command and paths from it. */
@@ -432,7 +442,7 @@ export function createCursorParser(options: CursorParserOptions): CursorParser {
     }
   }
 
-  const errorEvent = (kind: 'rate-limit' | 'api', text: string): AgentEvent => ({
+  const errorEvent = (kind: 'plan-refused' | 'rate-limit' | 'api', text: string): AgentEvent => ({
     type: 'error',
     agentId,
     ts: now(),
@@ -452,7 +462,7 @@ export function createCursorParser(options: CursorParserOptions): CursorParser {
     let events: AgentEvent[]
     if (planBlocked) {
       message = undefined
-      events = [errorEvent('rate-limit', limitText.trim())]
+      events = [errorEvent(limitKind(limitText), limitText.trim())]
     } else {
       events = flushMessage()
     }
@@ -461,7 +471,10 @@ export function createCursorParser(options: CursorParserOptions): CursorParser {
       result = turnResult('failed')
     } else if ('error' in outcome) {
       events.push(
-        errorEvent(isCursorLimitError(outcome.error) ? 'rate-limit' : 'api', outcome.error)
+        errorEvent(
+          isCursorLimitError(outcome.error) ? limitKind(outcome.error) : 'api',
+          outcome.error
+        )
       )
       result = turnResult('failed')
     } else if (outcome.stopReason === 'end_turn') {

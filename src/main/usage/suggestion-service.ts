@@ -4,6 +4,7 @@ import { localDay } from '../db/repositories/usage-repo'
 import type { UsageSuggestionsRepo } from '../db/repositories/usage-suggestions-repo'
 import type { UsageSuggestionKind } from '../db/schema'
 import type { ModelRegistry } from '../models/model-registry'
+import { shownModel } from '../../shared/provider-label'
 import { providerReportsTokens } from '../../shared/provider-traits'
 import type { ProviderId } from '../../shared/types/provider'
 import type { AgentUsage, Suggestion } from '../../shared/types/usage'
@@ -81,9 +82,9 @@ export function compactTokens(n: number): string {
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
-/** "Opus" for the Claude alias `opus`; other model names stay as the provider writes them. */
-function modelName(model: string): string {
-  return /^[a-z]+$/.test(model) ? model.charAt(0).toUpperCase() + model.slice(1) : model
+/** A model as the pickers show it: "Opus" for the Claude alias, "Auto" for Cursor's `default[]`. */
+function modelName(provider: ProviderId, model: string): string {
+  return shownModel({ provider, model })
 }
 
 /** "W2" for a worker (its label is "W2 · docs-update"), "the brain", "the conflict resolver". */
@@ -146,8 +147,8 @@ export class SuggestionService {
         .filter((p) => p !== undefined)
         .join(' and ')
       const text = noChanges
-        ? `${input.label} used ${modelName(input.model)} for a task that ${did}.`
-        : `${input.label} used ${modelName(input.model)} for a small task (${compactTokens(tokens)} tokens) that ${did}.`
+        ? `${input.label} used ${modelName(input.provider, input.model)} for a task that ${did}.`
+        : `${input.label} used ${modelName(input.provider, input.model)} for a small task (${compactTokens(tokens)} tokens) that ${did}.`
       this.save({
         kind: 'model_too_strong',
         sessionId: input.sessionId,
@@ -155,7 +156,7 @@ export class SuggestionService {
         workerId: input.workerId,
         dedupeKey: `model-too-strong|${input.sessionId}|${input.agentKey}`,
         text,
-        advice: `${modelName(lighter.model)} would likely do.`,
+        advice: `${modelName(input.provider, lighter.model)} would likely do.`,
         params: {
           worker: input.label,
           model: input.model,

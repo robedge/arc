@@ -760,7 +760,7 @@ describe('CursorAdapter on the recorded turns', () => {
     ])
   })
 
-  it('replays the plan-blocked turn as a rate-limit error that the gate can act on', async () => {
+  it('replays the plan-blocked turn as a plan-refused error', async () => {
     const fake = new FakeAcp()
     fake.handlers['session/prompt'] = (msg, f) => {
       for (const m of turnMessages('m1-plan-blocked-turn.jsonl')) {
@@ -773,7 +773,7 @@ describe('CursorAdapter on the recorded turns', () => {
     await handle.send('go')
     await until(() => seen.of('turn-result').length === 1)
     expect(seen.of('error')).toMatchObject([
-      { kind: 'rate-limit', message: 'Upgrade your plan to continue' }
+      { kind: 'plan-refused', message: 'Upgrade your plan to continue' }
     ])
     expect(seen.of('turn-result')[0]).toMatchObject({ ok: false, status: 'failed' })
     expect(seen.of('assistant-message')).toHaveLength(0)

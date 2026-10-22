@@ -418,6 +418,29 @@ describe('a Cursor command forces a Cursor worker', () => {
     for (const handle of r.cursor.handles) {
       for (const sent of (handle as FakeHandle).sent) expect(sent).not.toMatch(/^\/shout/)
     }
+    // The file is read before Cursor starts: no process was spawned for the second worker.
+    expect(r.cursor.starts).toHaveLength(1)
+    expect((r.cursor.handles[0] as FakeHandle).stopped).toBe(false)
+  })
+
+  it('stops the Cursor process it started when the first message cannot be written', async () => {
+    const r = await cursorRigWith('claude')
+    r.cursor.sendsOk = false
+    const result = await r.e.call(r.e.brain(), 'spawn_worker', {
+      name: 'cmd',
+      task: 'Run the command',
+      repos: ['api'],
+      command: '/shout a'
+    })
+    expect(result).toMatchObject({ isError: true, value: { error: 'start_failed' } })
+    expect(r.cursor.handles).toHaveLength(1)
+    expect((r.cursor.handles[0] as FakeHandle).stopped).toBe(true)
+    // The stopped process's exit does not overwrite the recorded start failure.
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(r.e.rig.deps.workersRepo.listBySession(r.sessionId)[0]).toMatchObject({
+      status: 'failed',
+      failureReason: expect.stringContaining('the worker process exited right away')
+    })
   })
 
   it('accepts cursor:shout as the command and stores /shout args', async () => {

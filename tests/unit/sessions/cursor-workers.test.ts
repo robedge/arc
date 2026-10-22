@@ -274,8 +274,12 @@ describe('plan-first with Cursor', () => {
 
 interface SessionInternals {
   workers: WorkerManager
-  rateLimitPaused: boolean
-  rateLimit: { limitedProviders: () => ReadonlySet<string> }
+  isRateLimitWaiting: (provider: string) => boolean
+  rateLimit: {
+    limitedProviders: () => ReadonlySet<string>
+    cancel: (agentId: string) => void
+    hit: (agentId: string, hit: { provider: string; retry: () => void }) => boolean
+  }
 }
 
 function internalsOf(r: CursorRig, sessionId: string): SessionInternals {
@@ -398,10 +402,201 @@ describe('a Cursor worker that hits its plan limit', () => {
       kind: 'rate-limit',
       message: 'Upgrade your plan to continue'
     })
-    await until(() => internalsOf(r, sessionId).rateLimitPaused)
+    await until(() => internalsOf(r, sessionId).isRateLimitWaiting('cursor'))
     expect(eventTexts(r.e, sessionId)).toContain(
       'Waiting for the Cursor usage limit (trying again in 5 minutes)'
     )
+  })
+})
+
+/** A Cursor worker that hit the plan limit and now waits; resolves with its id. */
+async function limitedCursorWorker(r: CursorRig, sessionId: string): Promise<string> {
+  const started = await r.e.call(
+    r.e.brain(),
+    'spawn_worker',
+    spawnArgs('review', { provider: 'cursor' })
+  )
+  await until(() => r.cursor.handles.length === 1)
+  ;(r.cursor.handles[0] as FakeHandle).emit({
+    type: 'error',
+    kind: 'rate-limit',
+    message: 'You have reached your usage limit'
+  })
+  await until(() => internalsOf(r, sessionId).isRateLimitWaiting('cursor'))
+  return String(started.value['workerId'])
+}
+
+/** Claude waits for its limit too, so a held Cursor worker has nowhere to go. */
+function claudeWaits(r: CursorRig, sessionId: string): void {
+  internalsOf(r, sessionId).rateLimit.hit('worker-claude-wait', {
+    provider: 'claude',
+    retry: () => undefined
+  })
+}
+
+const spawnOn = (r: CursorRig, name: string, provider: 'claude' | 'cursor') =>
+  r.e.call(r.e.brain(), 'spawn_worker', spawnArgs(name, { provider }))
+
+const rowOf = (r: CursorRig, result: { value: Record<string, unknown> }) =>
+  r.e.rig.deps.workersRepo.get(String(result.value['workerId']))
+
+describe('a Cursor usage-limit wait holds only the Cursor workers', () => {
+  it('lets a Claude worker start and starts a new Cursor one on Claude with the fallback line', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    await limitedCursorWorker(r, sessionId)
+
+    const claude = await spawnOn(r, 'docs', 'claude')
+    expect(claude.value).toMatchObject({ status: 'started', provider: 'claude' })
+
+    const moved = await spawnOn(r, 'web', 'cursor')
+    expect(moved.value).toMatchObject({ status: 'started', provider: 'claude' })
+    expect(rowOf(r, moved)).toMatchObject({
+      provider: 'claude',
+      requestedProvider: 'cursor',
+      fallbackReason: 'Cursor has reached its usage limit.'
+    })
+    expect(eventTexts(r.e, sessionId)).toContain(
+      'Cursor has reached its usage limit, so W3 runs on Claude.'
+    )
+    expect(r.cursor.starts).toHaveLength(1)
+  })
+
+  it('holds a new Cursor worker with the reason when nothing can stand in, and starts it when the wait ends', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    const first = await limitedCursorWorker(r, sessionId)
+    claudeWaits(r, sessionId)
+
+    const held = await spawnOn(r, 'web', 'cursor')
+    expect(held.value).toMatchObject({ status: 'queued', provider: 'cursor' })
+    expect(rowOf(r, held)).toMatchObject({ status: 'queued', activity: 'Waiting for Cursor limit' })
+    const texts = eventTexts(r.e, sessionId)
+    expect(texts).toContain('W2 web queued: waiting for the Cursor usage limit')
+    expect(texts.some((t) => t.includes('(limit'))).toBe(false)
+
+    internalsOf(r, sessionId).rateLimit.cancel(`worker-${first}`)
+    await until(() => r.cursor.starts.length === 2)
+  })
+
+  it('names the provider wait, not the limit, when a worker is both over the limit and held', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    r.e.rig.service.setConfig(sessionId, { workerLimit: 1 })
+    await limitedCursorWorker(r, sessionId)
+    claudeWaits(r, sessionId)
+
+    const held = await spawnOn(r, 'web', 'cursor')
+    expect(held.value['status']).toBe('queued')
+    expect(rowOf(r, held)?.activity).toBe('Waiting for Cursor limit')
+    const texts = eventTexts(r.e, sessionId)
+    expect(texts).toContain('W2 web queued: waiting for the Cursor usage limit')
+    expect(texts.some((t) => t.includes('(limit'))).toBe(false)
+  })
+
+  it('keeps the over-the-limit reason when the limit is the cause', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    r.e.rig.service.setConfig(sessionId, { workerLimit: 1 })
+    await spawnOn(r, 'review', 'cursor')
+    const queued = await spawnOn(r, 'docs', 'claude')
+    expect(queued.value['status']).toBe('queued')
+    expect(eventTexts(r.e, sessionId)).toContain('W2 docs queued (limit 1)')
+    expect(rowOf(r, queued)?.activity).toBe('Queued')
+  })
+
+  it('drain relabels every held row, even past the limit, and a ended wait that is still over the limit reads Queued', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    r.e.rig.service.setConfig(sessionId, { workerLimit: 1 })
+    const first = await limitedCursorWorker(r, sessionId)
+    claudeWaits(r, sessionId)
+    const held = await spawnOn(r, 'web', 'cursor')
+    expect(rowOf(r, held)?.activity).toBe('Waiting for Cursor limit')
+    const events = eventTexts(r.e, sessionId).length
+
+    // The Cursor wait ends while W1 still fills the limit: the card goes back to Queued.
+    internalsOf(r, sessionId).rateLimit.cancel(`worker-${first}`)
+    expect(rowOf(r, held)).toMatchObject({
+      status: 'queued',
+      activity: 'Queued',
+      provider: 'cursor'
+    })
+    expect(eventTexts(r.e, sessionId)).toHaveLength(events)
+  })
+
+  it('drain moves a held worker that has not run to the stand-in once one is ready, and starts it within the limit', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    r.e.rig.service.setConfig(sessionId, { workerLimit: 1 })
+    await limitedCursorWorker(r, sessionId)
+    claudeWaits(r, sessionId)
+    const held = await spawnOn(r, 'web', 'cursor')
+    expect(rowOf(r, held)?.status).toBe('queued')
+
+    // Claude's wait ends: Claude can take the worker, but the limit is still full.
+    internalsOf(r, sessionId).rateLimit.cancel('worker-claude-wait')
+    expect(rowOf(r, held)).toMatchObject({
+      status: 'queued',
+      activity: 'Queued',
+      provider: 'claude',
+      requestedProvider: 'cursor'
+    })
+    expect(eventTexts(r.e, sessionId)).toContain(
+      'Cursor has reached its usage limit, so W2 runs on Claude.'
+    )
+
+    r.e.rig.service.setConfig(sessionId, { workerLimit: 2 })
+    await until(() => rowOf(r, held)?.status !== 'queued')
+    expect(r.cursor.starts).toHaveLength(1)
+  })
+
+  it('does not move a held worker that runs a Cursor command', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    await limitedCursorWorker(r, sessionId)
+    const held = await internalsOf(r, sessionId).workers.spawn({
+      input: { name: 'review', task: 'Review W1', repos: ['api'], command: '/review' },
+      planId: null,
+      provider: 'cursor',
+      model: 'default[]',
+      modelNote: null,
+      fallback: undefined,
+      blocked: undefined
+    })
+    expect(held).toMatchObject({ status: 'queued', provider: 'cursor' })
+    expect(r.e.rig.deps.workersRepo.get(held.workerId)?.activity).toBe('Waiting for Cursor limit')
+  })
+})
+
+describe('a Cursor worker whose model is not on the plan', () => {
+  it('fails with the plan sentence, does not wait, and tells the brain', async () => {
+    const r = await cursorRig('ok')
+    const sessionId = await r.e.startSession('autonomous')
+    const started = await r.e.call(
+      r.e.brain(),
+      'spawn_worker',
+      spawnArgs('review', { provider: 'cursor' })
+    )
+    const workerId = String(started.value['workerId'])
+    await until(() => r.cursor.handles.length === 1)
+    const handle = r.cursor.handles[0] as FakeHandle
+    const sent = handle.sent.length
+    handle.emit({
+      type: 'error',
+      kind: 'plan-refused',
+      message: 'Upgrade your plan to continue'
+    })
+    handle.emit({ type: 'turn-result', ok: false, interrupted: false, durationMs: 1 })
+    await until(() => r.e.rig.deps.workersRepo.get(workerId)?.status === 'failed')
+
+    const reason = "Cursor refused Auto: it isn't on your Cursor plan. Choose another model."
+    expect(r.e.rig.deps.workersRepo.get(workerId)?.failureReason).toBe(reason)
+    expect(eventTexts(r.e, sessionId)).toContain(`W1 review failed: ${reason}`)
+    expect(internalsOf(r, sessionId).isRateLimitWaiting('cursor')).toBe(false)
+    // No nudge about report_done, no wait line.
+    expect(handle.sent).toHaveLength(sent)
+    expect(eventTexts(r.e, sessionId).some((t) => t.includes('usage limit'))).toBe(false)
   })
 })
 

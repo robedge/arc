@@ -3,8 +3,8 @@ import type { ProviderId } from '../../shared/types/provider'
 
 /**
  * Usage-limit handling shared by the brain and the workers of one session (tech spec 2.10): an agent
- * that hits the limit waits, the worker queue stops starting workers, and the agent is retried once
- * after the limit resets (or after five minutes when the CLI said nothing). Never a retry loop: one
+ * that hits the limit waits, the worker queue stops starting workers on that provider, and the agent
+ * is retried once after the limit resets (or after five minutes when the CLI said nothing). Never a retry loop: one
  * pending retry per agent, and the next one is only scheduled by a new limit event after it ran.
  */
 
@@ -16,7 +16,7 @@ export interface RateLimitGateDeps {
   now: () => number
   /** "Waiting for the Claude usage limit (resets 14:05)". */
   logEvent: (kind: string, text: string, data?: unknown, workerId?: string | null) => void
-  /** The last pending retry ran: the paused queue can start workers again. */
+  /** The last pending retry of a provider ran or was cancelled: its held workers can start again. */
   onResumed: () => void
   log: { warn: (message: string, ...rest: unknown[]) => void }
 }
@@ -39,7 +39,10 @@ function clock(ms: number): string {
 }
 
 export class RateLimitGate {
-  private readonly pending = new Map<string, { timer: NodeJS.Timeout; known: boolean }>()
+  private readonly pending = new Map<
+    string,
+    { timer: NodeJS.Timeout; known: boolean; provider: ProviderId }
+  >()
   private disposed = false
   /** When the last retry of a provider ran. */
   private readonly lastRetry = new Map<ProviderId, number>()
@@ -48,9 +51,12 @@ export class RateLimitGate {
 
   constructor(private readonly deps: RateLimitGateDeps) {}
 
-  /** True while any agent waits for the limit: no worker may be started. */
-  get paused(): boolean {
-    return this.pending.size > 0
+  /** True while any agent waits for this provider's limit: no worker may be started on it. */
+  isProviderWaiting(provider: ProviderId): boolean {
+    for (const entry of this.pending.values()) {
+      if (entry.provider === provider) return true
+    }
+    return false
   }
 
   /** Providers whose retry failed: new work should not start on them yet. */
@@ -99,20 +105,23 @@ export class RateLimitGate {
       this.pending.delete(agentId)
       this.lastRetry.set(provider, this.deps.now())
       void this.run(hit)
-      if (this.pending.size === 0) this.deps.onResumed()
+      if (!this.isProviderWaiting(provider)) this.deps.onResumed()
     }, delay)
     timer.unref()
-    this.pending.set(agentId, { timer, known })
+    this.pending.set(agentId, { timer, known, provider })
     return existing === undefined
   }
 
-  /** The agent is gone for good (stopped by the user): its retry is not needed. */
+  /**
+   * The agent's retry is not needed: it was stopped by the user, moved to another model, or ended
+   * a turn without the limit. Workers held by its provider can start when it was the last wait.
+   */
   cancel(agentId: string): void {
     const entry = this.pending.get(agentId)
     if (!entry) return
     clearTimeout(entry.timer)
     this.pending.delete(agentId)
-    if (this.pending.size === 0 && !this.disposed) this.deps.onResumed()
+    if (!this.isProviderWaiting(entry.provider) && !this.disposed) this.deps.onResumed()
   }
 
   dispose(): void {

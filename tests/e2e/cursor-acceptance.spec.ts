@@ -1,5 +1,6 @@
 // @spec: 010-cursor-as-a-third-provider
 // @regression
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   chmodSync,
@@ -15,7 +16,13 @@ import {
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { expect, test } from '@playwright/test'
-import { chooseFromMenu, closeSettings, openSettings, providerRow, NEEDS_ATTENTION } from './codex-rig'
+import {
+  chooseFromMenu,
+  closeSettings,
+  openSettings,
+  providerRow,
+  NEEDS_ATTENTION
+} from './codex-rig'
 import { commandOption, composer } from './commands-rig'
 import {
   cursorAgents,
@@ -71,8 +78,6 @@ const workerSessions = (r: CursorRig) =>
 
 test('2.4: a Cursor worker edit in the project folder is blocked with a note, another outside edit gets a note, and the deny file lists the folders Arc protects', async () => {
   const dir = scratchDir('arc-cursor-accept-')
-  const outsideDir = join(dir, 'elsewhere')
-  mkdirSync(outsideDir)
   const scripts = join(dir, 'scripts')
   mkdirSync(scripts)
 
@@ -85,10 +90,12 @@ test('2.4: a Cursor worker edit in the project folder is blocked with a note, an
   const { page } = r
   const repo = r.repos['api']!
   const blockedFile = join(repo, 'blocked-by-deny.txt')
-  const elsewhereFile = join(outsideDir, 'elsewhere.txt')
+  // Outside every folder Arc knows (and not in the system temp folder, which any worker may use). The fake only
+  // reports the edit, as Cursor does (spike M6: the call completes with a diff); nothing is written there.
+  const elsewhereFile = '/opt/arc-accept-outside/elsewhere.txt'
 
   // The review worker: an edit in the user's project folder that Cursor's Write deny stops (the shape recorded in
-  // spike M6: the call completes at once with no diff and no output), a real write outside every known folder, and
+  // spike M6: the call completes at once with no diff and no output), an edit outside every known folder that went through, and
   // an ordinary edit in its own working copy.
   writeFileSync(
     join(scripts, 'worker-review.jsonl'),
@@ -120,10 +127,48 @@ test('2.4: a Cursor worker edit in the project folder is blocked with a note, an
         emit: { sessionUpdate: 'tool_call_update', toolCallId: 'deny-1', status: 'completed' },
         delay: 60
       },
-      { write: { path: elsewhereFile, content: 'outside\n' }, id: 'edit-2' },
+      {
+        emit: {
+          sessionUpdate: 'tool_call',
+          toolCallId: 'outside-1',
+          title: 'Edit File',
+          kind: 'edit',
+          status: 'pending',
+          rawInput: {}
+        }
+      },
+      {
+        emit: {
+          sessionUpdate: 'tool_call_update',
+          toolCallId: 'outside-1',
+          title: `Edit \`${elsewhereFile}\``,
+          rawInput: { path: elsewhereFile },
+          locations: [{ path: elsewhereFile }]
+        }
+      },
+      {
+        emit: { sessionUpdate: 'tool_call_update', toolCallId: 'outside-1', status: 'in_progress' }
+      },
+      {
+        emit: {
+          sessionUpdate: 'tool_call_update',
+          toolCallId: 'outside-1',
+          status: 'completed',
+          content: [
+            {
+              type: 'diff',
+              path: elsewhereFile,
+              oldText: '-- /dev/null',
+              newText: `++ b/${elsewhereFile}\noutside.`
+            }
+          ]
+        },
+        delay: 60
+      },
       { write: { path: 'inside.txt', content: 'inside\n' }, id: 'edit-3' },
       {
-        shell: "git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add inside'",
+        shell:
+          "git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add inside'",
         id: 'commit-1'
       },
       {
@@ -155,18 +200,17 @@ test('2.4: a Cursor worker edit in the project folder is blocked with a note, an
     `W1 couldn't change ${blockedFile}: Arc blocked it. Rerun this step on a Claude or Codex worker.`
   )
 
-  // The other outside edit went through, so the session says so: a note naming the worker and the file.
+  // The other outside edit went through (Cursor can't be stopped from it), so the session says so, naming the worker
+  // and the file.
   const changed = eventLog(page).filter({ hasText: 'elsewhere.txt' })
   await expect(changed).toHaveCount(1)
   await expect(changed).toHaveAttribute('data-event-kind', 'cursor-blocked')
-  await expect(changed).toContainText(
-    `W1 changed ${elsewhereFile} outside its working copy.`
-  )
+  await expect(changed).toContainText(`W1 changed ${elsewhereFile} outside its working copy.`)
 
   // The edit in its own working copy needs no note: exactly the two notes above.
-  await expect(eventLog(page).filter({ has: page.getByRole('img', { name: 'Blocked' }) })).toHaveCount(
-    2
-  )
+  await expect(
+    eventLog(page).filter({ has: page.getByRole('img', { name: 'Blocked' }) })
+  ).toHaveCount(2)
   // Nothing was written to the user's project folder.
   expect(existsSync(blockedFile)).toBe(false)
   expect(git(repo, 'status', '--short')).toBe('')
@@ -219,11 +263,9 @@ test('2.5: a Cursor worker on a deep model that changed nothing gets a "Model to
   await expect(workerCard(page, 'W1 · idle')).toHaveAttribute('data-worker-card', /done|merged/, {
     timeout: 45_000
   })
-  await expect(workerCard(page, 'W2 · writer')).toHaveAttribute(
-    'data-worker-card',
-    /done|merged/,
-    { timeout: 45_000 }
-  )
+  await expect(workerCard(page, 'W2 · writer')).toHaveAttribute('data-worker-card', /done|merged/, {
+    timeout: 45_000
+  })
   const panel = await openUsagePanel(page)
   const suggestion = panel.locator('[data-suggestion="model-too-strong"]')
   await expect(suggestion).toHaveCount(1, { timeout: 30_000 })
@@ -232,16 +274,40 @@ test('2.5: a Cursor worker on a deep model that changed nothing gets a "Model to
     'W1 used claude-opus-5 for a task that read 0 files and changed none.'
   )
   await expect(suggestion).not.toContainText('W2')
-  // The advice names the model the suggestion points to in the words the user sees in the chooser, not an internal id.
-  await expect(suggestion).not.toContainText('default[]')
+  await expect(suggestion).toContainText('would likely do.')
   await expect(panel.locator('[data-suggestion]')).toHaveCount(1)
+})
+
+test('2.5: the advice of a Cursor "Model too strong" suggestion names Auto, not Cursor\'s internal id', async () => {
+  const dir = scratchDir('arc-cursor-accept-')
+  const models = join(dir, 'models.json')
+  writeFileSync(
+    models,
+    JSON.stringify([
+      { modelId: 'default[]', name: 'Auto' },
+      { modelId: 'claude-opus-5', name: 'Claude Opus 5' }
+    ])
+  )
+  const r = await launchCursorRig({
+    cursorScenario: 'ca-suggest',
+    repos: [{ name: 'api' }],
+    cursor: { FAKE_CURSOR_MODELS: models }
+  })
+  rig = r
+  const { page } = r
+  await createGroupWithProjects(r, 'Storefront', [r.repos['api']!])
+  await startSession(page, { request: 'Look, then add a note', mode: 'Autonomous' })
+  const suggestion = (await openUsagePanel(page)).locator('[data-suggestion="model-too-strong"]')
+  await expect(suggestion).toHaveCount(1, { timeout: 60_000 })
+  await expect(suggestion).toContainText('Auto would likely do.')
+  await expect(suggestion).not.toContainText('default[]')
 })
 
 // ---- 2.8: a command file that can't be read -------------------------------------------------------------------------
 
 const REVIEW = `---\ndescription: Review a change\nargument-hint: <what>\n---\nReview this change carefully: $ARGUMENTS\n`
 
-test("2.8: a Cursor command whose file can't be read fails the worker with the reason and leaves no Cursor process running", async () => {
+test("2.8: a Cursor command whose file can't be read fails the worker with the reason, and nothing is sent to it", async () => {
   const r = await launchCursorRig({
     cursorScenario: 'cc-run',
     repos: [{ name: 'api' }],
@@ -272,13 +338,42 @@ test("2.8: a Cursor command whose file can't be read fails the worker with the r
   await expect(card).toHaveAttribute('data-worker-card', 'failed', { timeout: 30_000 })
   const reason = `Arc could not read ${file} to run /review, so the worker was not started.`
   await expect(card).toContainText(reason)
-  console.log('EVENTS', await eventLog(page).allTextContents())
-  await expect(eventLog(page).filter({ hasText: `failed: ${reason}` })).toHaveCount(1)
+  await expect(
+    eventLog(page).filter({ hasText: `failed: The worker could not be started: ${reason}` })
+  ).toHaveCount(1)
 
   // The worker never got a message (a bare "/review" included).
-  expect(readCursorLog(r).filter((l) => (l['recv'] as { method?: string })?.method === 'session/prompt')).toEqual([])
+  expect(
+    readCursorLog(r).filter((l) => (l['recv'] as { method?: string })?.method === 'session/prompt')
+  ).toEqual([])
+})
 
-  // The Cursor process Arc had started for it is gone: no live process among those that opened a worker session.
+test("2.8: a Cursor command whose file can't be read leaves no Cursor process running", async () => {
+  const r = await launchCursorRig({
+    cursorScenario: 'cc-run',
+    repos: [{ name: 'api' }],
+    cursor: {
+      FAKE_CURSOR_COMMANDS: JSON.stringify([
+        { name: 'review', description: 'Review a change (user)' }
+      ])
+    },
+    homeFiles: () => ({ '.cursor/commands/review.md': REVIEW })
+  })
+  rig = r
+  const { page } = r
+  const file = join(r.home, '.cursor', 'commands', 'review.md')
+  await createGroupWithProjects(r, 'Storefront', [r.repos['api']!])
+  await startSession(page, { request: 'Review the retry change', mode: 'Autonomous' })
+  await expect(page.getByText('Ready for a command.').first()).toBeVisible()
+  chmodSync(file, 0o000)
+  await composer(page).fill('/review the retry change')
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect(workerCard(page, 'W1 · /review')).toHaveAttribute('data-worker-card', 'failed', {
+    timeout: 30_000
+  })
+
+  // The file is read before Cursor starts, so no process opened a worker session; and none is left running
+  // (the model probe's own process is not counted).
   const pids = [
     ...new Set(
       readCursorLog(r).flatMap((l) => {
@@ -287,16 +382,21 @@ test("2.8: a Cursor command whose file can't be read fails the worker with the r
       })
     )
   ]
-  expect(pids.length).toBeGreaterThanOrEqual(1)
+  expect(pids).toEqual([])
   await expect
-    .poll(() => pids.filter(alive), { timeout: 10_000, message: 'a Cursor process is still running' })
+    .poll(() => pids.filter(running), {
+      timeout: 10_000,
+      message: 'a Cursor process is still running'
+    })
     .toEqual([])
 })
 
-function alive(pid: number): boolean {
+/** True while the process exists and is not a zombie. */
+function running(pid: number): boolean {
   try {
-    process.kill(pid, 0)
-    return true
+    return !/^Z/.test(
+      execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).trim()
+    )
   } catch {
     return false
   }
@@ -318,7 +418,9 @@ function treeHashes(root: string): Record<string, string> {
     }
     let content: string | Buffer = readFileSync(path)
     if (entry === 'cli-config.json') {
-      const parsed = JSON.parse(content.toString('utf8')) as { privacyCache?: Record<string, unknown> }
+      const parsed = JSON.parse(content.toString('utf8')) as {
+        privacyCache?: Record<string, unknown>
+      }
       if (parsed.privacyCache) delete parsed.privacyCache['updatedAt']
       content = JSON.stringify(parsed)
     }
@@ -328,7 +430,11 @@ function treeHashes(root: string): Record<string, string> {
 }
 
 const USER_CURSOR_FILES: Record<string, string> = {
-  '.cursor/mcp.json': JSON.stringify({ mcpServers: { fakeuser: { command: 'node', args: [] } } }, null, 2),
+  '.cursor/mcp.json': JSON.stringify(
+    { mcpServers: { fakeuser: { command: 'node', args: [] } } },
+    null,
+    2
+  ),
   '.cursor/cli-config.json': JSON.stringify(
     {
       version: 1,
@@ -340,7 +446,8 @@ const USER_CURSOR_FILES: Record<string, string> = {
   ),
   '.cursor/commands/review.md': REVIEW,
   '.cursor/rules/style.mdc': '---\nalwaysApply: true\n---\nKeep functions short.\n',
-  '.cursor/skills/triage/SKILL.md': '---\nname: triage\ndescription: Triage\n---\nTriage the issue.\n'
+  '.cursor/skills/triage/SKILL.md':
+    '---\nname: triage\ndescription: Triage\n---\nTriage the issue.\n'
 }
 
 test("2.7: after a whole Cursor session (Providers, Agent loading, an approved push, usage) every file under the user's ~/.cursor and the project checkout are as they were", async () => {
@@ -385,7 +492,9 @@ test("2.7: after a whole Cursor session (Providers, Agent loading, an approved p
     .getByRole('dialog', { name: /Needs attention/ })
     .getByRole('button', { name: 'Approve', exact: true })
     .click()
-  await expect.poll(() => cursorShellRuns(r).some((s) => s.cmd === 'git push origin HEAD')).toBe(true)
+  await expect
+    .poll(() => cursorShellRuns(r).some((s) => s.cmd === 'git push origin HEAD'))
+    .toBe(true)
   await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 30_000 })
   expect(cursorPermissionAnswers(r).map((a) => a.optionId)).toEqual(['allow-once'])
   expect(cursorAgents(r).length).toBeGreaterThanOrEqual(1)
@@ -400,7 +509,12 @@ test("2.7: after a whole Cursor session (Providers, Agent loading, an approved p
 // ---- 2.2: the session's own Workers choice ----------------------------------------------------------------------------
 
 test("2.2: choosing Cursor in the session's Workers menu makes the brain's next worker a Cursor worker whose card shows Cursor and its model", async () => {
-  const r = await launchCursorRig({ cursorScenario: 'cr-worker', repos: [{ name: 'api' }] })
+  // The brain (cx-spawn) names no provider, so the session's Workers choice decides.
+  const r = await launchCursorRig({
+    scenario: 'cx-spawn',
+    cursorScenario: 'cr-worker',
+    repos: [{ name: 'api' }]
+  })
   rig = r
   const { page } = r
   await createGroupWithProjects(r, 'Storefront', [r.repos['api']!])

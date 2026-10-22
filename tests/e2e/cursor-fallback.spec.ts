@@ -14,8 +14,8 @@ import type { CursorRig } from './cursor-rig'
 import { createGroupWithProjects, eventLog, startSession, workerCard } from './sessions-rig'
 
 /**
- * Spec 010 Slice 5: a Cursor that isn't signed in hands its work to Claude and says why (2.6), a Cursor plan limit
- * pauses the worker with the same message as the other providers (2.6), the user can step in on a Cursor worker and
+ * Spec 010 Slice 5: a Cursor that isn't signed in hands its work to Claude and says why (2.6), a Cursor plan refusal
+ * fails the worker with a plain sentence instead of waiting (2.6), the user can step in on a Cursor worker and
  * hand it back (2.3), and a Cursor worker resumes its own session after Arc is reopened. The brain is the fake Claude
  * CLI and every Cursor worker is the fake Cursor in `acp` mode; no model call is made.
  */
@@ -87,28 +87,27 @@ test('2.6: Cursor signed out and Workers on Cursor, so the worker runs on Claude
   await expect(note).toHaveCount(0)
 })
 
-test('2.6: a Cursor worker that hits its plan limit waits with the same message as the other providers', async () => {
+test('2.6: a Cursor worker whose model is not on the plan fails with the plan sentence and does not wait', async () => {
   const r = await setup({ cursorScenario: 'cf-limit' })
   const { page } = r
   await startSession(page, { request: 'Add a limit file', mode: 'Autonomous' })
 
   const card = workerCard(page, 'W1 · limited')
   await expect(card.locator('[data-worker-model]')).toContainText('Cursor')
-  // The plan block ("Upgrade your plan to continue", end_turn) pauses the worker: the pause and retry message is
-  // the one Claude and Codex workers show, naming Cursor.
+  // The plan block ("Upgrade your plan to continue", end_turn) is a refusal of the model, not a usage limit:
+  // the worker fails at once with a sentence that names the model, and nothing waits or retries.
   await expect(
     eventLog(page).filter({
-      hasText: 'Waiting for the Cursor usage limit (trying again in 5 minutes)'
+      hasText:
+        "W1 limited failed: Cursor refused Auto: it isn't on your Cursor plan. Choose another model."
     })
   ).toHaveCount(1, { timeout: 20_000 })
-  await expect(card).toHaveAttribute('data-worker-card', 'working')
-  await expect(card).toContainText('Waiting for limit')
-  // It waits: no second prompt (no nudge, no early retry) reaches the worker, and it is not failed.
-  await page.waitForTimeout(2000)
+  await expect(card).toHaveAttribute('data-worker-card', 'failed')
+  await expect(eventLog(page).filter({ hasText: 'usage limit' })).toHaveCount(0)
+  await page.waitForTimeout(1000)
   expect(cursorPrompts(r).filter((p) => p.role === 'worker')).toHaveLength(1)
-  await expect(card).toHaveAttribute('data-worker-card', 'working')
-  // The one retry after five minutes (a "Continue." turn) has no test hook to shorten the wait; it is covered by
-  // tests/unit/sessions/rate-limit-gate.test.ts (Cursor) and tests/unit/sessions/continue.test.ts.
+  // A real usage limit (a Cursor wait with the same message as the other providers) is covered by
+  // tests/unit/sessions/rate-limit-gate.test.ts and tests/unit/sessions/cursor-workers.test.ts.
 })
 
 const W1 = 'W1 · api-retry'

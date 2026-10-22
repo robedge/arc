@@ -871,7 +871,7 @@ function registerHandlers(): void {
       recorder: usage,
       isEnabled: () => appSettingsRepo.get('usage.checkClaudePlanOnLaunch'),
       isClaudeReady: () => getProviderStatus().getStatus('claude')?.state === 'ok',
-      isRateLimitPaused: () => sessionService?.anyRateLimitPaused() ?? false,
+      isRateLimitPaused: () => sessionService?.anyRateLimitWaiting('claude') ?? false,
       log: sessionsLog
     })
   }

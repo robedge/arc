@@ -126,7 +126,7 @@ it('store dismiss restores everywhere when the call fails', async () => {
 })
 
 it('the Usage page lists suggestions newest first, or a muted line when none', async () => {
-  const base = { range: '7d', totals: { total: totals }, plans: [], generatedAt: 1 }
+  const base = { range: '7d', totals: { total: totals, byProvider: [] }, plans: [], generatedAt: 1 }
   const withItems = {
     ...base,
     suggestions: [sug('old', 'repeated-work', 1), sug('new', 'long-running', 9)]

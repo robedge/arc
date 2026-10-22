@@ -79,6 +79,8 @@ export class FakeHandle implements AgentHandle {
   /** What `interrupt()` reports; `killed` plays an interrupt the process did not survive. */
   interruptOutcome: InterruptOutcome = 'acked'
   stopped = false
+  /** A test sets it to false to play a process that is gone when the first message is written. */
+  sendsOk = true
   /** The models passed to `setModel`; only a Codex handle has it, as the real one does. */
   readonly models: string[] = []
   setModel?: (model: string) => void
@@ -116,7 +118,7 @@ export class FakeHandle implements AgentHandle {
 
   send(text: string): Promise<boolean> {
     this.sent.push(text)
-    return Promise.resolve(true)
+    return Promise.resolve(this.sendsOk)
   }
 
   interrupt(): Promise<InterruptOutcome> {
@@ -162,6 +164,8 @@ export class FakeCursorAdapter implements AgentAdapter {
   failWith: Error | undefined
   /** When set, resumes alone reject with it (a session Cursor no longer has, -32602 "not found"). */
   failResumeWith: Error | undefined
+  /** When false, the handles it starts report their first send as not written. */
+  sendsOk = true
 
   start(options: StartOptions): Promise<AgentHandle> {
     if (options.provider !== 'cursor')
@@ -169,6 +173,7 @@ export class FakeCursorAdapter implements AgentAdapter {
     if (this.failWith) return Promise.reject(this.failWith)
     this.starts.push(options)
     const handle = new FakeHandle(options.agentId, 'cursor')
+    handle.sendsOk = this.sendsOk
     this.handles.push(handle)
     return Promise.resolve(handle)
   }

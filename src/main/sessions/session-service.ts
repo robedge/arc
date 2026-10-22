@@ -810,9 +810,9 @@ export class SessionService {
 
   // ---- group changes (functional spec 2.11) ----
 
-  /** True while any open session waits for the usage limit (the launch plan check stays away then). */
-  anyRateLimitPaused(): boolean {
-    return [...this.orchestrators.values()].some((o) => o.rateLimitPaused)
+  /** True while any open session waits for this provider's usage limit (the Claude plan check stays away then). */
+  anyRateLimitWaiting(provider: ProviderId): boolean {
+    return [...this.orchestrators.values()].some((o) => o.isRateLimitWaiting(provider))
   }
 
   /**
@@ -1472,7 +1472,12 @@ export class SessionService {
       )
       if (patch.autoApprove) orchestrator.resolveCoveredRequests()
     }
-    orchestrator.configChanged({ mode: before.mode, workerLimit: before.workerLimit })
+    orchestrator.configChanged({
+      mode: before.mode,
+      workerLimit: before.workerLimit,
+      brainProvider: before.brainProvider,
+      brainModel: before.brainModel
+    })
     this.pushHeader(sessionId)
     this.scheduleSummary(sessionId)
     return this.headerOf(this.requireSession(sessionId))

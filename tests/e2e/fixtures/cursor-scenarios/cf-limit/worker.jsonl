@@ -1,9 +1,5 @@
 # A Cursor worker on a Free account whose first turn is the plan block (spike M1): the short refusal text with
-# end_turn and no tool call. Arc's one retry after the wait sends "Continue."; that turn finishes the task.
+# end_turn and no tool call. Arc fails the worker with the plan sentence; it never sends another prompt.
 {"expect":"prompt"}
 {"text":"\n\nUpgrade your plan to continue"}
-{"end":"end_turn"}
-{"expect":"prompt","text":"Continue."}
-{"text":"Continuing after the limit."}
-{"mcp":{"tool":"report_done","args":{"summary":"Continued after the limit"}},"id":"done-1"}
 {"end":"end_turn"}

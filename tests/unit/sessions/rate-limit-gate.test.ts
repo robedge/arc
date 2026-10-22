@@ -52,13 +52,13 @@ describe('RateLimitGate', () => {
     const hh = new Date(resetsAt * 1000)
     const clock = `${String(hh.getHours()).padStart(2, '0')}:${String(hh.getMinutes()).padStart(2, '0')}`
     expect(events).toEqual([`Waiting for the Claude usage limit (resets ${clock})`])
-    expect(gate.paused).toBe(true)
+    expect(gate.isProviderWaiting('claude')).toBe(true)
 
     await vi.advanceTimersByTimeAsync(89_000)
     expect(retry).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(2_000)
     expect(retry).toHaveBeenCalledTimes(1)
-    expect(gate.paused).toBe(false)
+    expect(gate.isProviderWaiting('claude')).toBe(false)
     expect(resumed).toHaveBeenCalledTimes(1)
 
     // Nothing is scheduled again by itself: no retry loop.
@@ -104,13 +104,51 @@ describe('RateLimitGate', () => {
     gate.hit('b', { retry: b })
     await vi.advanceTimersByTimeAsync(12_000)
     expect(a).toHaveBeenCalledTimes(1)
-    expect(gate.paused).toBe(true)
+    expect(gate.isProviderWaiting('claude')).toBe(true)
     expect(resumed).not.toHaveBeenCalled()
     gate.cancel('b')
-    expect(gate.paused).toBe(false)
+    expect(gate.isProviderWaiting('claude')).toBe(false)
     expect(resumed).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(RATE_LIMIT_RETRY_MS)
     expect(b).not.toHaveBeenCalled()
+  })
+
+  it('waits per provider: a Cursor wait leaves Claude free, and each provider resumes by itself', async () => {
+    const { gate, resumed } = make()
+    gate.hit('brain', { provider: 'cursor', retry: vi.fn() })
+    gate.hit('w2', { provider: 'claude', resetsAt: (NOW + 10_000) / 1000, retry: vi.fn() })
+    expect(gate.isProviderWaiting('cursor')).toBe(true)
+    expect(gate.isProviderWaiting('claude')).toBe(true)
+    expect(gate.isProviderWaiting('codex')).toBe(false)
+    await vi.advanceTimersByTimeAsync(12_000)
+    // Claude's wait ended and told the queue; Cursor still waits.
+    expect(gate.isProviderWaiting('claude')).toBe(false)
+    expect(gate.isProviderWaiting('cursor')).toBe(true)
+    expect(resumed).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancel drops the wait without a retry and tells the queue so held workers can start', async () => {
+    const { gate, resumed } = make()
+    const retry = vi.fn()
+    gate.hit('brain', { provider: 'cursor', retry })
+    gate.cancel('brain')
+    expect(gate.isProviderWaiting('cursor')).toBe(false)
+    expect(resumed).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(RATE_LIMIT_RETRY_MS * 2)
+    expect(retry).not.toHaveBeenCalled()
+    expect(resumed).toHaveBeenCalledTimes(1)
+    // Cancelling an agent that does not wait is a no-op.
+    gate.cancel('brain')
+    expect(resumed).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancel keeps the provider waiting while another agent of it still waits', () => {
+    const { gate, resumed } = make()
+    gate.hit('a', { provider: 'cursor', retry: vi.fn() })
+    gate.hit('b', { provider: 'cursor', retry: vi.fn() })
+    gate.cancel('a')
+    expect(gate.isProviderWaiting('cursor')).toBe(true)
+    expect(resumed).not.toHaveBeenCalled()
   })
 
   it('a retry that throws is logged and does not break the gate', async () => {
@@ -119,7 +157,7 @@ describe('RateLimitGate', () => {
     gate.hit('a', { retry })
     await vi.advanceTimersByTimeAsync(RATE_LIMIT_RETRY_MS + 1)
     expect(retry).toHaveBeenCalledTimes(1)
-    expect(gate.paused).toBe(false)
+    expect(gate.isProviderWaiting('claude')).toBe(false)
   })
 
   describe('a Cursor limit with no reset time', () => {
@@ -134,13 +172,13 @@ describe('RateLimitGate', () => {
       const retry = vi.fn()
       h.gate.hit('worker-w1', { provider: 'cursor', retry })
       expect(h.events).toEqual(['Waiting for the Cursor usage limit (trying again in 5 minutes)'])
-      expect(h.gate.paused).toBe(true)
+      expect(h.gate.isProviderWaiting('cursor')).toBe(true)
       expect(h.gate.limitedProviders().size).toBe(0)
       await wait(h, RATE_LIMIT_RETRY_MS - 1)
       expect(retry).not.toHaveBeenCalled()
       await wait(h, 2)
       expect(retry).toHaveBeenCalledTimes(1)
-      expect(h.gate.paused).toBe(false)
+      expect(h.gate.isProviderWaiting('cursor')).toBe(false)
       // Nothing limited yet: the retry may have worked.
       expect(h.gate.limitedProviders().size).toBe(0)
     })

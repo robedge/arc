@@ -19,7 +19,15 @@ export interface RateLimitWindow {
   resetsAt: number | null
 }
 
-export type AgentErrorKind = 'auth' | 'not-installed' | 'rate-limit' | 'api' | 'parse' | 'unknown'
+export type AgentErrorKind =
+  | 'auth'
+  | 'not-installed'
+  | 'rate-limit'
+  /** The provider's plan does not include the model (Cursor's "Upgrade your plan"); waiting does not help. */
+  | 'plan-refused'
+  | 'api'
+  | 'parse'
+  | 'unknown'
 
 /** How a turn ended. `ok` and `interrupted` on the event stay for the consumers that predate it. */
 export type TurnStatus = 'completed' | 'interrupted' | 'failed'

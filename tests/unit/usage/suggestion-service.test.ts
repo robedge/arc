@@ -106,8 +106,11 @@ beforeEach(() => {
     usage: usageRepo,
     agents: () => setupAgents,
     models: {
-      tierOf: (ref) => (ref.model === 'opus' ? 'deep' : 'balanced'),
-      defaultFor: (provider) => ({ provider, model: 'sonnet' })
+      tierOf: (ref) => (['opus', 'claude-opus-5[]'].includes(ref.model) ? 'deep' : 'balanced'),
+      defaultFor: (provider) => ({
+        provider,
+        model: provider === 'cursor' ? 'default[]' : 'sonnet'
+      })
     },
     onChanged: (sessionId) => changedSessions.push(sessionId),
     now: () => (clock += 1),
@@ -135,7 +138,7 @@ describe('model too strong', () => {
       agentKey: 'w1',
       agentRole: 'worker',
       provider: 'cursor',
-      model: 'opus',
+      model: 'claude-opus-5[]',
       at: clock,
       inputTokens: 0,
       cacheWriteTokens: 0,
@@ -143,12 +146,14 @@ describe('model too strong', () => {
       outputTokens: 0,
       turnKey: 'cursor-zero'
     })
-    service.onWorkerFinished(finished({ provider: 'cursor', changedFiles: 3 }))
+    const cursor = { provider: 'cursor', model: 'claude-opus-5[]' } as const
+    service.onWorkerFinished(finished({ ...cursor, changedFiles: 3 }))
     expect(ofKind('model-too-strong')).toEqual([])
-    service.onWorkerFinished(finished({ provider: 'cursor', changedFiles: 0 }))
-    expect(ofKind('model-too-strong')[0]?.text).toBe(
-      'W2 used Opus for a task that read 0 files and changed none.'
-    )
+    service.onWorkerFinished(finished({ ...cursor, changedFiles: 0 }))
+    const [s] = ofKind('model-too-strong')
+    expect(s?.text).toBe('W2 used claude-opus-5 for a task that read 0 files and changed none.')
+    // Names the lighter model as the chooser does, never Cursor's internal id.
+    expect(s?.advice).toBe('Auto would likely do.')
   })
 
   it('names the files it read', () => {

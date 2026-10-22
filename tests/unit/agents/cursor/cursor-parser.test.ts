@@ -196,12 +196,12 @@ describe('cursor parser on the M1 agent turn', () => {
 })
 
 describe('cursor parser on the plan-blocked turn', () => {
-  it('turns "Upgrade your plan to continue" with end_turn into a rate-limit error and a failed turn', () => {
+  it('turns "Upgrade your plan to continue" with end_turn into a plan-refused error and a failed turn', () => {
     const { events } = replay('m1-plan-blocked-turn.jsonl')
     const errors = ofType(events, 'error')
     expect(errors).toHaveLength(1)
     expect(errors[0]).toMatchObject({
-      kind: 'rate-limit',
+      kind: 'plan-refused',
       message: 'Upgrade your plan to continue'
     })
     // The refusal is not an answer the brain or the terminal should show.
@@ -269,6 +269,24 @@ describe('cursor parser turn endings', () => {
     p.beginTurn()
     expect(ofType(p.endTurn({ error: 'socket hang up' }), 'error')[0]).toMatchObject({
       kind: 'api'
+    })
+  })
+
+  it('classifies a failed prompt that says to upgrade the plan as plan-refused, other limits as rate-limit', () => {
+    const p = newParser()
+    p.beginTurn()
+    expect(ofType(p.endTurn({ error: 'Upgrade your plan to continue' }), 'error')[0]).toMatchObject(
+      { kind: 'plan-refused' }
+    )
+    p.beginTurn()
+    p.parse('session/update', {
+      update: {
+        sessionUpdate: 'agent_message_chunk',
+        content: { type: 'text', text: 'You have reached your usage limit' }
+      }
+    })
+    expect(ofType(p.endTurn({ stopReason: 'end_turn' }), 'error')[0]).toMatchObject({
+      kind: 'rate-limit'
     })
   })
 

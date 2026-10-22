@@ -52,7 +52,7 @@ import { ulid } from '../db/ids'
 import type { ClassifyContext } from '../policy/classify'
 import type { IpcEvents } from '@shared/ipc/contract'
 import { AppErrorException } from '@shared/errors'
-import { providerName } from '@shared/provider-label'
+import { planRefusedText, providerName } from '@shared/provider-label'
 import { PLACEHOLDER_SESSION_NAME } from '@shared/types/session'
 import type { CommandInfo } from '@shared/types/commands'
 import type {
@@ -1013,9 +1013,9 @@ export class Orchestrator {
     return this.rateLimit.limitedProviders()
   }
 
-  /** True while an agent of this session waits for the usage limit. */
-  get rateLimitPaused(): boolean {
-    return this.rateLimit.paused
+  /** True while an agent of this session waits for this provider's usage limit. */
+  isRateLimitWaiting(provider: ProviderId): boolean {
+    return this.rateLimit.isProviderWaiting(provider)
   }
 
   async stop(): Promise<void> {
@@ -1130,9 +1130,19 @@ export class Orchestrator {
    * A running brain learns of the change with a short note in front of its next message (no extra
    * turn); a brain that starts later gets the current values in its system prompt.
    */
-  configChanged(before: { mode: SessionMode; workerLimit: number }): void {
+  configChanged(before: {
+    mode: SessionMode
+    workerLimit: number
+    brainProvider: ProviderId
+    brainModel: string
+  }): void {
     const after = this.deps.sessionsRepo.getById(this.deps.sessionId)
     if (!after || this.closed) return
+    // A wait for the old model's limit does not apply to the new one, and its retry would send a
+    // stray "Continue." to the new brain. Cancelling also lets the workers it held start.
+    if (after.brainProvider !== before.brainProvider || after.brainModel !== before.brainModel) {
+      this.rateLimit.cancel(this.brainAgentId)
+    }
     if (after.workerLimit !== before.workerLimit) this.workers.drain()
     if (after.mode !== before.mode || after.workerLimit !== before.workerLimit) {
       this.logEvent('mode', modeNote(after.mode, after.workerLimit).replace('[Arc] ', ''), {
@@ -2069,6 +2079,8 @@ export class Orchestrator {
         this.onAssistantMessage(event.messageId, event.text)
         return
       case 'turn-result':
+        // A turn that went through means the limit is over: the pending retry would only add a "Continue.".
+        if (event.ok) this.rateLimit.cancel(this.brainAgentId)
         this.finalizeSlot(event.interrupted ? 'stopped' : 'complete')
         this.settleSummaryReply(!event.interrupted)
         this.setBrainState('idle')
@@ -2152,6 +2164,10 @@ export class Orchestrator {
       case 'rate-limit':
         this.onBrainRateLimit(undefined, this.runningProvider)
         return
+      case 'plan-refused':
+        // Waiting does not help: the plan never includes this model. No retry, only the user can change it.
+        this.logEvent('error', planRefusedText(this.runningRef()))
+        return
       case 'api':
       case 'unknown':
         this.logEvent('error', 'The brain reported an error. Details are in the logs.')
@@ -2159,6 +2175,11 @@ export class Orchestrator {
       case 'parse':
         return
     }
+  }
+
+  /** The provider and model the running brain was started with. */
+  private runningRef(): ModelRef {
+    return { provider: this.runningProvider ?? 'claude', model: this.runningModel ?? '' }
   }
 
   /** The brain hit the usage limit: wait, then send "Continue." (the next send resumes it if it exited). */
