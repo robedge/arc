@@ -1,0 +1,13 @@
+# A Cursor worker started while the user's `fakeuser` server is off for Workers. It checks that Arc's deny file in its
+# working copy blocks the server (`Mcp(fakeuser:*)`), then tries the server's `remove` tool anyway (the MCP-shaped
+# permission request, as in cm-use): Arc declines it without asking the user. Then it reports done.
+{"expect":"prompt"}
+{"title":"Try fakeuser"}
+{"text":"Starting."}
+{"shell":"grep -qF 'Mcp(fakeuser:*)' .cursor/cli.json","id":"deny-check"}
+{"emit":{"sessionUpdate":"tool_call","toolCallId":"mcp-remove","title":"MCP: remove","kind":"other","status":"pending","rawInput":{}}}
+{"emit":{"sessionUpdate":"tool_call_update","toolCallId":"mcp-remove","title":"fakeuser: remove","rawInput":{"providerIdentifier":"fakeuser","toolName":"remove","args":{"id":"r1"}}}}
+{"request":{"toolCall":{"toolCallId":"mcp-remove","title":"fakeuser-remove: remove","kind":"other"}},"saveAs":"remove"}
+{"mcp":{"tool":"report_done","args":{"summary":"fakeuser is switched off; nothing removed"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

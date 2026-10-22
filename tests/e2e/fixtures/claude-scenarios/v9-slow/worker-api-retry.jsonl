@@ -1,0 +1,36 @@
+# Slow worker: prints output for about 10 seconds so a terminal tab can be watched live.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"delay": 1000}
+{"say": "Step 1 of 10: reading file src/part1.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 1"}}}
+{"delay": 1000}
+{"say": "Step 2 of 10: reading file src/part2.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 2"}}}
+{"delay": 1000}
+{"say": "Step 3 of 10: reading file src/part3.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 3"}}}
+{"delay": 1000}
+{"say": "Step 4 of 10: reading file src/part4.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 4"}}}
+{"delay": 1000}
+{"say": "Step 5 of 10: reading file src/part5.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 5"}}}
+{"delay": 1000}
+{"say": "Step 6 of 10: reading file src/part6.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 6"}}}
+{"delay": 1000}
+{"say": "Step 7 of 10: reading file src/part7.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 7"}}}
+{"delay": 1000}
+{"say": "Step 8 of 10: reading file src/part8.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 8"}}}
+{"delay": 1000}
+{"say": "Step 9 of 10: reading file src/part9.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 9"}}}
+{"delay": 1000}
+{"say": "Step 10 of 10: reading file src/part10.ts"}
+{"mcp": {"tool": "report_progress", "args": {"note": "Progress note 10"}}}
+{"mcp": {"tool": "report_done", "args": {"summary": "Finished the retry change"}}}
+{"say":"Done."}
+{"result":true}

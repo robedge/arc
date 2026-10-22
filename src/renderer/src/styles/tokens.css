@@ -1,0 +1,163 @@
+/* Arc HUD design tokens. The reset drops Tailwind's default palette so only semantic colors generate utilities. */
+@theme {
+  --color-*: initial;
+}
+
+@theme static {
+  --color-ground: #03080f;
+  --color-grid-line: rgba(0, 229, 255, 0.05);
+  --color-surface-panel: rgba(6, 22, 36, 0.72);
+  --color-surface-raised: #0a2233;
+  --color-surface-code: #020609;
+  --color-surface-hover: rgba(0, 229, 255, 0.08);
+  --color-surface-selected: rgba(0, 229, 255, 0.14);
+  --color-paper: #ffffff;
+  --color-surface-bar: rgba(6, 22, 36, 0.9);
+  --color-surface-scrim: rgba(2, 6, 12, 0.65);
+  --color-border: rgba(0, 229, 255, 0.18);
+  --color-border-strong: rgba(0, 229, 255, 0.45);
+  --color-line-faint: #4f8698;
+  --color-text: #cfeff7;
+  --color-text-bright: #e8fcff;
+  --color-text-muted: #7fb3c4;
+  --color-text-faint: #6a9fb0;
+  --color-accent: #00e5ff;
+  --color-accent-ink: #02161c;
+  --color-attention: #ffb74d;
+  --color-attention-ink: #1a1206;
+  --color-attention-text: #ffe2b8;
+  --color-success: #6ee7b7;
+  --color-danger: #ff6b6b;
+  --color-danger-ink: #1a0606;
+  /* Daily chart series; each also has its own pattern, so hue is never the only signal. */
+  --color-chart-claude: var(--color-accent);
+  --color-chart-codex: var(--color-attention);
+  --color-chart-cursor: #b79bff;
+
+  --font-display: 'Orbitron', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-hud: 2px;
+  --radius-control: 3px;
+  --radius-pill: 9999px;
+
+  --shadow-glow-accent: 0 0 12px rgba(0, 229, 255, 0.35);
+  --shadow-glow-attention: 0 0 12px rgba(255, 183, 77, 0.4);
+  --shadow-glow-danger: 0 0 12px rgba(255, 107, 107, 0.4);
+  --shadow-focus: 0 0 0 2px #03080f, 0 0 0 4px #00e5ff;
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-draw: 300ms;
+  --duration-pulse: 2400ms;
+  --duration-idle-spin: 24s;
+  --ease-hud: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --size-hit: 44px;
+  --size-bracket: 14px;
+  --size-sidebar: 18rem;
+  --size-titlebar: 40px;
+  --tracking-label: 0.16em;
+  --tracking-title: 0.22em;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-ground);
+  background-image:
+    linear-gradient(var(--color-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Keyboard focus: one cyan ring everywhere; components also carry focus-visible:shadow-focus. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* One reduced-motion source: the media query here, mirrored by the motion store. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag,
+.drag-region button,
+.drag-region a,
+.drag-region input {
+  -webkit-app-region: no-drag;
+}
+
+/* Selectable list rows and section tabs. Selected = left cyan rule, faint cyan fill, bright text. */
+.hud-row,
+.hud-tab {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-hit);
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-hud),
+    color var(--duration-fast) var(--ease-hud);
+}
+.hud-row {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+.hud-tab {
+  padding: 0.5rem 0.875rem;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.hud-row:hover,
+.hud-tab:hover {
+  background: var(--color-surface-hover);
+}
+.hud-tab:hover {
+  color: var(--color-text-bright);
+}
+.hud-row[data-selected='true'],
+.hud-tab[data-selected='true'],
+.hud-tab[aria-selected='true'] {
+  border-left-color: var(--color-accent);
+  background: var(--color-surface-selected);
+  color: var(--color-text-bright);
+}
+.hud-row:focus-visible,
+.hud-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.hud-row:disabled,
+.hud-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

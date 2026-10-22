@@ -1,0 +1,11 @@
+# A Cursor worker whose ordinary command in its working copy asks Cursor's permission (`git status`, as in spike M1):
+# Arc answers allow-once itself, with no Needs attention item. Then it commits a note and reports done.
+{"expect":"prompt"}
+{"title":"Add cursor note"}
+{"text":"Starting."}
+{"shell":"git status","approval":true,"id":"status-1","saveAs":"status"}
+{"write":{"path":"cursor-note.txt","content":"written by the fake Cursor\n"},"id":"edit-1"}
+{"shell":"git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add cursor note'","id":"commit-1"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added cursor-note.txt and committed"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

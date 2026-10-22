@@ -1,0 +1,8 @@
+# The resolver is not confident: it asks, waits for the answer, then resolves as told.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"ask_brain","args":{"question":"Both sides changed line 2: W1 notes a retry on failure, W2 notes a 5 second timeout. Keep both?"}}}
+{"shell":"printf 'hello\\nretry on failure\\ntimeout of 5s\\n' > README.md && git add README.md && git -c user.name=Fake -c user.email=fake@example.com commit -q --no-edit"}
+{"mcp":{"tool":"report_done","args":{"summary":"Kept both lines as the user said"}}}
+{"say":"Resolved."}
+{"result":true}

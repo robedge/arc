@@ -1,0 +1,8 @@
+# Autonomous brain: starts one worker for the allow-rule checks and stays quiet.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Allow rules\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"perms","task":"Run the permission checks","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

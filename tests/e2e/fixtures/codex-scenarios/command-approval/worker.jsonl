@@ -1,0 +1,8 @@
+# A Codex worker whose command needs a decision. The item shows `git push`; accepting runs a harmless echo.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Pushing the branch."}
+{"shell":"git push origin HEAD","run":"echo (fake) pushed","id":"push-1","approval":true,"saveAs":"push"}
+{"say":"The push was {{saved.push.decision}}."}
+{"mcp":{"tool":"report_done","args":{"summary":"Push {{saved.push.decision}}"}}}
+{"turnCompleted":"completed"}

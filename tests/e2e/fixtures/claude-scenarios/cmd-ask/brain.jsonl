@@ -1,0 +1,13 @@
+# Autonomous brain: the command names no repository, so it asks which one (the repository names as choices), then starts the worker there.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry settings\n\nReady for a command."}
+{"result":true}
+{"waitForStdin":"The user ran the command /awos:spec"}
+{"mcp":{"tool":"ask_user","args":{"question":"Which repository should /awos:spec run in?","choices":["api","web"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"spec","task":"Write the retry settings spec","repos":["web"],"command":"/awos:spec for retry settings"}}}
+{"say":"Started the spec command in web."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The spec is written."}
+{"result":true}

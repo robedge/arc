@@ -1,0 +1,15 @@
+# Autonomous brain: starts the command worker; when the worker asks the user a question the brain is told it cannot answer it.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review run\n\nReady for a command."}
+{"result":true}
+{"waitForStdin":"The user ran the command /awos:spec"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"asker","task":"Run the spec command","repos":["api"],"command":"/awos:spec review"}}}
+{"say":"Started the command in api."}
+{"result":true}
+{"waitForStdin":"you cannot answer it"}
+{"say":"The question is for you to answer."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The command finished."}
+{"result":true}

@@ -1,0 +1,21 @@
+# A Cursor brain (spec 010 Slice 7), run by the fake Cursor in `acp` mode: starts one worker named review on Cursor
+# through Arc's bridge, then answers the notes Arc sends it. The user's `fakeuser` server is off for Workers only, so
+# this brain's session/new must not carry an off entry for it. No Claude runs here.
+{"expect":"prompt"}
+{"title":"Brain on Cursor"}
+{"text":"Title: Review work\n\nHello from the Cursor brain. Starting a worker on Cursor."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Remove the record with the fakeuser server","repos":["api"],"provider":"cursor"}},"id":"spawn-1","follow":true,"saveAs":"spawn"}
+{"text":"The worker is running."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Noted."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Summary: done."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Noted."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Noted."}
+{"end":"end_turn"}

@@ -1,0 +1,16 @@
+# Autonomous brain for spec 007: waits for "go", starts one worker named review with no provider (the Workers
+# setting decides), then answers the merge and the summary notes.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review work\n\nReady when you are."}
+{"result":true}
+{"waitForStdin":"go"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Patch hello.txt","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"automatically"}
+{"say":"Noted the automatic merge."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: hello.txt was patched."}
+{"result":true}

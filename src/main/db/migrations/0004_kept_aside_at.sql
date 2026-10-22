@@ -1,0 +1,1 @@
+ALTER TABLE `knowledge_storage` ADD `kept_aside_at` integer;

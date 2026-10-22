@@ -1,0 +1,21 @@
+# A Cursor brain (spec 010 Slice 4), run by the fake Cursor in `acp` mode: answers the request with text, starts one
+# worker named review on Cursor through Arc's bridge (follow: the polling shape, should the call wait), then answers
+# the notes Arc sends it (the merge, the summary request). No Claude runs here.
+{"expect":"prompt"}
+{"title":"Brain on Cursor"}
+{"text":"Title: Review work\n\nHello from the Cursor brain. Starting a worker on Cursor."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Add cursor-note.txt","repos":["api"],"provider":"cursor"}},"id":"spawn-1","follow":true,"saveAs":"spawn"}
+{"text":"The worker is running."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Noted."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Summary: cursor-note.txt was added."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Noted."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Noted."}
+{"end":"end_turn"}

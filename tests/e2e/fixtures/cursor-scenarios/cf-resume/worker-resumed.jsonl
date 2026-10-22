@@ -1,0 +1,9 @@
+# The keeper after Arc was reopened and the user pressed Continue: Arc loaded the earlier session (session/load), so
+# this script runs; it finishes the task.
+{"expect":"prompt"}
+{"text":"Resumed the keeper."}
+{"write":{"path":"keeper.txt","content":"kept\n"},"id":"edit-1"}
+{"shell":"git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Keeper'","id":"commit-1"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added keeper.txt"}},"id":"done-1"}
+{"text":"Finished after the restart."}
+{"end":"end_turn"}

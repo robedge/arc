@@ -1,0 +1,11 @@
+{"dir":"meta","cursorVersion":"2026.10.19-6bbf2c4","recordedAt":"2026-10-21","note":"N4: session/load of an empty session in a new process (not found), unknown id, unknown method"}
+{"dir":"c2s","t":0,"msg":{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientCapabilities":{"fs":{"readTextFile":false,"writeTextFile":false},"terminal":false}}}}
+{"dir":"s2c","t":649,"msg":{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1,"agentCapabilities":{"loadSession":true,"mcpCapabilities":{"http":true,"sse":true},"promptCapabilities":{"audio":false,"embeddedContext":false,"image":true},"sessionCapabilities":{"list":{}}},"authMethods":[{"id":"cursor_login","name":"Cursor Login","description":"Authenticate using existing Cursor login credentials. Run 'agent login' first if not logged in."}]}}}
+{"dir":"c2s","t":650,"msg":{"jsonrpc":"2.0","id":2,"method":"authenticate","params":{"methodId":"cursor_login"}}}
+{"dir":"s2c","t":1197,"msg":{"jsonrpc":"2.0","id":2,"result":{}}}
+{"dir":"c2s","t":1197,"msg":{"jsonrpc":"2.0","id":3,"method":"session/load","params":{"sessionId":"session-1","cwd":"/tmp/arc-record/repo-n1","mcpServers":[]}}}
+{"dir":"s2c","t":1200,"msg":{"jsonrpc":"2.0","id":3,"error":{"code":-32602,"message":"Invalid params","data":{"message":"Session \"session-1\" not found"}}}}
+{"dir":"c2s","t":3202,"msg":{"jsonrpc":"2.0","id":4,"method":"session/load","params":{"sessionId":"00000000-0000-4000-8000-000000000000","cwd":"/tmp/arc-record/repo-n1","mcpServers":[]}}}
+{"dir":"s2c","t":3211,"msg":{"jsonrpc":"2.0","id":4,"error":{"code":-32602,"message":"Invalid params","data":{"message":"Session \"00000000-0000-4000-8000-000000000000\" not found"}}}}
+{"dir":"c2s","t":3213,"msg":{"jsonrpc":"2.0","id":5,"method":"session/frobnicate","params":{}}}
+{"dir":"s2c","t":3214,"msg":{"jsonrpc":"2.0","id":5,"error":{"code":-32601,"message":"\"Method not found\": session/frobnicate","data":{"method":"session/frobnicate"}}}}

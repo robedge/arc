@@ -1,0 +1,20 @@
+# The brain after a restart: answers whatever it is sent, once per message.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"say": "I remember the earlier conversation."}
+{"result": true}
+{"waitForStdin": "*"}
+{"say": "I remember the earlier conversation."}
+{"result": true}
+{"waitForStdin": "*"}
+{"say": "I remember the earlier conversation."}
+{"result": true}
+{"waitForStdin": "*"}
+{"say": "I remember the earlier conversation."}
+{"result": true}
+{"waitForStdin": "*"}
+{"say": "I remember the earlier conversation."}
+{"result": true}
+{"waitForStdin": "*"}
+{"say": "I remember the earlier conversation."}
+{"result": true}

@@ -1,0 +1,7 @@
+# Edits the same line of README.md differently.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"printf 'hello\\ntimeout of 5s\\n' > README.md && git add README.md && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Note the timeout'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Noted the timeout"}}}
+{"say":"Done."}
+{"result":true}

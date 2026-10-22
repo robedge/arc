@@ -1,0 +1,6 @@
+{"dir":"meta","cursorVersion":"2026.10.19-6bbf2c4","mode":"agent","recordedAt":"2026-10-21","note":"SYNTHETIC, not recorded: the shape the parser reads if a later version sends `usage_update` notifications with running totals before the prompt response."}
+{"dir":"c2s","t":0,"msg":{"jsonrpc":"2.0","id":5,"method":"session/prompt","params":{"sessionId":"session-1","prompt":[{"type":"text","text":"go"}]}}}
+{"dir":"s2c","t":100,"msg":{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"session-1","update":{"sessionUpdate":"agent_message_chunk","content":{"type":"text","text":"Working."}}}}}
+{"dir":"s2c","t":150,"msg":{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"session-1","update":{"sessionUpdate":"usage_update","usage":{"inputTokens":60,"outputTokens":10,"cacheReadTokens":20,"cacheWriteTokens":0}}}}}
+{"dir":"s2c","t":250,"msg":{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"session-1","update":{"sessionUpdate":"usage_update","usage":{"inputTokens":120,"outputTokens":30,"cacheReadTokens":40,"cacheWriteTokens":15}}}}}
+{"dir":"s2c","t":300,"msg":{"jsonrpc":"2.0","id":5,"result":{"stopReason":"end_turn"}}}

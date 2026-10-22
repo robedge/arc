@@ -1,0 +1,7 @@
+# The merge resolver: keeps both lines and commits the merge in its working copy (the merge working copy).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"printf 'hello\\nretry on failure\\ntimeout of 5s\\n' > README.md && git add README.md && git -c user.name=Fake -c user.email=fake@example.com commit -q --no-edit"}
+{"mcp":{"tool":"report_done","args":{"summary":"Kept both lines"}}}
+{"say":"Resolved."}
+{"result":true}

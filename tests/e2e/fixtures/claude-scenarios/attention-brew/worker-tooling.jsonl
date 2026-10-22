@@ -1,0 +1,8 @@
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Installing jq"}}}
+{"tool":{"name":"Bash","input":{"command":"brew install jq","description":"Install jq"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Carrying on"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished the tooling change"}}}
+{"say":"Done."}
+{"result":true}

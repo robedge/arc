@@ -1,0 +1,8 @@
+# Brain for the `/` list spec: greets, then answers a message that names no command.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Command list\n\nReady."}
+{"result":true}
+{"waitForStdin":"does-not-exist"}
+{"say":"I do not know the command /does-not-exist."}
+{"result":true}

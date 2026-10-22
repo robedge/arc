@@ -1,0 +1,47 @@
+appId: dev.redgell.arc
+productName: Arc
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**
+  - '!**/*.map'
+  # better-sqlite3 ships prebuilds for every platform; keep only darwin-arm64.
+  - '!**/better-sqlite3/prebuilds/{win32-*,linux-*,linuxmusl-*,darwin-x64}.node'
+extraResources:
+  - from: src/main/db/migrations
+    to: migrations
+  - from: resources/licenses/FONTS-OFL.txt
+    to: licenses/FONTS-OFL.txt
+asarUnpack:
+  - '**/*.node'
+# better-sqlite3 13 ships N-API prebuilds (darwin-arm64), so there is nothing to rebuild.
+npmRebuild: false
+afterPack: scripts/adhoc-sign.mjs
+mac:
+  icon: resources/icon.icns
+  target:
+    - target: dmg
+      arch: arm64
+    - target: dir
+      arch: arm64
+  # No keychain signing: scripts/adhoc-sign.mjs runs `codesign -s -` in afterPack.
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+dmg:
+  title: Arc
+  icon: resources/icon.icns
+  background: resources/dmg/background.tiff
+  window:
+    width: 540
+    height: 380
+  iconSize: 96
+  contents:
+    - x: 150
+      y: 190
+      type: file
+    - x: 390
+      y: 190
+      type: link
+      path: /Applications

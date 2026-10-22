@@ -1,0 +1,7 @@
+# A Codex brain that starts the first worker.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Title: Update pickup\n\nStarting the first worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"first","task":"Keep working","repos":["api"],"provider":"codex"}},"id":"spawn-1"}
+{"say":"The first worker is running."}
+{"turnCompleted":"completed"}

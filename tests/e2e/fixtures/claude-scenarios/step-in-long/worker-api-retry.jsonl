@@ -1,0 +1,23 @@
+# Edits a file, then works until the user steps in. Each wait below is "a turn in progress": the user's typed lines
+# end it. The edit before the wait is what must survive the takeover.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Adding retry"}}}
+{"shell":"pwd; printf 'retries = 3\\n' > retry.txt"}
+{"say":"/very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment//very/long/path/segment/file.ts"}
+{"say":"Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words Read output line with many words "}
+{"waitForStdin":"What have you changed"}
+{"say":"Earlier I added retry.txt with retries = 3."}
+{"result":true}
+{"waitForStdin":"/awos:spec x"}
+{"say":"Got the spec command."}
+{"result":true}
+{"waitForStdin":"use 5 retries"}
+{"shell":"printf 'retries = 5\\n' > retry-config.txt"}
+{"say":"Switched to 5 retries."}
+{"result":true}
+{"waitForStdin":"handed control back"}
+{"shell":"git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Retry with 5 attempts'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added retry with 5 attempts"}}}
+{"say":"Done."}
+{"result":true}

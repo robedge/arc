@@ -1,0 +1,5 @@
+# The same Codex brain after Arc was reopened: the thread is resumed, so it still knows the earlier talk.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"I remember the earlier conversation.","id":"resumed-msg-1"}
+{"turnCompleted":"completed"}

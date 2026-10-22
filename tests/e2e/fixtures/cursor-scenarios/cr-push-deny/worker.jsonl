@@ -1,0 +1,14 @@
+# cr-push's worker for a refused push: commits a note, asks to push, and on reject-once ends its turn without
+# report_done. Arc's next prompt (the nudge) must start with the decline reason; the worker then reports done.
+{"expect":"prompt"}
+{"title":"Add cursor note"}
+{"text":"Starting."}
+{"write":{"path":"cursor-note.txt","content":"written by the fake Cursor\n"},"id":"edit-1"}
+{"shell":"git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add cursor note'","id":"commit-1"}
+{"shell":"git push origin HEAD","run":"echo pushed","approval":true,"id":"push-1","saveAs":"push"}
+{"text":"The push was refused."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added cursor-note.txt and committed; the push was declined"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

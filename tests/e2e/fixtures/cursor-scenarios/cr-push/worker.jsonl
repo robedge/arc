@@ -1,0 +1,13 @@
+# A Cursor worker that commits a note, then asks to push (shaped like spike M1: a tool_call carrying
+# rawInput.command, then session/request_permission "Not in allowlist"). The push runs only on allow-once; the fake
+# runs `echo pushed` in its place, since the working copy has no remote.
+{"expect":"prompt"}
+{"title":"Add cursor note"}
+{"text":"Starting."}
+{"write":{"path":"cursor-note.txt","content":"written by the fake Cursor\n"},"id":"edit-1"}
+{"shell":"git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add cursor note'","id":"commit-1"}
+{"shell":"git push origin HEAD","run":"echo pushed","approval":true,"id":"push-1","saveAs":"push"}
+{"text":"Pushed.","when":{"saved":"push.optionId","equals":"allow-once"}}
+{"mcp":{"tool":"report_done","args":{"summary":"Added cursor-note.txt, committed and pushed"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

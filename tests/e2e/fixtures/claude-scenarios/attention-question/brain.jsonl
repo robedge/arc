@@ -1,0 +1,15 @@
+# A worker asks a question the brain can answer from the plan notes: the brain answers with resolve_request,
+# the worker continues, and nothing reaches the user.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry count question\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"asks:"}
+{"mcp":{"tool":"resolve_request","args":{"requestId":"{{REQUEST_ID}}","decision":"answer","answer":"Three attempts, with exponential backoff.","note":"From the plan notes."}}}
+{"say":"I answered the worker from the notes."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

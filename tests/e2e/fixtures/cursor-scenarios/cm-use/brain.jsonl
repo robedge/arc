@@ -1,0 +1,16 @@
+# Autonomous Claude brain for spec 010 Slice 7: starts one worker named review on Cursor at once. It cannot decide the
+# worker's changing fakeuser tool, so it passes that request on to the user (as cx-mcp does for a Claude worker).
+# (The fake Cursor reads worker.jsonl here.)
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review work\n\nStarting a worker on Cursor."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Look up the record with the fakeuser server, then remove it","repos":["api"],"provider":"cursor"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"asks permission to run"}
+{"mcp":{"tool":"escalate_to_user","args":{"requestId":"{{REQUEST_ID}}","reason":"It removes a record on the fakeuser server."}}}
+{"say":"I passed the fakeuser change to you."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"Summary: the record was looked up and removed."}
+{"result":true}

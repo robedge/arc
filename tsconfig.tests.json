@@ -1,0 +1,41 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "tests/**/*",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "src/shared/**/*",
+    "src/main/agents/**/*",
+    "src/main/bridge/**/*",
+    "src/main/db/**/*",
+    "src/main/git/**/*",
+    "src/main/groups/**/*",
+    "src/main/knowledge/**/*",
+    "src/main/models/**/*",
+    "src/main/personal/**/*",
+    "src/main/plugins/**/*",
+    "src/main/policy/**/*",
+    "src/main/providers/**/*",
+    "src/main/protocol/knowledge-request.ts",
+    "src/main/review/**/*",
+    "src/main/sessions/**/*",
+    "src/main/usage/**/*",
+    "src/main/ipc/wrap-handler.ts",
+    "src/main/app/close-gate.ts",
+    "src/main/app/lockdown.ts",
+    "src/main/app/app-menu.ts",
+    "src/main/app/preview-window.ts",
+    "src/main/app/smoke.ts",
+    "src/main/app/window-options.ts",
+    "src/main/platform/dialogs.ts",
+    "src/main/platform/shell-service.ts"
+  ],
+  "exclude": ["tests/renderer"],
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tests.tsbuildinfo"
+  }
+}

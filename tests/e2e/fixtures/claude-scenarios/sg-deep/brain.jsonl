@@ -1,0 +1,8 @@
+# Model too strong: the brain starts one worker on opus; the worker reads two files, changes none and reports done.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Deep worker\n\nStarting."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"deep-idle","task":"Look at the code","repos":["api"],"model":"opus"}}}
+{"say":"The workers are running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

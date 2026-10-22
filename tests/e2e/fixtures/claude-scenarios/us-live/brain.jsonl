@@ -1,0 +1,12 @@
+# Spec 008, amendment 2: a brain whose one turn makes three requests (three message ids) with pauses between them,
+# so a test can watch the chip rise before the result. Each request is 563 / 700 / 800 cache-read tokens (see fake-claude).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Live session\n\nFirst request."}
+{"delay":3000}
+{"say":"Second request."}
+{"delay":3000}
+{"say":"Third request."}
+{"delay":9000}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

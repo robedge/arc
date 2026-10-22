@@ -1,0 +1,8 @@
+# W3: after W1's change is shared, appends to src/queue.ts and adds src/client.ts.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"waitForStdin": "now in your working copy"}
+{"shell": "echo 'export const retries = 3' >> src/queue.ts && echo 'export const client = 1' > src/client.ts && git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Tune the queue'"}
+{"mcp": {"tool": "report_done", "args": {"summary": "Tuned the queue"}}}
+{"say": "Done."}
+{"result": true}

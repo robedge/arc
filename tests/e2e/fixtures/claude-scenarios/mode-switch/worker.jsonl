@@ -1,0 +1,8 @@
+# Any later worker: short job.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Working"}}}
+{"delay":3000}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished"}}}
+{"say":"Done."}
+{"result":true}

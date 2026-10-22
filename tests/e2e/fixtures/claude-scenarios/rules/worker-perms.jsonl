@@ -1,0 +1,16 @@
+# Reads outside and writes to /tmp (no request), writes outside three times with one command shape: the first asks,
+# the second is covered by an "Always allow" rule, and after a pause the third asks again once the rule is removed.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool":{"name":"Bash","input":{"command":"grep foo /Users/redgell/v9-outside/data.txt","description":"Search outside"}}}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /tmp/v11-tmp-out.txt","description":"Copy to temp"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"First write outside"}}}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /Users/redgell/v9-outside/x1.txt","description":"Copy outside one"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Second write outside"}}}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /Users/redgell/v9-outside/x2.txt","description":"Copy outside two"}}}
+{"delay":8000}
+{"mcp":{"tool":"report_progress","args":{"note":"Third write outside"}}}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /Users/redgell/v9-outside/x3.txt","description":"Copy outside three"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished the checks"}}}
+{"say":"Done."}
+{"result":true}

@@ -1,0 +1,12 @@
+# Autonomous Claude brain for spec 010 Slice 4 with Workers on Auto: does what the Auto guidance would have it do when
+# asked for Cursor, and starts one worker named review with provider cursor (no model, so Cursor's default). Then it
+# answers the merge and summary notes. (The fake Cursor reads worker.jsonl here.)
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review work\n\nYou asked for Cursor, so I am starting the worker on Cursor."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Add cursor-note.txt","repos":["api"],"provider":"cursor"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: cursor-note.txt was added."}
+{"result":true}

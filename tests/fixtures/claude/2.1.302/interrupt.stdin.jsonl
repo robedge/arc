@@ -1,0 +1,3 @@
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Count from 1 to 200, one number per line, slowly, no other text."}]}}
+{"type":"control_request","request_id":"req_int_1","request":{"subtype":"interrupt"}}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Say only the word: ok"}]}}

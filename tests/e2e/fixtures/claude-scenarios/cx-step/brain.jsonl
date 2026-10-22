@@ -1,0 +1,16 @@
+# Autonomous brain for spec 006: starts one worker, then only reads the step-in and hand-back notes.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry change\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"provider":"codex"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"stepped in"}
+{"say":"The user stepped in; I will wait."}
+{"result":true}
+{"waitForStdin":"handed"}
+{"say":"The user handed the worker back."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

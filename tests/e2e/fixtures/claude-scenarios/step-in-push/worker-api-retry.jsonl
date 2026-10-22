@@ -1,0 +1,9 @@
+# Works until the user steps in and asks for a push, then pushes (a protected action) and starts a long reply.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Adding retry"}}}
+{"waitForStdin":"push the branch"}
+{"say":"Pushing the branch now."}
+{"tool":{"name":"Bash","input":{"command":"git push origin arc/push-change","description":"Push the session branch"}}}
+{"say":"Pushed. Writing a long summary of everything."}
+{"waitForStdin":"NEVER-SENT"}

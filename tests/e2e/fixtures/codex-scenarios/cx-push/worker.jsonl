@@ -1,0 +1,9 @@
+# A Codex worker that asks to push its branch. The item shows `git push`; accepting runs a harmless echo, so the
+# test can tell from the log whether anything ran before the user decided.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Pushing the branch."}
+{"shell":"git push origin arc/fix-order-sync","run":"echo pushed > pushed.txt","id":"push-1","approval":true,"saveAs":"push"}
+{"say":"The push was {{saved.push.decision}}."}
+{"mcp":{"tool":"report_done","args":{"summary":"Push {{saved.push.decision}}"}}}
+{"turnCompleted":"completed"}

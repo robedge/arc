@@ -1,0 +1,10 @@
+# Spec 008, amendment 2: an autonomous brain that starts a Claude worker (alpha) and a Codex worker (beta), each of
+# which makes several requests in one long turn.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Live workers\n\nStarting two workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"alpha","task":"Look at the code","repos":["api"],"provider":"claude","model":"sonnet"}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"beta","task":"Look at the code","repos":["api"],"provider":"codex"}}}
+{"say":"The workers are running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

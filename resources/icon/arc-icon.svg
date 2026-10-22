@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0A2233"/>
+      <stop offset="0.55" stop-color="#05121E"/>
+      <stop offset="1" stop-color="#03080F"/>
+    </linearGradient>
+    <radialGradient id="aura" cx="512" cy="512" r="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00E5FF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="clip"><rect x="100" y="100" width="824" height="824" rx="185" ry="185"/></clipPath>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+  <rect x="100" y="116" width="824" height="824" rx="185" ry="185" fill="#000000" opacity="0.45" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#tile)"/>
+  <g clip-path="url(#clip)" stroke="#00E5FF" stroke-opacity="0.07" stroke-width="2">
+    <path d="M100 196H924M100 276H924M100 356H924M100 436H924M100 516H924M100 596H924M100 676H924M100 756H924M100 836H924"/>
+    <path d="M196 100V924M276 100V924M356 100V924M436 100V924M516 100V924M596 100V924M676 100V924M756 100V924M836 100V924"/>
+  </g>
+  <rect x="100" y="100" width="824" height="824" fill="url(#aura)" clip-path="url(#clip)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="183.5" ry="183.5" fill="none" stroke="#00E5FF" stroke-opacity="0.22" stroke-width="3"/>
+  <g fill="none" stroke="#00E5FF">
+    <g filter="url(#glow)" opacity="0.7">
+      <circle cx="512" cy="512" r="256" stroke-width="96"/>
+      <circle cx="512" cy="512" r="150" stroke-width="40" stroke-dasharray="70 36" opacity="0.7"/>
+    </g>
+    <circle cx="512" cy="512" r="256" stroke-width="70"/>
+    <circle cx="512" cy="512" r="150" stroke-width="26" stroke-opacity="0.65" stroke-dasharray="70 36"/>
+  </g>
+  <circle cx="512" cy="512" r="64" fill="#00E5FF" opacity="0.5" filter="url(#glow)"/>
+  <circle cx="512" cy="512" r="46" fill="#00E5FF"/>
+</svg>

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "folder": "Notes",
+      "name": "Notes",
+      "kind": "notes"
+    },
+    {
+      "folder": "docs",
+      "name": "Docs",
+      "kind": "docs"
+    },
+    {
+      "folder": "Playbooks",
+      "name": "Playbooks",
+      "kind": "playbooks"
+    },
+    {
+      "folder": "Links",
+      "name": "Links",
+      "kind": "links"
+    },
+    {
+      "folder": "context",
+      "name": "context",
+      "kind": "custom"
+    },
+    {
+      "folder": "node_modules",
+      "name": "node_modules",
+      "kind": "custom"
+    },
+    {
+      "folder": "out",
+      "name": "out",
+      "kind": "custom"
+    },
+    {
+      "folder": "release",
+      "name": "release",
+      "kind": "custom"
+    },
+    {
+      "folder": "resources",
+      "name": "resources",
+      "kind": "custom"
+    },
+    {
+      "folder": "scripts",
+      "name": "scripts",
+      "kind": "custom"
+    },
+    {
+      "folder": "src",
+      "name": "src",
+      "kind": "custom"
+    },
+    {
+      "folder": "tests",
+      "name": "tests",
+      "kind": "custom"
+    }
+  ],
+  "items": {},
+  "updatedAt": 1792434909400
+}

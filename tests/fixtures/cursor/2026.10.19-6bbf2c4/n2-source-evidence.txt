@@ -1,0 +1,16 @@
+# N2: how the ACP server merges session mcpServers with file servers (read from the installed CLI bundle
+# 9152.index.js, session setup function; no model). Paraphrased, no code copied beyond names:
+#  1. parse each session entry (F): stdio {command,args,env,cwd} or http/sse {url,headers}; invalid -> "Skipping invalid ACP session MCP server".
+#  2. duplicate names inside mcpServers: the LAST wins ("Skipping duplicate ACP session MCP server name").
+#  3. d = {...lease.getClients()}            // clients built from ~/.cursor/mcp.json and the approved project mcp.json
+#  4. for each session entry: client = await loadClient(name, config)  // connects: initialize during session/new
+#        success -> d[name] = client          // REPLACES a same-name file client
+#        throw   -> log "Failed to load ACP session MCP server: {serverName,error}" and KEEP the file client
+#  5. the session's MCP lease is built from d.
+# The session loader runs the disabled-servers middleware (mcp-disabled.json of the project) and team settings,
+# so a server the user disabled stays off.
+# Project mcp.json approval (agent mcp list): key = `<name>-` + first 16 hex of sha256(JSON.stringify({path: projectRoot, server: <entry as written>}))
+# stored in <CURSOR_DATA_DIR or ~/.cursor>/projects/<non-alnum->dash slug of projectRoot>/mcp-approvals.json (a JSON array).
+# Verified: a hand-written approvals file in a scratch CURSOR_DATA_DIR flips `not loaded (needs approval)` to `ready`.
+# CURSOR_CONFIG_DIR (N3, info): keeps the login (keychain) and moves cli-config.json only; it does NOT move mcp.json.
+# CURSOR_DATA_DIR moves projects/ (approvals, disabled list, mcp-auth); acp-sessions stay in ~/.cursor.

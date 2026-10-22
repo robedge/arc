@@ -1,0 +1,13 @@
+# Autonomous Claude brain for the spec 010 acceptance run (suggestions): starts two workers on Cursor's Opus model, one
+# that only looks (idle) and one that changes a file (writer). The models come from the file the test names in
+# FAKE_CURSOR_MODELS.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Cursor suggestions\n\nStarting two workers on Cursor."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"idle","task":"Look at the code and change nothing","repos":["api"],"provider":"cursor","model":"claude-opus-5"}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"writer","task":"Add cursor-note.txt","repos":["api"],"provider":"cursor","model":"claude-opus-5"}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: the writer added cursor-note.txt."}
+{"result":true}

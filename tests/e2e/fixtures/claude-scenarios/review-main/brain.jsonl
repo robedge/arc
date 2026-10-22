@@ -1,0 +1,27 @@
+# Autonomous brain for the change-review acceptance specs: idle until the user says SPAWN, then five workers (api: W1 W3 W4 W5, web: W2).
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"say": "Title: Order sync\n\nI am ready. Say SPAWN when the workers should start.\n\nLine 1 of the long introduction to the order sync work.\n\nLine 2 of the long introduction to the order sync work.\n\nLine 3 of the long introduction to the order sync work.\n\nLine 4 of the long introduction to the order sync work.\n\nLine 5 of the long introduction to the order sync work.\n\nLine 6 of the long introduction to the order sync work.\n\nLine 7 of the long introduction to the order sync work.\n\nLine 8 of the long introduction to the order sync work.\n\nLine 9 of the long introduction to the order sync work.\n\nLine 10 of the long introduction to the order sync work.\n\nLine 11 of the long introduction to the order sync work.\n\nLine 12 of the long introduction to the order sync work.\n\nLine 13 of the long introduction to the order sync work.\n\nLine 14 of the long introduction to the order sync work.\n\nLine 15 of the long introduction to the order sync work.\n\nLine 16 of the long introduction to the order sync work.\n\nLine 17 of the long introduction to the order sync work.\n\nLine 18 of the long introduction to the order sync work.\n\nLine 19 of the long introduction to the order sync work.\n\nLine 20 of the long introduction to the order sync work.\n\nLine 21 of the long introduction to the order sync work.\n\nLine 22 of the long introduction to the order sync work.\n\nLine 23 of the long introduction to the order sync work.\n\nLine 24 of the long introduction to the order sync work.\n\nLine 25 of the long introduction to the order sync work.\n\nLine 26 of the long introduction to the order sync work.\n\nLine 27 of the long introduction to the order sync work.\n\nLine 28 of the long introduction to the order sync work.\n\nLine 29 of the long introduction to the order sync work.\n\nLine 30 of the long introduction to the order sync work.\n\nLine 31 of the long introduction to the order sync work.\n\nLine 32 of the long introduction to the order sync work.\n\nLine 33 of the long introduction to the order sync work.\n\nLine 34 of the long introduction to the order sync work.\n\nLine 35 of the long introduction to the order sync work.\n\nLine 36 of the long introduction to the order sync work.\n\nLine 37 of the long introduction to the order sync work.\n\nLine 38 of the long introduction to the order sync work.\n\nLine 39 of the long introduction to the order sync work.\n\nLine 40 of the long introduction to the order sync work.\n\nLine 41 of the long introduction to the order sync work.\n\nLine 42 of the long introduction to the order sync work.\n\nLine 43 of the long introduction to the order sync work.\n\nLine 44 of the long introduction to the order sync work.\n\nLine 45 of the long introduction to the order sync work.\n\nLine 46 of the long introduction to the order sync work.\n\nLine 47 of the long introduction to the order sync work.\n\nLine 48 of the long introduction to the order sync work.\n\nLine 49 of the long introduction to the order sync work.\n\nLine 50 of the long introduction to the order sync work.\n\nLine 51 of the long introduction to the order sync work.\n\nLine 52 of the long introduction to the order sync work.\n\nLine 53 of the long introduction to the order sync work.\n\nLine 54 of the long introduction to the order sync work.\n\nLine 55 of the long introduction to the order sync work.\n\nLine 56 of the long introduction to the order sync work.\n\nLine 57 of the long introduction to the order sync work.\n\nLine 58 of the long introduction to the order sync work.\n\nLine 59 of the long introduction to the order sync work.\n\nLine 60 of the long introduction to the order sync work."}
+{"result": true}
+{"waitForStdin": "SPAWN"}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "api-core", "task": "Add the retry queue", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "web-ui", "task": "Add the UI files", "repos": ["web"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "api-tune", "task": "Tune the queue", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "api-late", "task": "Late change, waits for a signal", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "api-hang", "task": "Edit the readme and keep working", "repos": ["api"]}}}
+{"say": "Five workers are running."}
+{"result": true}
+{"waitForStdin": "Merged W1 api-core"}
+{"mcp": {"tool": "sync_worker", "args": {"workerId": "W3", "fromWorkerId": "W1", "note": "queue.ts"}}}
+{"say": "Shared the queue with W3."}
+{"result": true}
+{"waitForStdin": "Merged W"}
+{"result": true}
+{"waitForStdin": "Merged W"}
+{"result": true}
+{"waitForStdin": "undid"}
+{"say": "Understood: I will not redo the README.md change."}
+{"result": true}
+{"waitForStdin": "Review notes"}
+{"say": "Applying your review notes."}
+{"result": true}

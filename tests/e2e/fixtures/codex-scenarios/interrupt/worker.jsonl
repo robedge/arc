@@ -1,0 +1,11 @@
+# A Codex worker that is busy when interrupted (step-in, Stop). The next turn still works afterwards.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Working on it."}
+{"sleep":60000}
+{"say":"This line is never reached."}
+{"turnCompleted":"completed"}
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Back after the interrupt."}
+{"turnCompleted":"completed"}

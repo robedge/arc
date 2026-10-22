@@ -1,0 +1,31 @@
+{"dir":"meta","cursorVersion":"2026.10.19-6bbf2c4","recordedAt":"2026-10-21","note":"N2: project server approved (scratch CURSOR_DATA_DIR with a hand-written mcp-approvals.json; the user ~/.cursor untouched). Same six cases. The n8-list-tools block is `agent mcp list-tools shadowme` + `agent mcp list`, which DO connect the approved file server; session/new never does.","projectServerApproved":true}
+{"dir":"case","case":"a-session-only"}
+{"dir":"fake-server","case":"a-session-only","server":"server1-arc","http":"POST","authorization":"bearer-ok","mcpMethod":"initialize","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"a-session-only","server":"server1-arc","http":"POST","authorization":"bearer-ok","mcpMethod":"notifications/initialized","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"a-session-only","server":"server1-arc","http":"GET","authorization":"bearer-ok","userAgent":"Cursor/1.0.0"}
+{"dir":"case","case":"n8-list-tools"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"POST","authorization":"bearer-ok","mcpMethod":"initialize","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"POST","authorization":"bearer-ok","mcpMethod":"notifications/initialized","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"GET","authorization":"bearer-ok","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"POST","authorization":"bearer-ok","mcpMethod":"tools/list","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"POST","authorization":"bearer-ok","mcpMethod":"initialize","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"POST","authorization":"bearer-ok","mcpMethod":"notifications/initialized","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"POST","authorization":"bearer-ok","mcpMethod":"initialize","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"n8-list-tools","server":"server2-file","http":"POST","authorization":"bearer-ok","mcpMethod":"notifications/initialized","userAgent":"Cursor/1.0.0"}
+{"dir":"case","case":"b-override-same-name"}
+{"dir":"fake-server","case":"b-override-same-name","server":"server1-arc","http":"POST","authorization":"bearer-ok","mcpMethod":"initialize","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"b-override-same-name","server":"server1-arc","http":"POST","authorization":"bearer-ok","mcpMethod":"notifications/initialized","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"b-override-same-name","server":"server1-arc","http":"GET","authorization":"bearer-ok","userAgent":"Cursor/1.0.0"}
+{"dir":"case","case":"c-file-only-no-session-entries"}
+{"dir":"case","case":"d-noop-unreachable-http"}
+{"dir":"case","case":"e-noop-stdio-true"}
+{"dir":"case","case":"f-noop-http-self-blackhole-other-name"}
+{"dir":"fake-server","case":"f-noop-http-self-blackhole-other-name","server":"server1-arc","http":"POST","authorization":"bearer-ok","mcpMethod":"initialize","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"f-noop-http-self-blackhole-other-name","server":"server1-arc","http":"POST","authorization":"bearer-ok","mcpMethod":"notifications/initialized","userAgent":"Cursor/1.0.0"}
+{"dir":"fake-server","case":"f-noop-http-self-blackhole-other-name","server":"server1-arc","http":"GET","authorization":"bearer-ok","userAgent":"Cursor/1.0.0"}
+{"dir":"result","case":"a-session-only","sessionNew":"ok","note":"session/new mcpServers [{type:http,name:arc,url,headers:[{name:Authorization,value:Bearer <TOKEN>}]}]"}
+{"dir":"result","case":"b-override-same-name","sessionNew":"ok","note":"session/new in a folder whose project .cursor/mcp.json has shadowme -> server2; mcpServers [{type:http,name:shadowme -> server1}]"}
+{"dir":"result","case":"c-file-only-no-session-entries","sessionNew":"ok","note":"same folder, mcpServers []"}
+{"dir":"result","case":"d-noop-unreachable-http","sessionNew":"ok","note":"same folder, mcpServers [{type:http,name:shadowme,url:http://127.0.0.1:<PORT>/mcp}] (unreachable)","debugLog":"Failed to load ACP session MCP server: {\"serverName\":\"shadowme\",\"error\":\"fetch failed\"}"}
+{"dir":"result","case":"e-noop-stdio-true","sessionNew":"ok","note":"same folder, mcpServers [{name:shadowme,command:/usr/bin/true}]","debugLog":"Failed to load ACP session MCP server: {\"serverName\":\"shadowme\",\"error\":\"MCP error -32000: Connection closed\"}"}
+{"dir":"result","case":"f-noop-http-self-blackhole-other-name","sessionNew":"ok","note":"same folder, mcpServers [{type:http,name:other -> server1}]"}

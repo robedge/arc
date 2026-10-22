@@ -1,0 +1,6 @@
+# The same Codex brain after the tool was updated: it moved to the new version and resumed its thread, and starts a second worker.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"mcp":{"tool":"spawn_worker","args":{"name":"second","task":"Keep working too","repos":["api"],"provider":"codex"}},"id":"spawn-2"}
+{"say":"The second worker is running.","id":"resumed-msg-1"}
+{"turnCompleted":"completed"}

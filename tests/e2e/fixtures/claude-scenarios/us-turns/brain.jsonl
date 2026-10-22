@@ -1,0 +1,19 @@
+# Spec 008: a brain with no workers that answers one turn per message ("two", "three", "four"), so a test can change
+# FAKE_CLAUDE_RATE_LIMIT_FILE between turns and watch the plan meter follow.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Meter session\n\nReady."}
+{"result":true}
+{"waitForStdin":"two"}
+{"say":"Second turn."}
+{"result":true}
+{"waitForStdin":"three"}
+{"say":"Third turn."}
+{"result":true}
+{"waitForStdin":"four"}
+{"say":"Fourth turn."}
+{"result":true}
+{"waitForStdin":"five"}
+{"say":"Fifth turn."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

@@ -1,0 +1,10 @@
+# Autonomous brain: starts three workers that stay alive until Arc quits.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"say": "Title: Three keepers\n\nStarting three workers."}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "keeper-one", "task": "Keep working one", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "keeper-two", "task": "Keep working two", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "keeper-three", "task": "Keep working three", "repos": ["api"]}}}
+{"say": "Workers are running."}
+{"result": true}
+{"waitForStdin": "NEVER-SENT"}

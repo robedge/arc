@@ -1,0 +1,18 @@
+# Plan-first brain: tries to spawn without a plan (refused), proposes two workers, spawns them once
+# approved, then answers each "[Arc] ... finished" message. Project names: api and web.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Add retries and docs\n\nI will propose a plan first."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"]}}}
+{"mcp":{"tool":"propose_plan","args":{"workers":[{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"model":"sonnet","rationale":"The client has no retry."},{"name":"docs-update","task":"Document the retry option","repos":["web"],"model":"sonnet","rationale":"Docs must match."}]}},"saveAs":"plan"}
+{"waitForMcpResult":"plan"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"model":"sonnet"}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"docs-update","task":"Document the retry option","repos":["web"],"model":"sonnet"}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"First worker finished."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"Both workers finished."}
+{"result":true}

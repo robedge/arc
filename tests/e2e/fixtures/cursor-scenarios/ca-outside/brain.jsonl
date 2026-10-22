@@ -1,0 +1,13 @@
+# Autonomous Claude brain for the spec 010 acceptance run (edits outside the working copy): starts two workers named
+# review and other on Cursor. Their scripts (worker-review.jsonl, worker-other.jsonl) are written by the test, since
+# they name the user's project folder. The other worker stays alive so the review worker's deny file lists its copy.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Outside edits\n\nStarting two workers on Cursor."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Edit around","repos":["api"],"provider":"cursor"}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"other","task":"Wait here","repos":["api"],"provider":"cursor"}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: done."}
+{"result":true}

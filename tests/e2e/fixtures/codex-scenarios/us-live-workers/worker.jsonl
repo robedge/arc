@@ -1,0 +1,14 @@
+# A Codex worker whose single turn makes four requests, seconds apart (the real app-server reports each one as it
+# finishes), then reports done. Each request is input 120 (40 cached) + output 30 = 150 tokens.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"usage":1}
+{"sleep":3000}
+{"usage":1}
+{"sleep":3000}
+{"usage":1}
+{"sleep":9000}
+{"usage":1}
+{"mcp":{"tool":"report_done","args":{"summary":"Looked, nothing to change"}},"id":"done-1"}
+{"say":"Done."}
+{"turnCompleted":"completed","usageUpdates":0}

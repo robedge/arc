@@ -1,0 +1,8 @@
+# A Codex worker that asks the brain a question, waits for the answer and then finishes.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Reading the client."}
+{"mcp":{"tool":"ask_brain","args":{"question":"How many retries should the client make?"}},"id":"ask-1","saveAs":"answer"}
+{"say":"The answer was: {{saved.answer.text}}"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added retry with the answered count"}},"id":"done-1"}
+{"turnCompleted":"completed"}

@@ -1,0 +1,14 @@
+# Second run (after a project joined the group): starts a worker in web, which Arc merges by itself.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Starting a worker in web."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"web-note","task":"Add a note to web","repos":["web"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"automatically"}
+{"say":"Noted the automatic merge."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: web got web.txt."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

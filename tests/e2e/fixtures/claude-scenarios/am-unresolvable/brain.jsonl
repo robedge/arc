@@ -1,0 +1,15 @@
+# Like am-conflict, but the resolver is not confident and asks; the brain passes the question to the user.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Two edits of one file\n\nStarting two workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Note the retry","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-timeout","task":"Note the timeout","repos":["api"]}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"asks:"}
+{"mcp":{"tool":"escalate_to_user","args":{"requestId":"{{REQUEST_ID}}","reason":"README.md line 2: W1 notes a retry on failure, W2 notes a 5 second timeout. Only the user can choose."}}}
+{"say":"The conflict needs the user."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: README.md has both notes."}
+{"result":true}

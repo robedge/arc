@@ -1,0 +1,7 @@
+# A Cursor worker that runs a Cursor command: its first prompt carries `/review the retry change` as the prompt text
+# (spike M5: Cursor runs the command file from the plain text), and it reports done without changes.
+{"expect":"prompt","text":"/review the retry change"}
+{"title":"Review the retry change"}
+{"text":"Reviewed."}
+{"mcp":{"tool":"report_done","args":{"summary":"Reviewed the retry change"}},"id":"done-1"}
+{"end":"end_turn"}

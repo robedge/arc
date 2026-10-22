@@ -1,0 +1,5 @@
+# `agent mcp list` states seen (scratch repo, project .cursor/mcp.json with `shadowme`):
+shadowme: not loaded (needs approval)     # project server not in mcp-approvals.json (N6, N2)
+shadowme: Error: Connection failed        # approved, server not reachable
+shadowme: ready                           # approved, reachable
+No MCP servers configured (expected in .cursor/mcp.json or ~/.cursor/mcp.json)   # elsewhere

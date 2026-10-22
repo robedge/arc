@@ -1,0 +1,7 @@
+# W2 (web): waits for <repo>/.git/arc-gate (the spec creates it once W1 is merged), then adds a 2,431-line file and six small ones.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"shell": "g=\"$(git rev-parse --path-format=absolute --git-common-dir)/arc-gate\"; d=\"$(dirname \"$g\")\"; i=0; while [ ! -f \"$g\" ] && [ -d \"$d\" ] && [ $i -lt 600 ]; do sleep 0.2; i=$((i+1)); done; [ -f \"$g\" ] && seq 1 2431 > big.txt && for i in 1 2 3 4 5 6; do echo ui$i > ui$i.txt; done && git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Add UI files'"}
+{"mcp": {"tool": "report_done", "args": {"summary": "Added the UI files"}}}
+{"say": "Done."}
+{"result": true}

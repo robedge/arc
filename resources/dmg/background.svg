@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 380" width="540" height="380">
+<defs><radialGradient id="g" cx="270" cy="190" r="320" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0A2233"/><stop offset="1" stop-color="#03080F"/></radialGradient></defs>
+<rect width="540" height="380" fill="url(#g)"/>
+<g stroke="#00E5FF" stroke-opacity="0.06" stroke-width="1">
+<path d="M0 0V380"/>
+<path d="M40 0V380"/>
+<path d="M80 0V380"/>
+<path d="M120 0V380"/>
+<path d="M160 0V380"/>
+<path d="M200 0V380"/>
+<path d="M240 0V380"/>
+<path d="M280 0V380"/>
+<path d="M320 0V380"/>
+<path d="M360 0V380"/>
+<path d="M400 0V380"/>
+<path d="M440 0V380"/>
+<path d="M480 0V380"/>
+<path d="M520 0V380"/>
+<path d="M0 0H540"/>
+<path d="M0 40H540"/>
+<path d="M0 80H540"/>
+<path d="M0 120H540"/>
+<path d="M0 160H540"/>
+<path d="M0 200H540"/>
+<path d="M0 240H540"/>
+<path d="M0 280H540"/>
+<path d="M0 320H540"/>
+<path d="M0 360H540"/>
+</g>
+<g fill="none" stroke="#00E5FF" stroke-opacity="0.45" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M222 190H318" stroke-dasharray="2 10"/><path d="M306 174L326 190L306 206"/></g>
+<g stroke="#00E5FF" stroke-opacity="0.35" stroke-width="2" fill="none"><path d="M16 36V16H36M504 16H524V36M524 344V364H504M36 364H16V344"/></g>
+<g>
+<rect x="92" y="237" width="116" height="34" rx="17" fill="#CFEFF7" fill-opacity="0.92" stroke="#00E5FF" stroke-width="1.5"/>
+<rect x="332" y="237" width="116" height="34" rx="17" fill="#CFEFF7" fill-opacity="0.92" stroke="#00E5FF" stroke-width="1.5"/>
+</g>
+</svg>

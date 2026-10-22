@@ -1,0 +1,8 @@
+# A Claude worker that works for a moment (so a test can see its card before any tokens), then reports done.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"delay":2500}
+{"say":"Looking at the code."}
+{"mcp":{"tool":"report_done","args":{"summary":"Looked, nothing to change"}}}
+{"say":"Done."}
+{"result":true}

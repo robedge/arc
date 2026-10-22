@@ -1,0 +1,8 @@
+# Plan-first brain: proposes a plan; when it is rejected, says one line and stops.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Rejected plan\n\nHere is a plan."}
+{"mcp":{"tool":"propose_plan","args":{"workers":[{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"model":"sonnet","rationale":"The client has no retry."}]}},"saveAs":"plan"}
+{"waitForMcpResult":"plan"}
+{"say":"Understood, I will not start any workers. What would you like instead?"}
+{"result":true}

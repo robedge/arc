@@ -1,0 +1,19 @@
+# Autonomous brain: spawns three workers without propose_plan (the session limit decides how many run at once),
+# then answers each "[Arc] ... finished" message. Project names: api and web.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Three parallel jobs\n\nStarting three workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"job-one","task":"Do the first job","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"job-two","task":"Do the second job","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"job-three","task":"Do the third job","repos":["api"]}}}
+{"say":"All three workers are accepted."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"One worker finished."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"Two workers finished."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"All workers finished."}
+{"result":true}

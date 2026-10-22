@@ -1,0 +1,16 @@
+# Reads outside (no request), writes to /tmp (no request), writes outside twice with the same command shape, then pushes.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Reading outside the working copy"}}}
+{"tool":{"name":"Bash","input":{"command":"grep foo /Users/redgell/v9-outside/data.txt","description":"Search outside"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Writing to the temp folder"}}}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /tmp/v9-tmp-out.txt","description":"Copy to temp"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"First write outside"}}}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /Users/redgell/v9-outside/x1.txt","description":"Copy outside one"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Second write outside"}}}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /Users/redgell/v9-outside/x2.txt","description":"Copy outside two"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Pushing the branch"}}}
+{"tool":{"name":"Bash","input":{"command":"git push origin arc/fix-order-sync","description":"Push the session branch"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished the checks"}}}
+{"say":"Done."}
+{"result":true}

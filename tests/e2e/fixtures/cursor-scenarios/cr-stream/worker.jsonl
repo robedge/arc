@@ -1,0 +1,9 @@
+# A Cursor worker that says one thing and then goes quiet for a long while (a long tool-less pause): the text must show in
+# its terminal during the pause, not when the next item arrives.
+{"expect":"prompt"}
+{"title":"Stream check"}
+{"text":"Thinking "}
+{"text":"out loud."}
+{"sleep":15000}
+{"text":"Late words."}
+{"end":"end_turn"}

@@ -1,0 +1,14 @@
+# cr-worker's Cursor worker with pauses, so its terminal can be opened while the output is still arriving: says
+# "Starting.", waits, writes and commits cursor-note.txt, waits again, reports done through the bridge.
+{"expect":"prompt"}
+{"title":"Add cursor note"}
+{"text":"Starting."}
+{"sleep":5000}
+{"mcp":{"tool":"report_progress","args":{"note":"Writing cursor-note.txt"}},"id":"progress-1"}
+{"text":"Writing cursor-note.txt now."}
+{"write":{"path":"cursor-note.txt","content":"written by the fake Cursor\n"},"id":"edit-1"}
+{"shell":"git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add cursor note'","id":"commit-1"}
+{"sleep":3000}
+{"mcp":{"tool":"report_done","args":{"summary":"Added cursor-note.txt and committed"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

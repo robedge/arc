@@ -1,0 +1,11 @@
+node_modules
+out
+dist
+release
+.DS_Store
+coverage
+test-results
+playwright-report
+*.log
+arc.db*
+.claude/scheduled_tasks.lock

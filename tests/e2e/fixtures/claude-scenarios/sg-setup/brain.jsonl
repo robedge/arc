@@ -1,0 +1,6 @@
+# Setup overhead: the first request is 33,003 tokens of fixed setup (30,000 or more per request is the line).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"emit":{"type":"assistant","message":{"id":"msg_sg_setup","role":"assistant","content":[{"type":"text","text":"Title: Heavy setup\n\nReady."}],"usage":{"input_tokens":3,"cache_creation_input_tokens":33000,"cache_read_input_tokens":0,"output_tokens":20}},"parent_tool_use_id":null,"session_id":"{{SESSION_ID}}"}}
+{"emit":{"type":"result","subtype":"success","is_error":false,"duration_ms":1,"duration_api_ms":1,"num_turns":1,"stop_reason":"end_turn","session_id":"{{SESSION_ID}}","total_cost_usd":0,"permission_denials":[],"terminal_reason":"completed","result":"done","usage":{"input_tokens":100,"cache_creation_input_tokens":33000,"cache_read_input_tokens":20000,"output_tokens":50},"modelUsage":{"claude-sonnet-5-5":{"inputTokens":100,"outputTokens":50,"cacheReadInputTokens":20000,"cacheCreationInputTokens":33000,"webSearchRequests":0,"contextWindow":1000000}}}}
+{"waitForStdin":"NEVER-SENT"}

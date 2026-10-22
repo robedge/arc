@@ -1,0 +1,10 @@
+# Autonomous brain: starts one slow worker and waits for it to finish.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Fix order sync\n\nStarting a worker for the retry change."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"perms","task":"Run the permission checks","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

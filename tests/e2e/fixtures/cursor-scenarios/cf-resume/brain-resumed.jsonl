@@ -1,0 +1,14 @@
+# The same Claude brain after Arc was reopened (--resume): it acknowledges whatever notes arrive.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Noted."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Noted."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Noted."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Noted."}
+{"result":true}

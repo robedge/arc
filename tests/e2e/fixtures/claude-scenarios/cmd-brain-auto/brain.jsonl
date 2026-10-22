@@ -1,0 +1,12 @@
+# Autonomous brain: asked in plain words, it starts /awos:spec and says which command and why.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry settings\n\nTell me what to do."}
+{"result":true}
+{"waitForStdin":"write a spec for retry settings"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"spec","task":"Write the retry settings spec","repos":["api"],"command":"/awos:spec retry settings"}}}
+{"say":"I started /awos:spec because it writes specs."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The spec is written."}
+{"result":true}

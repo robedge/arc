@@ -1,0 +1,10 @@
+# Autonomous brain that starts one worker which crashes, then reacts to the "[Arc] ... failed" message.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Crashing worker\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"crasher","task":"Do something","repos":["api"]}}}
+{"say":"Worker started."}
+{"result":true}
+{"waitForStdin":"failed"}
+{"say":"The worker failed. I will tell you what to do next."}
+{"result":true}

@@ -1,0 +1,12 @@
+# Autonomous brain: starts the command worker; the worker only answers, and the brain relays the answer it was sent.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry defaults\n\nReady for a command."}
+{"result":true}
+{"waitForStdin":"The user ran the command /awos:spec"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"answer","task":"Answer the question about retry defaults","repos":["api"],"command":"/awos:spec what are the retry defaults?"}}}
+{"say":"Started the command in api."}
+{"result":true}
+{"waitForStdin":"Retries default to 3 attempts"}
+{"say":"The command answered: Retries default to 3 attempts."}
+{"result":true}

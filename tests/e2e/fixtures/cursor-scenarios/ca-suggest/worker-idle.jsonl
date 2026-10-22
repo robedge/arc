@@ -1,0 +1,7 @@
+# A Cursor worker that looks and changes nothing, then reports done.
+{"expect":"prompt"}
+{"title":"Look at the code"}
+{"text":"Looked at the code."}
+{"mcp":{"tool":"report_done","args":{"summary":"Looked, nothing to change"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

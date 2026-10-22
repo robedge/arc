@@ -1,0 +1,11 @@
+{
+  "status": "authenticated",
+  "isAuthenticated": true,
+  "hasAccessToken": true,
+  "hasRefreshToken": true,
+  "userInfo": {
+    "email": "user@example.com",
+    "userId": 1,
+    "createdAt": "2025-12-27T10:58:44.539Z"
+  }
+}

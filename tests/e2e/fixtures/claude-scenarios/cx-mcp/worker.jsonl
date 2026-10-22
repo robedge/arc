@@ -1,0 +1,10 @@
+# A Claude worker that reads a Figma file with the user's MCP server (read-only: runs without asking), then asks
+# to change it (asks first).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"personalTool":{"server":"figma","tool":"figma_read","input":{"id":"file-1"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Read the Figma file"}}}
+{"personalTool":{"server":"figma","tool":"figma_write","input":{"id":"file-1"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Read and updated the Figma file"}}}
+{"say":"Done."}
+{"result":true}

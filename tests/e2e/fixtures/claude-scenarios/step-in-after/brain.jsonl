@@ -1,0 +1,11 @@
+# The brain after a restart: answers whatever it is sent.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Understood."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Understood."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Understood."}
+{"result":true}

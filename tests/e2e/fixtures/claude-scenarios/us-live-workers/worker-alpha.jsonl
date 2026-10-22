@@ -1,0 +1,12 @@
+# A Claude worker whose one turn makes three requests (three message ids) with pauses between them, then reports done.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"First request."}
+{"delay":3000}
+{"say":"Second request."}
+{"delay":3000}
+{"say":"Third request."}
+{"delay":9000}
+{"mcp":{"tool":"report_done","args":{"summary":"Looked, nothing to change"}}}
+{"say":"Done."}
+{"result":true}

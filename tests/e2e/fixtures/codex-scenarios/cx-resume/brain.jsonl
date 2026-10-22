@@ -1,0 +1,7 @@
+# A Codex brain that starts one Codex worker, which keeps working until Arc quits.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Title: Keeper\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"keeper","task":"Keep working","repos":["api"],"provider":"codex"}},"id":"spawn-1"}
+{"say":"The Codex worker is running."}
+{"turnCompleted":"completed"}

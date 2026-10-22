@@ -1,0 +1,17 @@
+# A Cursor worker that says what it does, edits a file, then works until the user steps in (session/cancel ends
+# the sleep). Arc shows a message once the next item arrives, so each text comes before a tool call. The typed line
+# is a second prompt; the hand-back is a third prompt after which the worker finishes its task.
+{"expect":"prompt"}
+{"text":"Working on the retry."}
+{"mcp":{"tool":"report_progress","args":{"note":"Adding retry"}},"id":"p1"}
+{"write":{"path":"retry.txt","content":"retries = 3\n"},"id":"edit-1"}
+{"sleep":120000}
+{"end":"end_turn"}
+{"expect":"prompt","text":"What have you changed"}
+{"text":"Earlier I added retry.txt with retries = 3."}
+{"end":"end_turn"}
+{"expect":"prompt","text":"handed control back"}
+{"shell":"git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Retry'","id":"commit-1"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added retry"}},"id":"done-1"}
+{"text":"Back to my task and done."}
+{"end":"end_turn"}

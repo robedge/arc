@@ -1,0 +1,8 @@
+# A worker that reports progress, commits a file in its working copy, reports done and exits 0.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Reading the API client","filesChanged":["retry.txt"]}}}
+{"shell":"echo retry > retry.txt && git add retry.txt && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Add retry'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added retry to the API client"}}}
+{"say":"Done."}
+{"result":true}

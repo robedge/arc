@@ -1,0 +1,17 @@
+# Autonomous Claude brain for spec 010 Slice 5 (like cx-step): starts one Cursor worker named api-retry, then only
+# reads the step-in and hand-back notes. (The fake Cursor reads worker.jsonl of this folder.)
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry change\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"provider":"cursor"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"stepped in"}
+{"say":"The user stepped in; I will wait."}
+{"result":true}
+{"waitForStdin":"handed"}
+{"say":"The user handed the worker back."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

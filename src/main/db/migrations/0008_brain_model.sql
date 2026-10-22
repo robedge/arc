@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD `brain_model` text DEFAULT 'sonnet' NOT NULL;

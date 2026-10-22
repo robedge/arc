@@ -1,0 +1,7 @@
+# W4: waits for <repo>/.git/arc-gate (the spec creates it), then changes config.txt line 9 and adds src/late.ts.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"shell": "g=\"$(git rev-parse --path-format=absolute --git-common-dir)/arc-gate\"; d=\"$(dirname \"$g\")\"; i=0; while [ ! -f \"$g\" ] && [ -d \"$d\" ] && [ $i -lt 600 ]; do sleep 0.2; i=$((i+1)); done; [ -f \"$g\" ] && sed '9s/.*/line nine/' config.txt > t.tmp && mv t.tmp config.txt && echo 'timeout = 30' >> config.txt && mkdir -p src && echo 'export const late = 1' > src/late.ts && git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Late change'"}
+{"mcp": {"tool": "report_done", "args": {"summary": "Late change"}}}
+{"say": "Done."}
+{"result": true}

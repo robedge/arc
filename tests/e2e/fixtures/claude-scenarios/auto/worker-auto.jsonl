@@ -1,0 +1,11 @@
+# Two protected writes (approved by Auto-approve), then a push, a PR and an MR (always asked).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool":{"name":"Bash","input":{"command":"cp a.txt /Users/redgell/v9-outside/y1.txt","description":"Copy outside one"}}}
+{"tool":{"name":"Bash","input":{"command":"rm -rf /Users/redgell/v9-outside/old","description":"Delete a folder"}}}
+{"tool":{"name":"Bash","input":{"command":"git push origin arc/auto","description":"Push"}}}
+{"tool":{"name":"Bash","input":{"command":"gh pr create --fill","description":"Open a PR"}}}
+{"tool":{"name":"Bash","input":{"command":"glab mr merge 12","description":"Merge an MR"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished the checks"}}}
+{"say":"Done."}
+{"result":true}

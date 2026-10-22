@@ -1,0 +1,7 @@
+# A worker that commits a new file in web and reports done.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"echo web > web.txt && git add web.txt && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Add web note'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added web.txt"}}}
+{"say":"Done."}
+{"result":true}

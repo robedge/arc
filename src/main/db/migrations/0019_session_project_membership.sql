@@ -1,0 +1,1 @@
+ALTER TABLE `session_projects` ADD `membership` text DEFAULT 'active' NOT NULL;

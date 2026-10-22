@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "folder": "Notes",
+      "name": "Notes",
+      "kind": "notes"
+    },
+    {
+      "folder": "docs",
+      "name": "Docs",
+      "kind": "docs"
+    },
+    {
+      "folder": "Playbooks",
+      "name": "Playbooks",
+      "kind": "playbooks"
+    },
+    {
+      "folder": "Links",
+      "name": "Links",
+      "kind": "links"
+    },
+    {
+      "folder": "product",
+      "name": "product",
+      "kind": "custom"
+    },
+    {
+      "folder": "spec",
+      "name": "spec",
+      "kind": "custom"
+    }
+  ],
+  "items": {},
+  "updatedAt": 1792435329638
+}

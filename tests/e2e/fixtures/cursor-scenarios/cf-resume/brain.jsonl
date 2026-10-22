@@ -1,0 +1,8 @@
+# Autonomous Claude brain for spec 010 Slice 5: starts one Cursor worker named keeper, which keeps working until
+# Arc quits.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Keeper\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"keeper","task":"Add keeper.txt","repos":["api"],"provider":"cursor"}}}
+{"say":"The Cursor worker is running."}
+{"result":true}

@@ -1,0 +1,5 @@
+# A resumed worker: takes its first message, then stays alive.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Back to work."}
+{"hang":true}

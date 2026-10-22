@@ -1,0 +1,7 @@
+# The brain reads the user's uncommitted changes with git diff: no approval, no row.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: What changed\n\nLet me look."}
+{"tool":{"name":"Bash","input":{"command":"git -C /work/api diff CLAUDE.md package-lock.json"}}}
+{"say":"Here is what changed."}
+{"result":true}

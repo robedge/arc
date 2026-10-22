@@ -1,0 +1,4 @@
+{"dir":"meta","cursorVersion":"2026.10.19-6bbf2c4","recordedAt":"2026-10-21","note":"N2: a same-name session entry that CONNECTS and exposes zero tools (the no-op shape). Approved project file server shadowme -> server2 is also configured. Cursor connects only the session entry (initialize, initialized, GET), never server2. Debug log: three \"MCP HTTP exchange completed\", no \"Failed to load ACP session MCP server\"."}
+{"dir":"fake-server","case":"g-null-noop-same-name","server":"null-noop","http":"POST","authorization":"bearer-ok","mcpMethod":"initialize"}
+{"dir":"fake-server","case":"g-null-noop-same-name","server":"null-noop","http":"POST","authorization":"bearer-ok","mcpMethod":"notifications/initialized"}
+{"dir":"fake-server","case":"g-null-noop-same-name","server":"null-noop","http":"GET","authorization":"bearer-ok"}

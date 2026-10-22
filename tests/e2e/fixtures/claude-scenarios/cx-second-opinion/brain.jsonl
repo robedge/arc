@@ -1,0 +1,12 @@
+# Autonomous brain with Workers on Auto: W1 on Claude; when asked for a second opinion from Codex it starts W2 on
+# Codex and names the provider and the reason. (A scripted brain cannot choose; the test checks the plumbing.)
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nStarting W1 on Claude."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"provider":"claude","model":"sonnet"}}}
+{"say":"W1 is running."}
+{"result":true}
+{"waitForStdin":"second opinion from Codex"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Review W1's change","repos":["api"],"provider":"codex"}}}
+{"say":"I started W2 on Codex for a second opinion, because a different model family may catch what W1 missed."}
+{"result":true}

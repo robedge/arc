@@ -1,0 +1,21 @@
+# A Cursor worker that uses the user's own Cursor MCP server `fakeuser` (defined in the temp HOME's ~/.cursor/mcp.json,
+# tests/unit/helpers/fake-mcp-user-server.mjs). The fake Cursor does not load mcp.json itself, so each call is the
+# MCP-shaped permission request Cursor sends (a tool_call "MCP: <tool>", an update with rawInput
+# {providerIdentifier, toolName}, then session/request_permission titled "<server>-<tool>: <tool>"), with no
+# annotations: Arc settles it from the server's own tools/list. `lookup` is read-only (allowed unasked); `remove` is
+# destructive (Needs attention). First, the deny file Arc wrote must not block the server (it is on for Workers).
+{"expect":"prompt"}
+{"title":"Use fakeuser"}
+{"text":"Starting."}
+{"shell":"test -f .cursor/cli.json && ! grep -qF 'Mcp(fakeuser' .cursor/cli.json","id":"deny-check"}
+{"emit":{"sessionUpdate":"tool_call","toolCallId":"mcp-lookup","title":"MCP: lookup","kind":"other","status":"pending","rawInput":{}}}
+{"emit":{"sessionUpdate":"tool_call_update","toolCallId":"mcp-lookup","title":"fakeuser: lookup","rawInput":{"providerIdentifier":"fakeuser","toolName":"lookup","args":{"id":"r1"}}}}
+{"request":{"toolCall":{"toolCallId":"mcp-lookup","title":"fakeuser-lookup: lookup","kind":"other"}},"saveAs":"lookup"}
+{"emit":{"sessionUpdate":"tool_call_update","toolCallId":"mcp-lookup","status":"completed","rawOutput":{"content":[{"type":"text","text":"ok"}]}}}
+{"emit":{"sessionUpdate":"tool_call","toolCallId":"mcp-remove","title":"MCP: remove","kind":"other","status":"pending","rawInput":{}}}
+{"emit":{"sessionUpdate":"tool_call_update","toolCallId":"mcp-remove","title":"fakeuser: remove","rawInput":{"providerIdentifier":"fakeuser","toolName":"remove","args":{"id":"r1"}}}}
+{"request":{"toolCall":{"toolCallId":"mcp-remove","title":"fakeuser-remove: remove","kind":"other"}},"saveAs":"remove"}
+{"emit":{"sessionUpdate":"tool_call_update","toolCallId":"mcp-remove","status":"completed","rawOutput":{"content":[{"type":"text","text":"ok"}]}},"when":{"saved":"remove.optionId","equals":"allow-once"}}
+{"mcp":{"tool":"report_done","args":{"summary":"Looked up and removed r1 with fakeuser"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

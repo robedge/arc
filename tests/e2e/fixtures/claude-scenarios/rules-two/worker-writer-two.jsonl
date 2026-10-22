@@ -1,0 +1,7 @@
+# Writes outside the working copy (same folder as its sibling) and finishes.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"tool": {"name": "Bash", "input": {"command": "cp a.txt /Users/redgell/v9-outside/z-two.txt", "description": "Copy outside"}}}
+{"mcp": {"tool": "report_done", "args": {"summary": "Wrote it"}}}
+{"say": "Done."}
+{"result": true}

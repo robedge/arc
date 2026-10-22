@@ -1,0 +1,8 @@
+# Autonomous brain: starts one worker for the Auto-approve checks and stays quiet.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Auto approve\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"auto","task":"Run the auto-approve checks","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

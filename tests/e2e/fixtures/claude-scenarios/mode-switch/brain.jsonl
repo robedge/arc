@@ -1,0 +1,19 @@
+# Mode-switch brain: proposes a plan (Plan-first), spawns two long-running workers once approved, then waits for a
+# user message containing "SPAWN-MORE" (sent after the user switches to Autonomous) and spawns two more workers
+# directly, with no propose_plan. Project name: api.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Mode switch\n\nI will propose a plan first."}
+{"mcp":{"tool":"propose_plan","args":{"workers":[{"name":"first-a","task":"Do first A","repos":["api"],"model":"sonnet","rationale":"A."},{"name":"first-b","task":"Do first B","repos":["api"],"model":"sonnet","rationale":"B."}]}},"saveAs":"plan"}
+{"waitForMcpResult":"plan"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"first-a","task":"Do first A","repos":["api"],"model":"sonnet"}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"first-b","task":"Do first B","repos":["api"],"model":"sonnet"}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"SPAWN-MORE"}
+{"say":"Starting more workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"second-a","task":"Do second A","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"second-b","task":"Do second B","repos":["api"]}}}
+{"say":"More workers accepted."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

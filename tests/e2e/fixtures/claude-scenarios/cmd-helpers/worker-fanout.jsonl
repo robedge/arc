@@ -1,0 +1,15 @@
+# Command worker: starts two background helpers, ends its first turn while they run, waits for the gate file
+# (<repo>/.git/arc-gate), then the helpers end and a second turn finishes the work.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"taskStart":{"id":"h1","description":"Check types"}}
+{"taskStart":{"id":"h2","description":"Run the linter"}}
+{"taskSay":{"id":"h1","text":"Types look fine"}}
+{"say":"Started two helpers."}
+{"result":true}
+{"shell":"g=\"$(git rev-parse --path-format=absolute --git-common-dir)/arc-gate\"; d=\"$(dirname \"$g\")\"; i=0; while [ ! -f \"$g\" ] && [ -d \"$d\" ] && [ $i -lt 600 ]; do sleep 0.2; i=$((i+1)); done"}
+{"taskEnd":{"id":"h1","status":"completed","summary":"Types are fine"}}
+{"taskEnd":{"id":"h2","status":"completed","summary":"Lint is clean"}}
+{"say":"Both helpers finished."}
+{"mcp":{"tool":"report_done","args":{"summary":"Helpers checked types and lint"}}}
+{"result":true}

@@ -1,0 +1,7 @@
+# The brain asks the user its own question and waits for the answer.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Ask the user\n\nI need one decision first."}
+{"mcp":{"tool":"ask_user","args":{"question":"Should the retry count be configurable?"}}}
+{"say":"Thanks, noted."}
+{"result":true}

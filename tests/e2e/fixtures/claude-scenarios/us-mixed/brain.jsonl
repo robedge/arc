@@ -1,0 +1,9 @@
+# Spec 008: an autonomous brain that starts one Claude worker (alpha) and one Codex worker (beta), then stays quiet.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Mixed providers\n\nStarting two workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"alpha","task":"Look at the code","repos":["api"],"provider":"claude","model":"sonnet"}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"beta","task":"Look at the code","repos":["api"],"provider":"codex"}}}
+{"say":"The workers are running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

@@ -1,0 +1,13 @@
+# Autonomous brain: one worker; Arc merges it by itself and tells the brain; the brain then posts the final summary.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nStarting one worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"automatically"}
+{"say":"Noted the automatic merge."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: api got retry.txt in the commit Add retry."}
+{"result":true}

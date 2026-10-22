@@ -1,0 +1,16 @@
+# Autonomous Claude brain for spec 010: waits for "go", starts one worker named review on Cursor, then answers the
+# merge and the summary notes. (The fake Cursor reads worker.jsonl of this folder.)
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review work\n\nReady when you are."}
+{"result":true}
+{"waitForStdin":"go"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Add cursor-note.txt","repos":["api"],"provider":"cursor"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"automatically"}
+{"say":"Noted the automatic merge."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: cursor-note.txt was added."}
+{"result":true}

@@ -1,0 +1,9 @@
+# Autonomous brain: starts two workers that ask for the same kind of write.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"say": "Title: Two writers\n\nStarting two workers."}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "writer-one", "task": "Write one", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "writer-two", "task": "Write two", "repos": ["api"]}}}
+{"say": "Both running."}
+{"result": true}
+{"waitForStdin": "NEVER-SENT"}

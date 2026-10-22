@@ -1,0 +1,7 @@
+# A Codex worker that says a few words and reports done without changing anything.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Looking at the code."}
+{"mcp":{"tool":"report_done","args":{"summary":"Looked, nothing to change"}},"id":"done-1"}
+{"say":"Done."}
+{"turnCompleted":"completed"}

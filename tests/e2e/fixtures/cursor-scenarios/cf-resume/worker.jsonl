@@ -1,0 +1,7 @@
+# A Cursor worker that says what it is doing and keeps working until Arc quits. The
+# progress call after the text makes Arc show the text before the long sleep.
+{"expect":"prompt"}
+{"text":"Working on the keeper."}
+{"mcp":{"tool":"report_progress","args":{"note":"Keeping"}},"id":"p1"}
+{"sleep":120000}
+{"end":"end_turn"}

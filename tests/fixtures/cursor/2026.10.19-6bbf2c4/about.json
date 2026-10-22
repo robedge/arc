@@ -1,0 +1,13 @@
+{
+  "cliVersion": "2026.10.19-6bbf2c4",
+  "latestStatus": "up_to_date",
+  "latestVersion": "2026.10.19-6bbf2c4",
+  "model": "Auto",
+  "subscriptionTier": "Free",
+  "osPlatform": "darwin",
+  "osArch": "arm64",
+  "userEmail": "user@example.com",
+  "terminalProgram": "apple-terminal",
+  "shell": "zsh",
+  "lastRequestId": null
+}

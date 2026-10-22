@@ -1,0 +1,7 @@
+# Autonomous brain that starts one worker and then stays quiet.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Keep a worker\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"keeper","task":"Keep working","repos":["api"]}}}
+{"say":"Worker started."}
+{"result":true}

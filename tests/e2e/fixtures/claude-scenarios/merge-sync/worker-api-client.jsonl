@@ -1,0 +1,9 @@
+# Waits for the shared change, checks it is in its working copy, then finishes.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"waitForStdin":"now in your working copy"}
+{"shell":"test -f retry_status.sql && echo present"}
+{"shell":"echo 'uses retry_status' > client.txt && git add client.txt && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Use retry_status'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Used the column"}}}
+{"say":"Done."}
+{"result":true}

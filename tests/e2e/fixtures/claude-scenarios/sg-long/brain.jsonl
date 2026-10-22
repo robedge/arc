@@ -1,0 +1,7 @@
+# Long-running agent: a turn whose second request has 250,043 input tokens (cache read 250,000).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Long conversation\n\nWorking."}
+{"emit":{"type":"assistant","message":{"id":"msg_sg_big","role":"assistant","content":[{"type":"text","text":"Still going."}],"usage":{"input_tokens":3,"cache_creation_input_tokens":40,"cache_read_input_tokens":250000,"output_tokens":20}},"parent_tool_use_id":null,"session_id":"{{SESSION_ID}}"}}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

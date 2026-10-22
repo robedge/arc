@@ -1,0 +1,14 @@
+# A worker asks a question the brain cannot answer: the brain passes it to the user with escalate_to_user.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry count question\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"asks:"}
+{"mcp":{"tool":"escalate_to_user","args":{"requestId":"{{REQUEST_ID}}","reason":"The notes do not say how many retries."}}}
+{"say":"I passed the question to you."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

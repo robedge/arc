@@ -1,0 +1,11 @@
+# Autonomous brain: two workers edit one line; Arc merges both, resolving the conflict with a resolver.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Two edits of one file\n\nStarting two workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Note the retry","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-timeout","task":"Note the timeout","repos":["api"]}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: README.md has both notes."}
+{"result":true}

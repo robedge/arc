@@ -1,0 +1,5 @@
+# A worker that reports progress and then stays alive until it is stopped.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Working slowly"}}}
+{"hang":true}

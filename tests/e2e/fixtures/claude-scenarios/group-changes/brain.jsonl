@@ -1,0 +1,6 @@
+# First run: names the session and waits. Group changes restart the brain; see brain-resumed-1/-2.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nReady."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

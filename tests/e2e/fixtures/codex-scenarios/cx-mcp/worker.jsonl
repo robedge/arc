@@ -1,0 +1,15 @@
+# A Codex worker that reads a Figma file with the user's MCP server (read-only: no question), then asks to change it.
+# The change runs (a shell step that writes figma-wrote.txt) only when the answer was accept.
+{"expect": "turn/start"}
+{"turnStarted": true}
+{"emit": {"method": "item/started", "params": {"item": {"type": "mcpToolCall", "id": "fig-read-1", "server": "figma", "tool": "figma_read", "arguments": {"id": "file-1"}, "status": "inProgress", "result": null, "error": null, "durationMs": null, "appContext": null, "mcpAppUi": null, "pluginId": null, "readOnlyHint": true}}}}
+{"request": {"method": "mcpServer/elicitation/request", "params": {"serverName": "figma", "mode": "form", "message": "Allow the figma MCP server to run tool \"figma_read\"?", "requestedSchema": {"type": "object", "properties": {}}, "_meta": {"codex_approval_kind": "mcp_tool_call", "tool_description": "", "tool_params": {"id": "file-1"}, "tool_params_display": []}}}, "saveAs": "read"}
+{"emit": {"method": "item/completed", "params": {"item": {"type": "mcpToolCall", "id": "fig-read-1", "server": "figma", "tool": "figma_read", "arguments": {"id": "file-1"}, "status": "completed", "result": {"content": [{"type": "text", "text": "figma_read:file-1"}], "structuredContent": null, "_meta": null}, "error": null, "durationMs": 5, "appContext": null, "mcpAppUi": null, "pluginId": null, "readOnlyHint": true}}}}
+{"mcp": {"tool": "report_progress", "args": {"note": "Read the Figma file"}}, "id": "prog-1"}
+{"emit": {"method": "item/started", "params": {"item": {"type": "mcpToolCall", "id": "fig-write-1", "server": "figma", "tool": "figma_write", "arguments": {"id": "file-1"}, "status": "inProgress", "result": null, "error": null, "durationMs": null, "appContext": null, "mcpAppUi": null, "pluginId": null, "readOnlyHint": null}}}}
+{"request": {"method": "mcpServer/elicitation/request", "params": {"serverName": "figma", "mode": "form", "message": "Allow the figma MCP server to run tool \"figma_write\"?", "requestedSchema": {"type": "object", "properties": {}}, "_meta": {"codex_approval_kind": "mcp_tool_call", "tool_description": "", "tool_params": {"id": "file-1"}, "tool_params_display": []}}}, "saveAs": "write"}
+{"shell": "echo wrote > figma-wrote.txt", "id": "fig-ran-1", "when": {"saved": "write.action", "equals": "accept"}}
+{"emit": {"method": "item/completed", "params": {"item": {"type": "mcpToolCall", "id": "fig-write-1", "server": "figma", "tool": "figma_write", "arguments": {"id": "file-1"}, "status": "completed", "result": {"content": [{"type": "text", "text": "figma_write:file-1"}], "structuredContent": null, "_meta": null}, "error": null, "durationMs": 5, "appContext": null, "mcpAppUi": null, "pluginId": null, "readOnlyHint": null}}}}
+{"mcp": {"tool": "report_done", "args": {"summary": "Read and updated the Figma file"}}, "id": "done-1"}
+{"say": "Done."}
+{"turnCompleted": "completed"}

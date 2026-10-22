@@ -1,0 +1,12 @@
+# A Cursor worker: says what it does, writes a file in its working copy (really written), commits it so the change
+# can be merged, and reports done through the bridge. Edits and MCP calls run unasked in agent mode (spike M1); the
+# commit is on the user's Cursor allow list here, so it runs unasked too (Slice 3 scripts the asking commands).
+{"expect":"prompt"}
+{"title":"Add cursor note"}
+{"text":"Starting."}
+{"mcp":{"tool":"report_progress","args":{"note":"Writing cursor-note.txt"}},"id":"progress-1"}
+{"write":{"path":"cursor-note.txt","content":"written by the fake Cursor\n"},"id":"edit-1"}
+{"shell":"git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add cursor note'","id":"commit-1"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added cursor-note.txt and committed"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

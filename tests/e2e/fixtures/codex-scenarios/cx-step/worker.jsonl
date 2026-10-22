@@ -1,0 +1,19 @@
+# A Codex worker that edits a file, then works until the user steps in. The typed line is a second turn; the
+# hand-back is a third turn after which the worker finishes its task.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Adding retry"}},"id":"p1"}
+{"write":{"path":"retry.txt","content":"retries = 3\n"},"id":"edit-1"}
+{"say":"Working on the retry."}
+{"sleep":120000}
+{"turnCompleted":"completed"}
+{"expect":"turn/start","text":"What have you changed"}
+{"turnStarted":true}
+{"say":"Earlier I added retry.txt with retries = 3."}
+{"turnCompleted":"completed"}
+{"expect":"turn/start","text":"handed control back"}
+{"turnStarted":true}
+{"shell":"git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Retry'","id":"commit-1"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added retry"}},"id":"done-2"}
+{"say":"Back to my task and done."}
+{"turnCompleted":"completed"}

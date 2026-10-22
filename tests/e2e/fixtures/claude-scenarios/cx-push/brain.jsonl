@@ -1,0 +1,14 @@
+# Autonomous brain for "Fix order sync": starts one worker, which asks to push its branch. The push leaves the
+# machine, so Arc passes it to the user; the brain is told it cannot approve it and says so.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Fix order sync\n\nStarting a worker for the retry change."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client, then push the branch","repos":["api"],"provider":"codex"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"say":"The push needs your approval."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

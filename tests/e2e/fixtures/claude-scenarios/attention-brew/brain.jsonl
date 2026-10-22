@@ -1,0 +1,13 @@
+# The plan mentions installing jq with Homebrew; the request still goes to the user, not the brain.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Add jq tooling\n\nThe plan includes brew install jq for the worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"tooling","task":"Install jq with brew install jq and use it in the sync script","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"say":"The install needs your approval."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

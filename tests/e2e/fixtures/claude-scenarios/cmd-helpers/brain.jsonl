@@ -1,0 +1,12 @@
+# Autonomous brain: starts the command worker, which starts two helper agents.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review run\n\nReady for a command."}
+{"result":true}
+{"waitForStdin":"The user ran the command /awos:spec"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"fanout","task":"Run the spec command with helpers","repos":["api"],"command":"/awos:spec with helpers"}}}
+{"say":"Started the command in api."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The command finished."}
+{"result":true}

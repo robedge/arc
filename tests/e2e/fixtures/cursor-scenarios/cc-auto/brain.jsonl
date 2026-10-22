@@ -1,0 +1,11 @@
+# Autonomous Claude brain for spec 010 Slice 8: the request matches the user's Cursor command `review`, so the brain
+# picks it by its id on its own and starts the command worker. Workers stay on the default (Claude).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review retry\n\nYour Cursor command review fits this, so I am running it."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Review the retry change","repos":["api"],"command":"cursor:review the retry change"}}}
+{"say":"The command worker is running."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The review is done."}
+{"result":true}

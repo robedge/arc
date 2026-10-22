@@ -1,0 +1,8 @@
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Reading the client"}}}
+{"mcp":{"tool":"ask_brain","args":{"question":"How many retries should the client make?"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Adding the retries"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Added retry with the answered count"}}}
+{"say":"Done."}
+{"result":true}

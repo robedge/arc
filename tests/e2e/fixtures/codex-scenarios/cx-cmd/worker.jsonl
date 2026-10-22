@@ -1,0 +1,6 @@
+# A Codex worker that runs a saved prompt: its first turn carries the expanded prompt text.
+{"expect":"turn/start","text":"Review this change carefully: the retry change"}
+{"turnStarted":true}
+{"say":"Reviewed."}
+{"mcp":{"tool":"report_done","args":{"summary":"Reviewed the retry change"}},"id":"done-1"}
+{"turnCompleted":"completed"}

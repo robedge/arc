@@ -1,0 +1,5 @@
+# A Codex brain that answers one message: the first reply after the user switched to a model that appeared mid-session.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Hello from the new model."}
+{"turnCompleted":"completed"}

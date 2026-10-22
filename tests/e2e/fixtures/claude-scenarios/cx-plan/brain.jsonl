@@ -1,0 +1,12 @@
+# Plan-first brain for spec 007: proposes one worker on Claude Sonnet, starts it once approved with what it proposed.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry plan\n\nI will propose a plan first."}
+{"mcp":{"tool":"propose_plan","args":{"workers":[{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"provider":"claude","model":"sonnet","rationale":"The client has no retry."}]}},"saveAs":"plan"}
+{"waitForMcpResult":"plan"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"provider":"claude","model":"sonnet"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

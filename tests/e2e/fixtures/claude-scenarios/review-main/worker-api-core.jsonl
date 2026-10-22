@@ -1,0 +1,7 @@
+# W1: edits config.txt line 6, adds src/queue.ts and a binary logo.png, appends to README.md.
+{"waitForStdin": "*"}
+{"init": true, "model": "claude-sonnet-5-5", "mcp": true}
+{"shell": "sed '6s/.*/retry limit = 3/' config.txt > t.tmp && mv t.tmp config.txt && mkdir -p src && printf 'export const queue = []\\nexport function push(x) {\\n  queue.push(x)\\n}\\nexport const max = 10\\n' > src/queue.ts && printf '\\211PNG\\r\\n\\032\\n\\000\\000\\000\\rIHDR' > logo.png && echo 'retry on failure' >> README.md && git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Add retry queue'"}
+{"mcp": {"tool": "report_done", "args": {"summary": "Added the retry queue"}}}
+{"say": "Done."}
+{"result": true}

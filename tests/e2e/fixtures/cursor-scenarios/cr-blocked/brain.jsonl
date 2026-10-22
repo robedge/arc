@@ -1,0 +1,11 @@
+# Autonomous Claude brain for spec 010 Slice 3: starts one worker named review on Cursor at once, then answers the
+# notes it gets (an action waiting for the user, the merge, the summary). (The fake Cursor reads worker.jsonl here.)
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Review work\n\nStarting a worker on Cursor."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Add cursor-note.txt, then push the branch","repos":["api"],"provider":"cursor"}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: cursor-note.txt was added."}
+{"result":true}

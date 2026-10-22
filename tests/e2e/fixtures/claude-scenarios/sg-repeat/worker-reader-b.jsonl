@@ -1,0 +1,7 @@
+# Reads db/schema.sql once, in its own working copy.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"emit":{"type":"assistant","message":{"id":"msg_sg_rd3","role":"assistant","content":[{"type":"tool_use","id":"toolu_sg_rd3","name":"Read","input":{"file_path":"db/schema.sql"}}]},"parent_tool_use_id":null,"session_id":"{{SESSION_ID}}"}}
+{"mcp":{"tool":"report_done","args":{"summary":"Read it once"}}}
+{"say":"Done."}
+{"result":true}

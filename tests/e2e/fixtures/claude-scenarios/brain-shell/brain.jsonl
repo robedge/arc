@@ -1,0 +1,24 @@
+# The brain's shell: a read-only command runs freely; commits are asked of the user (approved, then denied);
+# with Auto-approve on a commit runs without a card but a push still asks.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Brain shell\n\nReady."}
+{"result":true}
+{"waitForStdin":"DIFF-IT"}
+{"tool":{"name":"Bash","input":{"command":"git -C /work/api diff README.md"}}}
+{"say":"Diff read without a request."}
+{"result":true}
+{"waitForStdin":"COMMIT-ONE"}
+{"tool":{"name":"Bash","input":{"command":"git commit -am x"}}}
+{"say":"Committed after your approval."}
+{"result":true}
+{"waitForStdin":"COMMIT-TWO"}
+{"tool":{"name":"Bash","input":{"command":"git commit -am y"}}}
+{"say":"Carrying on after the refusal."}
+{"result":true}
+{"waitForStdin":"AUTO-GO"}
+{"tool":{"name":"Bash","input":{"command":"git commit -am z"}}}
+{"say":"Committed without a card."}
+{"tool":{"name":"Bash","input":{"command":"git push origin main"}}}
+{"say":"Push handled."}
+{"result":true}

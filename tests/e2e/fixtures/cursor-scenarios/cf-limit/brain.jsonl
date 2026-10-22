@@ -1,0 +1,7 @@
+# Autonomous Claude brain for spec 010 Slice 5: starts one Cursor worker named limited, then reads any note.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Limit check\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"limited","task":"Add limit.txt","repos":["api"],"provider":"cursor"}}}
+{"say":"The worker is running."}
+{"result":true}

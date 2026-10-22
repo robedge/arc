@@ -1,0 +1,6 @@
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"echo 'alter table jobs add retry_status text;' > retry_status.sql && git add retry_status.sql && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Add retry_status column'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added the retry_status column"}}}
+{"say":"Done."}
+{"result":true}

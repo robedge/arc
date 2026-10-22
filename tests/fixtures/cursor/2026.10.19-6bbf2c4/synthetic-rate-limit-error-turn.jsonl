@@ -1,0 +1,3 @@
+{"dir":"meta","cursorVersion":"2026.10.19-6bbf2c4","mode":"agent","recordedAt":"2026-10-21","note":"SYNTHETIC, not recorded: a rate limit cannot be provoked on demand. The prompt is answered with a JSON-RPC error that carries limit wording, the shape the technical spec (2.10) expects for a transient rate limit. The plan block is the real m1-plan-blocked-turn.jsonl."}
+{"dir":"c2s","t":0,"msg":{"jsonrpc":"2.0","id":5,"method":"session/prompt","params":{"sessionId":"session-1","prompt":[{"type":"text","text":"go"}]}}}
+{"dir":"s2c","t":300,"msg":{"jsonrpc":"2.0","id":5,"error":{"code":-32000,"message":"Rate limit exceeded: too many requests, try again later"}}}

@@ -1,0 +1,8 @@
+# Autonomous brain for spec 006: starts one worker and then stays quiet (it must never be asked about the push).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Push change\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry, then push the branch","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

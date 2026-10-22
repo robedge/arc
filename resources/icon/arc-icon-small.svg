@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0A2233"/>
+      <stop offset="1" stop-color="#03080F"/>
+    </linearGradient>
+    <filter id="halo" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#tile)"/>
+  <circle cx="512" cy="512" r="262" fill="none" stroke="#00E5FF" stroke-width="130" opacity="0.35" filter="url(#halo)"/>
+  <circle cx="512" cy="512" r="262" fill="none" stroke="#00E5FF" stroke-width="110"/>
+  <circle cx="512" cy="512" r="88" fill="#00E5FF"/>
+</svg>

@@ -1,0 +1,12 @@
+# Brain for the Agent loading specs: greets, then answers each of the next messages with a short reply
+# (it never starts a worker; the specs read what it was sent).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Command list\n\nReady."}
+{"result":true}
+{"waitForStdin":"first args"}
+{"say":"Got the first one."}
+{"result":true}
+{"waitForStdin":"second args"}
+{"say":"Got the second one."}
+{"result":true}

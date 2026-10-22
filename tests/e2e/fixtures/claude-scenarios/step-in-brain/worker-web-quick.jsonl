@@ -1,0 +1,9 @@
+# W2: commits a file and finishes when the brain says so.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Quick change"}}}
+{"shell":"echo quick > quick.txt && git add quick.txt && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Quick change'"}
+{"waitForStdin":"Go ahead and finish"}
+{"mcp":{"tool":"report_done","args":{"summary":"Made the quick change"}}}
+{"say":"Done."}
+{"result":true}

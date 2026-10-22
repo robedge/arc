@@ -1,0 +1,14 @@
+# W1: works until the user steps in and types, then (after hand-back) receives the held brain message and finishes.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Adding retry"}}}
+{"waitForStdin":"use 5 retries"}
+{"shell":"printf 'retries = 5\\n' > retry-config.txt"}
+{"say":"Switched to 5 retries."}
+{"result":true}
+# One user turn: the hand-back text followed by the held brain message.
+{"waitForStdin":"Remember to add a changelog line"}
+{"shell":"git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Retry with 5 attempts'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added retry with 5 attempts"}}}
+{"say":"Done."}
+{"result":true}

@@ -1,0 +1,7 @@
+# Command worker that asks two-choice and multi-select questions through AskUserQuestion, then finishes.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool":{"name":"AskUserQuestion","input":{"questions":[{"question":"Where should the review open?","header":"Review","options":[{"label":"Browser","description":"Open it in the browser"},{"label":"Terminal","description":"Print it in the terminal"}],"multiSelect":false}]}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Opened the review where you chose"}}}
+{"say":"Done."}
+{"result":true}

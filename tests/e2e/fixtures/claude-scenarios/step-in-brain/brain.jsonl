@@ -1,0 +1,16 @@
+# Autonomous brain for spec 006: two workers. When the user steps in on W1 it messages W1 (held), tries to merge
+# W1 (refused), then lets W2 finish.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Two jobs\n\nStarting two workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"web-quick","task":"Make a quick change","repos":["web"]}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"stepped in"}
+{"mcp":{"tool":"message_worker","args":{"workerId":"W1","text":"Remember to add a changelog line."}}}
+{"mcp":{"tool":"merge_worker","args":{"workerId":"W1"}}}
+{"mcp":{"tool":"message_worker","args":{"workerId":"W2","text":"Go ahead and finish."}}}
+{"say":"Held a message for W1 and released W2."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

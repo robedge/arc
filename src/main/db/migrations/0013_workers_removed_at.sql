@@ -1,0 +1,1 @@
+ALTER TABLE `workers` ADD `removed_at` integer;

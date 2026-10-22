@@ -1,0 +1,7 @@
+# The brain tries to commit in the user's checkout: Needs attention asks the user.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Commit it\n\nCommitting."}
+{"tool":{"name":"Bash","input":{"command":"git commit -am x"}}}
+{"say":"Committed after your approval."}
+{"result":true}

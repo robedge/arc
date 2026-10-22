@@ -1,0 +1,15 @@
+# Plan-first brain: tries to start the command worker unapproved (refused), proposes a plan that carries the command, starts it once approved.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry settings\n\nReady for a command."}
+{"result":true}
+{"waitForStdin":"The user ran the command /awos:spec"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"spec","task":"Write the retry settings spec","repos":["api"],"command":"/awos:spec for retry settings"}}}
+{"mcp":{"tool":"propose_plan","args":{"workers":[{"name":"spec","task":"Write the retry settings spec","repos":["api"],"command":"/awos:spec for retry settings","model":"sonnet","rationale":"The command writes the spec."}]}},"saveAs":"plan"}
+{"waitForMcpResult":"plan"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"spec","task":"Write the retry settings spec","repos":["api"],"command":"/awos:spec for retry settings","model":"sonnet"}}}
+{"say":"The command worker is running."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The spec is written."}
+{"result":true}

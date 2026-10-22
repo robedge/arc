@@ -1,0 +1,6 @@
+# A worker that logs its working directory, reports progress and stays alive until it is stopped.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"pwd"}
+{"mcp":{"tool":"report_progress","args":{"note":"Working"}}}
+{"hang":true}

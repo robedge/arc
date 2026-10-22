@@ -1,0 +1,13 @@
+# Autonomous brain for the `/` list: greets, then starts the worker for the command the user ran. It names no
+# provider: a Codex prompt always runs on Codex whatever the Workers setting says.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Codex command\n\nReady for a command."}
+{"result":true}
+{"waitForStdin":"The user ran the command /review"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"review","task":"Review the retry change","repos":["api"],"command":"/review the retry change"}}}
+{"say":"The command worker is running."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The review is done."}
+{"result":true}

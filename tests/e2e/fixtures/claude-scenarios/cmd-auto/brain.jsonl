@@ -1,0 +1,12 @@
+# Autonomous brain: after the user runs /awos:spec it starts one command worker in api.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry settings\n\nReady for a command."}
+{"result":true}
+{"waitForStdin":"The user ran the command /awos:spec"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"spec","task":"Write the retry settings spec","repos":["api"],"command":"/awos:spec for retry settings"}}}
+{"say":"Started the spec command in api."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The spec is written."}
+{"result":true}

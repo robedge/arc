@@ -1,0 +1,9 @@
+# Asks permission to push the session branch, then carries on whatever the answer is.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Pushing the branch"}}}
+{"tool":{"name":"Bash","input":{"command":"git push origin arc/fix-order-sync","description":"Push the session branch"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Carrying on"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished the retry change"}}}
+{"say":"Done."}
+{"result":true}

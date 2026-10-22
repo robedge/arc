@@ -1,0 +1,10 @@
+# Autonomous brain: starts three workers (the session limit is 2, so the third is queued) and stays quiet.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Three workers\n\nStarting three workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"sleeper","task":"Work for a long time","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"committer","task":"Commit a file and keep working","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"third","task":"Wait for a free slot","repos":["api"]}}}
+{"say":"Workers accepted."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

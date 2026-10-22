@@ -1,0 +1,6 @@
+# A Codex worker that keeps working until it is stopped.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Working."}
+{"sleep":120000}
+{"turnCompleted":"completed"}

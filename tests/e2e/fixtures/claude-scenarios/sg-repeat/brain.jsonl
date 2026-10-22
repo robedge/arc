@@ -1,0 +1,9 @@
+# Repeated work: two sonnet workers read db/schema.sql three times in all (twice and once).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Repeated reads\n\nStarting."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"reader-a","task":"Look at the code","repos":["api"],"model":"sonnet"}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"reader-b","task":"Look at the code","repos":["api"],"model":"sonnet"}}}
+{"say":"The workers are running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

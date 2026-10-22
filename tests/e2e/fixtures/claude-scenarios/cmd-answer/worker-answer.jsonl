@@ -1,0 +1,6 @@
+# Command worker that changes nothing and reports its answer.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_done","args":{"summary":"Retries default to 3 attempts, with backoff."}}}
+{"say":"Done."}
+{"result":true}

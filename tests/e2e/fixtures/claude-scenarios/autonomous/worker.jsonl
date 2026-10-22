@@ -1,0 +1,8 @@
+# Any autonomous worker: waits a little so a queued one is visible, reports done and exits.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Working"}}}
+{"delay":1500}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished the job"}}}
+{"say":"Done."}
+{"result":true}

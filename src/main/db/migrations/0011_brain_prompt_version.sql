@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD `brain_prompt_version` integer DEFAULT 0 NOT NULL;

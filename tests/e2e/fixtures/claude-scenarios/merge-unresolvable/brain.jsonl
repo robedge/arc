@@ -1,0 +1,21 @@
+# Like merge-conflict, but the resolver is not confident and asks. The brain passes the question to the user
+# (escalate_to_user), so merge_worker returns needs_user at once and finishes after the user's answer.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Two edits of one file\n\nStarting two workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Note the retry","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-timeout","task":"Note the timeout","repos":["api"]}}}
+{"say":"Both workers are running."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"waitForStdin":"finished"}
+{"mcp":{"tool":"merge_worker","args":{"workerId":"W1"}}}
+{"mcp":{"tool":"merge_worker","args":{"workerId":"W2"}},"saveAs":"merge2"}
+{"waitForStdin":"asks:"}
+{"mcp":{"tool":"escalate_to_user","args":{"requestId":"{{REQUEST_ID}}","reason":"Two different edits of one line; only the user can choose."}}}
+{"waitForMcpResult":"merge2"}
+{"say":"The conflict needs the user."}
+{"result":true}
+{"waitForStdin":"is merged now"}
+{"say":"Merged after the answer."}
+{"result":true}

@@ -1,0 +1,11 @@
+# A Codex worker that edits a file, commits it in its working copy and reports done through the bridge.
+# Under approvalPolicy "untrusted" the edit and the commit each ask first (as in the recording).
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Starting."}
+{"mcp":{"tool":"report_progress","args":{"note":"Editing hello.txt"}}}
+{"write":{"path":"hello.txt","content":"hello\npatched\n"},"id":"patch-1","approval":true,"saveAs":"edit"}
+{"shell":"git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Patch hello'","id":"commit-1","approval":true,"saveAs":"commit"}
+{"mcp":{"tool":"report_done","args":{"summary":"Patched hello.txt and committed"}},"id":"done-1","when":{"saved":"commit.decision","equals":"accept"}}
+{"say":"Done."}
+{"turnCompleted":"completed"}

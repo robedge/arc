@@ -1,0 +1,1 @@
+ALTER TABLE `session_projects` ADD `base_sha` text;

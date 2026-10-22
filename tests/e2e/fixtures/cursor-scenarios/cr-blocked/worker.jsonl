@@ -1,0 +1,15 @@
+# A Cursor worker whose push Cursor never asks about: Arc's deny file stops it, so (as in spike M1) the tool_call
+# goes pending -> in_progress -> completed within a few ms with no rawOutput and no permission request. Arc notes
+# it as Blocked. Then the worker commits a note and reports done.
+{"expect":"prompt"}
+{"title":"Add cursor note"}
+{"text":"Starting."}
+{"emit":{"sessionUpdate":"tool_call","toolCallId":"push-1","title":"`git push origin HEAD`","kind":"execute","status":"pending","rawInput":{"command":"git push origin HEAD"}}}
+{"emit":{"sessionUpdate":"tool_call_update","toolCallId":"push-1","status":"in_progress"}}
+{"emit":{"sessionUpdate":"tool_call_update","toolCallId":"push-1","status":"completed"},"delay":60}
+{"text":"The push was not allowed."}
+{"write":{"path":"cursor-note.txt","content":"written by the fake Cursor\n"},"id":"edit-1"}
+{"shell":"git add -A && git -c user.name=Arc -c user.email=arc@example.com commit -q -m 'Add cursor note'","id":"commit-1"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added cursor-note.txt and committed"}},"id":"done-1"}
+{"text":"Done."}
+{"end":"end_turn"}

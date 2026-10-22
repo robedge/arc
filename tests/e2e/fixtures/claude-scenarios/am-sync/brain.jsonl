@@ -1,0 +1,16 @@
+# Autonomous brain: W1 (api) merges by itself; the brain shares its change with W3, which waits for it.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Share a column\n\nStarting three workers."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add the column","repos":["api"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"docs","task":"Write docs","repos":["web"]}}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-client","task":"Use the column","repos":["api"]}}}
+{"say":"Three workers are running."}
+{"result":true}
+{"waitForStdin":"Merged W1 api-retry"}
+{"mcp":{"tool":"sync_worker","args":{"workerId":"W3","fromWorkerId":"W1","note":"retry_status column"}}}
+{"say":"Shared the column with W3."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"say":"Summary: api has the column and its use; web has docs."}
+{"result":true}

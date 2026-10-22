@@ -1,0 +1,9 @@
+# N2(c): is the bridge token stored in ~/.cursor/acp-sessions? (read-only grep, 2026-10-21)
+# Sessions created by the N2 runs (13 of them, each with a unique random token in mcpServers[].headers):
+#   each directory holds only meta.json ({"schemaVersion":1,"cwd":...}); grep -rlaF <token>: not found in all 13;
+#   grep for the run prefix of all tokens: not found.
+# Older sessions that were prompted (5 with store.db, store.db-wal, store.db-shm, including M1 whose mcpServers had
+#   the bridge URL and auth header): grep -rlaF over ALL of ~/.cursor/acp-sessions for the header scheme, the header name
+#   and "127.0.0.1:": no file matches.
+# Conclusion: Cursor does not persist session mcpServers (URL or headers) in acp-sessions. store.db is binary, so
+#   an encoded form cannot be excluded, but neither the token, the header name nor the bridge URL appears in clear.

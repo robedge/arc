@@ -1,0 +1,7 @@
+# Third run (after the knowledge folder was linked elsewhere): reads a note through the linked folder (FAKE_CLAUDE_LINKED), since its working folder stays where it started.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"cat \"$FAKE_CLAUDE_LINKED/Notes/Partitioning.md\""}
+{"say":"Read the Partitioning note."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

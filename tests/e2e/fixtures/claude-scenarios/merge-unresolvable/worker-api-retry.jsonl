@@ -1,0 +1,7 @@
+# Edits the second line of README.md.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"printf 'hello\\nretry on failure\\n' > README.md && git add README.md && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Note the retry'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Noted the retry"}}}
+{"say":"Done."}
+{"result":true}

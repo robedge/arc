@@ -1,0 +1,3 @@
+# N8: `agent models` ids versus ACP model ids (they differ; the adapter uses the ACP ids from session/new).
+agent models:        grok-4.7-high - Grok 4.7  High | grok-4.7-medium-fast - Grok 4.7  Medium Fast | auto - Auto (current, default)
+ACP session/new:     gpt-5.4-mini[reasoning=medium] | grok-4.7[context=256k,reasoning_effort=high,fast=true] | default[] (Auto)

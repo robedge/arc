@@ -1,0 +1,19 @@
+# N8: `agent mcp list-tools shadowme` (CLI 2026.10.19-6bbf2c4, 2026-10-21, no model).
+# Run in a scratch git repo whose project .cursor/mcp.json holds the server `shadowme`
+# (approved in a scratch CURSOR_DATA_DIR). The fake http server's tools/list answered:
+#   peek  annotations {readOnlyHint:true, destructiveHint:false, idempotentHint:true, title:"Peek"}  inputSchema {text:string}
+#   poke  annotations {readOnlyHint:false, destructiveHint:true}                                    inputSchema {target:string} required
+#   bare  (no annotations)                                                                         inputSchema {}
+# The CLI called tools/list once (the server saw it) and printed ONLY this, exit 0:
+exit=0
+--- stdout
+Tools for shadowme (3):
+- bare ()
+- peek (text)
+- poke (target)
+--- stderr
+
+# Format: `Tools for <id> (<n>):` then `- <name> (<comma-separated argument names>)`, sorted by name.
+# No annotations, no descriptions, no types, no required marker. Conclusion: list-tools cannot answer
+# read-only versus changing; McpToolCatalogue.cursorAction must use request annotations or Arc's own tools/list.
+# Without approval the same call is not possible (project servers show "not loaded (needs approval)").

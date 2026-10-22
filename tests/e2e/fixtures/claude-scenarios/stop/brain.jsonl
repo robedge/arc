@@ -1,0 +1,10 @@
+# Autonomous brain that starts one long-running worker.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Stop a worker\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"sleeper","task":"Work for a long time","repos":["api"]}}}
+{"say":"Worker started."}
+{"result":true}
+{"waitForStdin":"stopped"}
+{"say":"The worker was stopped."}
+{"result":true}
