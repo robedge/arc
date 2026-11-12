@@ -1,6 +1,5 @@
 <script lang="ts">
   import { providerName } from '@shared/provider-label'
-  import type { ProviderId } from '@shared/types/provider'
   import type { PlanNotice } from '@shared/types/usage'
   import { formatResetTime } from '../../format/time'
   import { planUsage } from '../../stores/plan-usage.svelte'
@@ -24,7 +23,7 @@
   }
 
   function name(n: PlanNotice): string {
-    return providerName(n.provider as ProviderId)
+    return providerName(n.provider)
   }
 </script>
 

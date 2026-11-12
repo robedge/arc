@@ -1,11 +1,14 @@
 import { and, eq, sql } from 'drizzle-orm'
 import type { DbHandle } from '../client'
 import { planLimits } from '../schema'
+import { isProviderId } from '../../../shared/provider-label'
 import type { PlanLimit } from '../../../shared/types/usage'
 
 type PlanLimitRow = typeof planLimits.$inferSelect
 
-function toPlanLimit(row: PlanLimitRow): PlanLimit {
+/** The stored row as a `PlanLimit`, or undefined for a provider this version does not know. */
+function toPlanLimit(row: PlanLimitRow): PlanLimit | undefined {
+  if (!isProviderId(row.provider)) return undefined
   return {
     provider: row.provider,
     windowId: row.window,
@@ -49,12 +52,17 @@ export class PlanLimitsRepo {
       .from(planLimits)
       .where(and(eq(planLimits.provider, o.provider), eq(planLimits.window, o.windowId)))
       .get()
-    if (!row) throw new Error('plan_limits row missing after upsert')
-    return toPlanLimit(row)
+    const stored = row && toPlanLimit(row)
+    if (!stored) throw new Error('plan_limits row missing after upsert')
+    return stored
   }
 
   list(): PlanLimit[] {
-    return this.db.select().from(planLimits).all().map(toPlanLimit)
+    return this.db
+      .select()
+      .from(planLimits)
+      .all()
+      .flatMap((row) => toPlanLimit(row) ?? [])
   }
 
   forProvider(provider: string): PlanLimit[] {
@@ -63,7 +71,7 @@ export class PlanLimitsRepo {
       .from(planLimits)
       .where(eq(planLimits.provider, provider))
       .all()
-      .map(toPlanLimit)
+      .flatMap((row) => toPlanLimit(row) ?? [])
   }
 }
 

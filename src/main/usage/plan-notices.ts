@@ -83,7 +83,7 @@ export class PlanNotices {
 function toNotice(row: PlanNoticeRow, limit: PlanLimit): PlanNotice {
   return {
     key: row.key,
-    provider: row.provider,
+    provider: limit.provider,
     windowId: row.window,
     label: limit.label,
     threshold: row.threshold === 95 ? 95 : 80,

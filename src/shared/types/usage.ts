@@ -114,7 +114,7 @@ export interface UsagePanelRow {
 
 /** The latest observation of one plan limit window. `resetsAt` is epoch seconds, `observedAt` epoch ms. */
 export interface PlanLimit {
-  provider: string
+  provider: ProviderId
   windowId: string
   label: string
   usedPercent: number
@@ -146,7 +146,7 @@ export interface ProviderPlan {
 /** A one-time notice that a plan limit window crossed a threshold. */
 export interface PlanNotice {
   key: string
-  provider: string
+  provider: ProviderId
   windowId: string
   label?: string
   threshold: 80 | 95
