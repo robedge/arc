@@ -10,7 +10,7 @@ import type {
   McpServerTools,
   StartOptions
 } from '../../../src/main/agents/agent-adapter'
-import { CLAUDE_CAPABILITIES } from '../../../src/main/agents/claude-adapter'
+import { CLAUDE_CAPABILITIES } from '../../../src/main/agents/claude/claude-adapter'
 import { AdapterRegistry } from '../../../src/main/agents/provider-registry'
 import type { AgentEvent } from '../../../src/main/agents/agent-events'
 import type { CodexInput } from '../../../src/main/agents/codex/codex-types'

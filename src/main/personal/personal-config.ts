@@ -20,7 +20,7 @@ import {
   readUserMcpServers,
   type ConfigLog,
   type McpServerSpec
-} from './claude-user-config'
+} from '../agents/claude/claude-user-config'
 import { loadKey } from '../../shared/types/agent-load'
 import { NOTHING_OFF, type OffFor } from './load-selection'
 import type { McpToolCatalogue } from './mcp-tool-catalogue'

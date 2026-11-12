@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { AgentEvent } from '../../../src/main/agents/agent-events'
-import { createClaudeParser, summarizeToolUse } from '../../../src/main/agents/claude-parser'
+import type { AgentEvent } from '../../../../src/main/agents/agent-events'
+import {
+  createClaudeParser,
+  summarizeToolUse
+} from '../../../../src/main/agents/claude/claude-parser'
 
 const dir = resolve('tests/fixtures/claude/2.1.302')
 

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
-import type { PluginViewSource } from '../plugins/plugin-view'
+import type { PluginViewSource } from '../../plugins/plugin-view'
 
 /**
  * Read-only readers for the Claude Code configuration Arc agents load (spec 007 section 2.6): the

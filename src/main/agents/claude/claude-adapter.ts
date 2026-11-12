@@ -6,13 +6,17 @@ import type {
   InterruptOutcome,
   McpServerTools,
   StartOptions
-} from './agent-adapter'
-import type { AgentEvent } from './agent-events'
+} from '../agent-adapter'
+import type { AgentEvent } from '../agent-events'
 import { createClaudeParser } from './claude-parser'
-import { EventQueue } from './event-queue'
-import { parseClaudeMcpStatus } from './mcp-status'
-import { buildAgentEnv, type ProcessSupervisor, type SupervisedProcess } from './process-supervisor'
-import { bridgeToolNamer } from './tool-namer'
+import { EventQueue } from '../event-queue'
+import { parseClaudeMcpStatus } from '../mcp-status'
+import {
+  buildAgentEnv,
+  type ProcessSupervisor,
+  type SupervisedProcess
+} from '../process-supervisor'
+import { bridgeToolNamer } from '../tool-namer'
 
 /**
  * `--setting-sources project` keeps the user's permission rules, env and other settings out of the

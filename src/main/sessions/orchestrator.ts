@@ -11,7 +11,7 @@ import type {
 } from '../agents/agent-adapter'
 import type { ProviderRegistry } from '../agents/provider-registry'
 import type { AgentEvent } from '../agents/agent-events'
-import { PERMISSION_PROMPT_TOOL } from '../agents/claude-adapter'
+import { PERMISSION_PROMPT_TOOL } from '../agents/claude/claude-adapter'
 import type { BridgeRegistry } from '../bridge/bridge-server'
 import {
   applyCodexMcp,

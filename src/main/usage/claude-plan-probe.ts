@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import type { AgentEvent, RateLimitWindow } from '../agents/agent-events'
-import { createClaudeParser } from '../agents/claude-parser'
+import { createClaudeParser } from '../agents/claude/claude-parser'
 import { buildAgentEnv, type ProcessSupervisor } from '../agents/process-supervisor'
 import type { ModelRef } from '../../shared/types/provider'
 import type { PlanCheckUsage } from './usage-recorder'

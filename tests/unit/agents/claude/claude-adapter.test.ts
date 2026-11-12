@@ -2,10 +2,13 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import type { AgentHandle } from '../../../src/main/agents/agent-adapter'
-import type { AgentEvent } from '../../../src/main/agents/agent-events'
-import { ClaudeAdapter, type ClaudeAdapterTimings } from '../../../src/main/agents/claude-adapter'
-import { ProcessSupervisor } from '../../../src/main/agents/process-supervisor'
+import type { AgentHandle } from '../../../../src/main/agents/agent-adapter'
+import type { AgentEvent } from '../../../../src/main/agents/agent-events'
+import {
+  ClaudeAdapter,
+  type ClaudeAdapterTimings
+} from '../../../../src/main/agents/claude/claude-adapter'
+import { ProcessSupervisor } from '../../../../src/main/agents/process-supervisor'
 
 const fake = resolve('tests/e2e/fixtures/fake-claude.mjs')
 const stub = resolve('tests/unit/agents/helpers/stub-child.mjs')

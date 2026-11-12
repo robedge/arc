@@ -3,8 +3,8 @@ import type {
   AgentRole,
   ClaudeStartOptions,
   ClaudeStartRequest
-} from '../../../src/main/agents/agent-adapter'
-import { buildClaudeArgs } from '../../../src/main/agents/claude-adapter'
+} from '../../../../src/main/agents/agent-adapter'
+import { buildClaudeArgs } from '../../../../src/main/agents/claude/claude-adapter'
 
 type Given = Partial<Omit<ClaudeStartRequest, 'claude' | 'provider'>> & {
   role: AgentRole

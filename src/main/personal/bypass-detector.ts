@@ -11,7 +11,12 @@ import {
 import { readCursorUserConfig } from '../agents/cursor/cursor-user-config'
 import type { PluginViewSource } from '../plugins/plugin-view'
 import { NOTHING_OFF, type OffFor } from './load-selection'
-import { hookEventsOf, isRecord, readUserHooks, type ConfigLog } from './claude-user-config'
+import {
+  hookEventsOf,
+  isRecord,
+  readUserHooks,
+  type ConfigLog
+} from '../agents/claude/claude-user-config'
 
 /**
  * Finds what can skip Arc's approvals (spec 007 section 2.6, tech spec 2.3). Arc allows it and says

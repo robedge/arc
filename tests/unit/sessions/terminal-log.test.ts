@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentEvent } from '../../../src/main/agents/agent-events'
-import { createClaudeParser } from '../../../src/main/agents/claude-parser'
+import { createClaudeParser } from '../../../src/main/agents/claude/claude-parser'
 import { createCursorParser } from '../../../src/main/agents/cursor/cursor-parser'
 import {
   RESULT_MAX_LINES,

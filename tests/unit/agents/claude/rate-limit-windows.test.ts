@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { AgentEvent } from '../../../src/main/agents/agent-events'
+import type { AgentEvent } from '../../../../src/main/agents/agent-events'
 import {
   claudeWindowLabel,
   createClaudeParser,
   utilizationToPercent
-} from '../../../src/main/agents/claude-parser'
-import { createCodexParser } from '../../../src/main/agents/codex/codex-parser'
-import { codexWindowLabel } from '../../../src/main/agents/codex/codex-types'
-import type { JsonObject } from '../../../src/main/agents/codex/codex-types'
+} from '../../../../src/main/agents/claude/claude-parser'
+import { createCodexParser } from '../../../../src/main/agents/codex/codex-parser'
+import { codexWindowLabel } from '../../../../src/main/agents/codex/codex-types'
+import type { JsonObject } from '../../../../src/main/agents/codex/codex-types'
 
 type RateLimit = Extract<AgentEvent, { type: 'rate-limit' }>
 

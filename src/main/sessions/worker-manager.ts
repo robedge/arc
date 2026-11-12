@@ -23,7 +23,7 @@ import type {
 import type { ProviderRegistry } from '../agents/provider-registry'
 import type { AgentEvent } from '../agents/agent-events'
 import type { ClassifyContext } from '../policy/classify'
-import { PERMISSION_PROMPT_TOOL } from '../agents/claude-adapter'
+import { PERMISSION_PROMPT_TOOL } from '../agents/claude/claude-adapter'
 import { BridgeToolError } from '../bridge/types'
 import {
   applyCodexMcp,

@@ -6,8 +6,8 @@ import type {
   RateLimitWindow,
   UsageBuckets,
   UsageCall
-} from './agent-events'
-import { READ_PATH_MAX } from './agent-events'
+} from '../agent-events'
+import { READ_PATH_MAX } from '../agent-events'
 
 /**
  * Turns one stream-json line from `claude` 2.1.x into normalized events. Schemas are permissive

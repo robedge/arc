@@ -11,7 +11,7 @@ import {
   readUserHooks,
   readUserMcpServers,
   type ConfigLog
-} from './claude-user-config'
+} from '../agents/claude/claude-user-config'
 import {
   describeMarkdown,
   listingEntry,
