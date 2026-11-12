@@ -1926,7 +1926,7 @@ export class SessionService {
       brainThreadsRepo: this.deps.brainThreadsRepo,
       messagesRepo: this.deps.messagesRepo,
       eventsRepo: this.deps.eventsRepo,
-      engine: {
+      resources: {
         plansRepo: this.deps.plansRepo,
         workersRepo: this.deps.workersRepo,
         worktreesRepo: this.deps.worktreesRepo,

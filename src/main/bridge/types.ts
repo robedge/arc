@@ -154,7 +154,7 @@ export interface ResolveRequestInput {
   note?: string | undefined
 }
 
-/** What the tools need from the engine. The orchestrator of a session implements it. */
+/** What the tools need from a session. Its orchestrator implements it. */
 export interface BridgeServices {
   /** Blocks until the user decides. The bridge keeps the MCP call alive with progress notifications. */
   proposePlan(

@@ -218,7 +218,7 @@ export interface WorkerManagerDeps {
   sessionProjectsRepo: SessionProjectsRepo
   worktreeGit: WorktreeGit
   bridge?: BridgeRegistry | undefined
-  /** The engine behind the tools; handed to the bridge for each worker. */
+  /** The session behind the tools (its orchestrator); handed to the bridge for each worker. */
   services: BridgeServices
   /** The models each provider offers, for `resolveTarget`. */
   models: ModelRegistry
