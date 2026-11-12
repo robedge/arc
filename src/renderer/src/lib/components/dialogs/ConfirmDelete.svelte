@@ -58,7 +58,7 @@
     exporting = true
     exportProgress = null
     try {
-      const pick = await window.harness.invoke('storage:pickExportFolder', { groupId: id })
+      const pick = await window.harness.invoke('storage:pick-export-folder', { groupId: id })
       if (!pick.ok) {
         error = messageFor(pick.error)
         return

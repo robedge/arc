@@ -10,7 +10,6 @@ import type {
   ReviewUncommittedFile
 } from '@shared/types/review'
 import { messageFor } from '../ipc/messages'
-import type { SessionMessage } from '@shared/types/session'
 import { activeSession } from './active-session.svelte'
 import { toasts } from './toasts.svelte'
 import type { NoteAnchor } from '../review/note-rows'
@@ -372,14 +371,13 @@ class ReviewStore {
 
   /** The message the notes were sent in goes into the conversation, which is kept mounted behind the review. */
   private async showSentMessage(sessionId: string, messageId: number): Promise<void> {
-    const res = await window.harness.invoke('sessions:page', {
+    const res = await window.harness.invoke('sessions:page-messages', {
       sessionId,
-      kind: 'messages',
       beforeId: messageId + 1,
       limit: 1
     })
     if (!res.ok) return
-    const message = (res.data as SessionMessage[]).find((m) => m.id === messageId)
+    const message = res.data.find((m) => m.id === messageId)
     if (message) activeSession.addUserMessage(message)
   }
 

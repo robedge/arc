@@ -21,17 +21,17 @@ async function click(name: string): Promise<ReturnType<typeof mockHarness>> {
   return invoke
 }
 
-it('opens https links through shell:openUrl', async () => {
+it('opens https links through shell:open-url', async () => {
   const invoke = await click('web')
   await waitFor(() =>
-    expect(invoke).toHaveBeenCalledWith('shell:openUrl', { url: 'https://example.com/page' })
+    expect(invoke).toHaveBeenCalledWith('shell:open-url', { url: 'https://example.com/page' })
   )
 })
 
-it('opens http links through shell:openUrl', async () => {
+it('opens http links through shell:open-url', async () => {
   const invoke = await click('plain')
   await waitFor(() =>
-    expect(invoke).toHaveBeenCalledWith('shell:openUrl', { url: 'http://example.com' })
+    expect(invoke).toHaveBeenCalledWith('shell:open-url', { url: 'http://example.com' })
   )
 })
 

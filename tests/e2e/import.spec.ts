@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-test('items:pickImport copies queued files into Docs', async ({ app, window: page }) => {
+test('items:pick-import copies queued files into Docs', async ({ app, window: page }) => {
   const src = await mkdtemp(join(tmpdir(), 'harness-e2e-src-'))
   try {
     const a = join(src, 'orders_schema.sql')
@@ -39,7 +39,7 @@ test('items:pickImport copies queued files into Docs', async ({ app, window: pag
     )
 
     const report = await page.evaluate(
-      (id) => window.harness.invoke('items:pickImport', { sectionId: id }),
+      (id) => window.harness.invoke('items:pick-import', { sectionId: id }),
       docs.id
     )
     expect(report.ok && report.data.added.map((i) => i.title).sort()).toEqual([
@@ -57,7 +57,7 @@ test('items:pickImport copies queued files into Docs', async ({ app, window: pag
     ])
 
     const canceled = await page.evaluate(
-      (id) => window.harness.invoke('items:pickImport', { sectionId: id }),
+      (id) => window.harness.invoke('items:pick-import', { sectionId: id }),
       docs.id
     )
     expect(canceled).toEqual({ ok: true, data: { added: [], failed: [], conflicts: [] } })

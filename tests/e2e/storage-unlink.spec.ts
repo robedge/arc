@@ -45,7 +45,7 @@ async function createLinkedGroup(
   )
   const picked = data<StoragePickResult>(
     await page.evaluate(
-      (g) => window.harness.invoke('storage:pickFolder', { groupId: g }),
+      (g) => window.harness.invoke('storage:pick-folder', { groupId: g }),
       group.id
     )
   )
@@ -161,7 +161,7 @@ test('a renamed folder raises availability, locate relinks it, use-app-storage g
       ).map((i) => i.title)
     ).toEqual(['Service map'])
     expect(
-      await page.evaluate((g) => window.harness.invoke('storage:useAppStorage', { groupId: g }), id)
+      await page.evaluate((g) => window.harness.invoke('storage:use-app-storage', { groupId: g }), id)
     ).toEqual({ ok: false, error: { code: 'STORAGE_ROOT_AVAILABLE' } })
 
     // Gone again, and this time the user gives up on it.
@@ -174,7 +174,7 @@ test('a renamed folder raises availability, locate relinks it, use-app-storage g
       available: false
     })
     const onApp = data<StorageState>(
-      await page.evaluate((g) => window.harness.invoke('storage:useAppStorage', { groupId: g }), id)
+      await page.evaluate((g) => window.harness.invoke('storage:use-app-storage', { groupId: g }), id)
     )
     expect(onApp).toMatchObject({ mode: 'app', hasKnowledge: false })
     expect(

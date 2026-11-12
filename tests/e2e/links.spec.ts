@@ -7,7 +7,7 @@ declare global {
   }
 }
 
-test('links:upsert lists a link and shell:openLink records the call', async ({
+test('links:upsert lists a link and shell:open-link records the call', async ({
   app,
   window: page
 }) => {
@@ -49,7 +49,7 @@ test('links:upsert lists a link and shell:openLink records the call', async ({
   expect(listed.ok && listed.data.map((i) => i.title)).toEqual(['Orders wiki'])
 
   const opened = await page.evaluate(
-    (id) => window.harness.invoke('shell:openLink', { itemId: id }),
+    (id) => window.harness.invoke('shell:open-link', { itemId: id }),
     created.data.id
   )
   expect(opened.ok).toBe(true)

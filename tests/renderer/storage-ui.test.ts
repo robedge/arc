@@ -36,7 +36,7 @@ function picked(
 function host(over: { pick?: StoragePickResult; link?: () => unknown; state?: StorageState } = {}) {
   return mockHarness((channel) => {
     if (channel === 'storage:get') return ok(over.state ?? APP)
-    if (channel === 'storage:pickFolder') return ok(over.pick ?? picked())
+    if (channel === 'storage:pick-folder') return ok(over.pick ?? picked())
     if (channel === 'storage:link') return (over.link?.() as never) ?? ok(LINKED)
     if (channel === 'sections:list' || channel === 'projects:list') return ok([])
     return ok(undefined)
@@ -106,7 +106,7 @@ describe('KnowledgeStorageSettings', () => {
     const invoke = host({ pick: { picked: false } })
     await mountSettings(APP)
     await fireEvent.click(await screen.findByRole('button', { name: 'Link folder…' }))
-    await waitFor(() => expect(invoke).toHaveBeenCalledWith('storage:pickFolder', { groupId: 'g' }))
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith('storage:pick-folder', { groupId: 'g' }))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
   })

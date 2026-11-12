@@ -117,7 +117,7 @@ function setup(): void {
       notes = notes.filter((n) => n.id !== req.noteId)
       return { ok: true, data: undefined }
     }
-    if (channel === 'sessions:page') {
+    if (channel === 'sessions:page-messages') {
       return {
         ok: true,
         data: [
@@ -342,9 +342,8 @@ describe('Send notes to brain', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Send 2 notes to brain' }))
     await waitFor(() => expect(activeSession.messages.map((m) => m.id)).toEqual([7]))
     expect(activeSession.messages[0]?.content).toContain('Review notes (2):')
-    expect(invoke).toHaveBeenCalledWith('sessions:page', {
+    expect(invoke).toHaveBeenCalledWith('sessions:page-messages', {
       sessionId: 's1',
-      kind: 'messages',
       beforeId: 8,
       limit: 1
     })

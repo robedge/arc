@@ -148,16 +148,15 @@ class ActiveSessionStore {
     const oldest = this.messages[0]
     if (sessionId === null || !oldest || this.loadingEarlier) return
     this.loadingEarlier = true
-    const res = await window.harness.invoke('sessions:page', {
+    const res = await window.harness.invoke('sessions:page-messages', {
       sessionId,
-      kind: 'messages',
       beforeId: oldest.id,
       limit: PAGE_SIZE
     })
     if (this.sessionId !== sessionId) return
     this.loadingEarlier = false
     if (!res.ok) return
-    const rows = res.data as SessionMessage[]
+    const rows = res.data
     const seen = new Set(this.messages.map((m) => m.id))
     this.messages = [...rows.filter((m) => !seen.has(m.id)), ...this.messages]
     this.hasEarlier = rows.length >= PAGE_SIZE

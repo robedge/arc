@@ -1525,6 +1525,8 @@ export class SessionService {
   }
 
   /** Older rows than `beforeId`, ascending. */
+  page(sessionId: string, kind: 'messages', beforeId: number, limit: number): SessionMessage[]
+  page(sessionId: string, kind: 'events', beforeId: number, limit: number): SessionEventEntry[]
   page(
     sessionId: string,
     kind: 'messages' | 'events',

@@ -85,7 +85,7 @@ class KnowledgeStore {
   }
 
   async setDescription(itemId: string, description: string): Promise<AppError | null> {
-    const res = await window.harness.invoke('items:setDescription', { itemId, description })
+    const res = await window.harness.invoke('items:set-description', { itemId, description })
     if (!res.ok) return res.error
     await this.refresh()
     return null

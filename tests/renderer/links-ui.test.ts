@@ -134,13 +134,13 @@ it('maps a server LINK_URL_INVALID to the same message', async () => {
   expect((await screen.findByRole('alert')).textContent).toBe(INVALID)
 })
 
-it('clicking the address invokes shell:openLink with the item id', async () => {
+it('clicking the address invokes shell:open-link with the item id', async () => {
   const invoke = harness([link('a1', 'https://wiki.example.com/orders', 'Orders wiki')])
   mount()
   await fireEvent.click(
     await screen.findByRole('button', { name: 'https://wiki.example.com/orders' })
   )
-  await waitFor(() => expect(invoke).toHaveBeenCalledWith('shell:openLink', { itemId: 'a1' }))
+  await waitFor(() => expect(invoke).toHaveBeenCalledWith('shell:open-link', { itemId: 'a1' }))
 })
 
 it('edits a link with the form prefilled', async () => {

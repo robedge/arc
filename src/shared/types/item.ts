@@ -12,7 +12,7 @@ export interface ItemSummary {
   folder?: string
   description: string
   kind: ItemKind
-  /** Links only: the address as stored on disk (not yet validated; `shell:openLink` revalidates). */
+  /** Links only: the address as stored on disk (not yet validated; `shell:open-link` revalidates). */
   url?: string
   editable: boolean
   /** `${mtimeMs}:${size}:${sha1(content).slice(0, 12)}`, computed from disk. */

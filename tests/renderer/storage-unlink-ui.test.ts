@@ -153,7 +153,7 @@ describe('StorageMissingBanner in GroupView', () => {
     const invoke = host(state, (c) => {
       if (c === 'storage:locate')
         return ok({ located: true, state: LINKED, looksLikeKnowledge: false })
-      if (c === 'storage:useAppStorage') return ok(APP)
+      if (c === 'storage:use-app-storage') return ok(APP)
       return undefined
     })
     render(GroupView)
@@ -211,7 +211,7 @@ describe('StorageMissingBanner in GroupView', () => {
       Array.from(dialog.querySelectorAll('button')).find((b) => b.type === 'submit') as HTMLElement
     )
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith('storage:useAppStorage', { groupId: 'g' })
+      expect(invoke).toHaveBeenCalledWith('storage:use-app-storage', { groupId: 'g' })
     )
     await waitFor(() => expect(screen.queryByText('Knowledge folder not found')).toBeNull())
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())

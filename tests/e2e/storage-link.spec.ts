@@ -21,7 +21,7 @@ function data<T>(result: Result<T>): T {
   return result.data
 }
 
-test('storage:pickFolder + storage:link move merges into a linked folder', async ({
+test('storage:pick-folder + storage:link move merges into a linked folder', async ({
   app,
   window: page
 }) => {
@@ -76,7 +76,7 @@ test('storage:pickFolder + storage:link move merges into a linked folder', async
     )
 
     const picked = data<StoragePickResult>(
-      await page.evaluate((g) => window.harness.invoke('storage:pickFolder', { groupId: g }), id)
+      await page.evaluate((g) => window.harness.invoke('storage:pick-folder', { groupId: g }), id)
     )
     if (!picked.picked || !picked.token) throw new Error('expected a token')
     expect(picked).toMatchObject({
@@ -127,7 +127,7 @@ test('storage:pickFolder + storage:link move merges into a linked folder', async
     expect(phases).toContain('copying')
     expect(phases.at(-1)).toBe('done')
     const again = await page.evaluate(
-      (g) => window.harness.invoke('storage:pickFolder', { groupId: g }),
+      (g) => window.harness.invoke('storage:pick-folder', { groupId: g }),
       id
     )
     expect(again).toEqual({ ok: false, error: { code: 'STORAGE_ALREADY_LINKED' } })

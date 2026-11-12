@@ -74,7 +74,7 @@ class StorageStore {
     if (groupId === null || this.busy) return
     this.error = null
     this.repoNote = null
-    const res = await window.harness.invoke('storage:pickFolder', { groupId })
+    const res = await window.harness.invoke('storage:pick-folder', { groupId })
     if (!res.ok) {
       this.error = messageFor(res.error)
       return
@@ -209,7 +209,7 @@ class StorageStore {
   /** Gives up on the missing folder and switches to app storage; returns true on success. */
   async useAppStorage(): Promise<boolean> {
     const done = await this.run((groupId) =>
-      window.harness.invoke('storage:useAppStorage', { groupId })
+      window.harness.invoke('storage:use-app-storage', { groupId })
     )
     if (done === null) return false
     if (ui.dialog?.kind === 'storage-use-app') ui.closeDialog()

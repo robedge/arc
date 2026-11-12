@@ -123,7 +123,7 @@ test('2.11: a project added to the group joins the open session, gets a worker t
     [folder]
   )
   const picked = data<StoragePickResult>(
-    await page.evaluate((g) => window.harness.invoke('storage:pickFolder', { groupId: g }), groupId)
+    await page.evaluate((g) => window.harness.invoke('storage:pick-folder', { groupId: g }), groupId)
   )
   if (!picked.picked || !picked.token) throw new Error('expected a token')
   data(

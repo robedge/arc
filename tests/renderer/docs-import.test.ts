@@ -36,7 +36,7 @@ function harness(onImport: (channel: string, request: unknown) => ImportReport):
 } {
   const invoke = mockHarness((channel, request) => {
     if (channel === 'items:list' || channel === 'sections:list') return { ok: true, data: [] }
-    if (channel === 'items:pickImport' || channel === 'items:import') {
+    if (channel === 'items:pick-import' || channel === 'items:import') {
       return { ok: true, data: onImport(channel, request) }
     }
     return { ok: true, data: undefined }
@@ -66,13 +66,13 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-it('Import… invokes items:pickImport and Docs has no New button', async () => {
+it('Import… invokes items:pick-import and Docs has no New button', async () => {
   const { invoke } = harness(() => empty)
   mount()
   expect(screen.queryByRole('button', { name: /^New/ })).toBeNull()
   await fireEvent.click(screen.getByRole('button', { name: 'Import…' }))
   await waitFor(() =>
-    expect(invoke).toHaveBeenCalledWith('items:pickImport', { sectionId: 'docs1' })
+    expect(invoke).toHaveBeenCalledWith('items:pick-import', { sectionId: 'docs1' })
   )
 })
 
@@ -111,7 +111,7 @@ it('a FILE_TOO_LARGE failure shows the spec message and valid files are not bloc
 
 function conflictingHarness(names: string[]): ReturnType<typeof mockHarness> {
   return harness((channel) =>
-    channel === 'items:pickImport' ? { ...empty, conflicts: names.map((n) => conflict(n)) } : empty
+    channel === 'items:pick-import' ? { ...empty, conflicts: names.map((n) => conflict(n)) } : empty
   ).invoke
 }
 

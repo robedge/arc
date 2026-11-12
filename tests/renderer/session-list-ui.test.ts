@@ -179,9 +179,8 @@ it('Load earlier appears for a full snapshot, pages with the smallest id and pre
   await tick()
   await fireEvent.click(screen.getByRole('button', { name: 'Load earlier' }))
   await waitFor(() =>
-    expect(invoke).toHaveBeenCalledWith('sessions:page', {
+    expect(invoke).toHaveBeenCalledWith('sessions:page-messages', {
       sessionId: 's1',
-      kind: 'messages',
       beforeId: 101,
       limit: 100
     })
