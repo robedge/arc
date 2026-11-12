@@ -9,3 +9,4 @@ playwright-report
 *.log
 arc.db*
 .claude/scheduled_tasks.lock
+.desloppify/
