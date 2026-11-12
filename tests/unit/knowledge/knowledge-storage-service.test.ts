@@ -11,10 +11,8 @@ import {
   moveDirectory,
   rollbackManifest
 } from '../../../src/main/knowledge/knowledge-storage-service'
-import type {
-  FsOps,
-  KnowledgeStorageServiceDeps
-} from '../../../src/main/knowledge/knowledge-storage-service'
+import type { FsOps } from '../../../src/main/knowledge/fs-ops'
+import type { KnowledgeStorageServiceDeps } from '../../../src/main/knowledge/knowledge-storage-service'
 import type { IpcEvents } from '../../../src/shared/ipc/contract'
 import { useTempDir } from '../helpers/temp-dir'
 import { codeOf, createEnv } from './knowledge-test-env'
