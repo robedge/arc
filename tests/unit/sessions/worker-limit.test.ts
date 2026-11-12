@@ -173,7 +173,13 @@ describe('worker limit and queue', () => {
 })
 
 describe('brain prompt', () => {
-  const base = { groupName: 'G', knowledgePath: '/k', projects: [], workersEnabled: true }
+  const base = {
+    groupName: 'G',
+    knowledgePath: '/k',
+    projects: [],
+    workersEnabled: true,
+    brainProvider: 'claude' as const
+  }
 
   it('states the mode and the limit', () => {
     const auto = buildBrainPrompt({ ...base, mode: 'autonomous', workerLimit: 3 })

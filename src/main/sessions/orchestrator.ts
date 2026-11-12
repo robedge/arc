@@ -191,8 +191,8 @@ export interface BrainPromptInput {
    * "Commands available" block, null says it was unavailable, undefined leaves commands out.
    */
   commands?: readonly CommandInfo[] | null
-  /** What runs the brain; default Claude. Decides the tool wording (Claude's tools, or shell reads in a read-only sandbox). */
-  brainProvider?: ProviderId
+  /** What runs the brain. Decides the tool wording (Claude's tools, or shell reads in a read-only sandbox). */
+  brainProvider: ProviderId
   /** With workers: the models, availability and Workers choice behind the "Providers and models" block. */
   providers?: ProvidersPromptInput
 }
@@ -378,7 +378,7 @@ function workerInstructions(provider: ProviderId, namer: BridgeToolNamer): strin
 
 /** The group-context prompt appended to the brain's system prompt. `[arc-role:brain]` is read by the fake CLI. */
 export function buildBrainPrompt(input: BrainPromptInput): string {
-  const provider = input.brainProvider ?? 'claude'
+  const provider = input.brainProvider
   const namer = bridgeToolNamer(provider)
   const projects =
     input.projects.length === 0

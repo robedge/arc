@@ -69,7 +69,8 @@ const base = {
   groupName: 'G',
   knowledgePath: '/k',
   projects: [],
-  workersEnabled: true
+  workersEnabled: true,
+  brainProvider: 'claude' as const
 }
 
 describe('brain prompt version 5', () => {

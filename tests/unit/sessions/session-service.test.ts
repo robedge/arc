@@ -530,7 +530,12 @@ describe('brain prompt version', () => {
 })
 
 describe('brain prompt capabilities', () => {
-  const base = { groupName: 'G', knowledgePath: '/k', projects: [] }
+  const base = {
+    groupName: 'G',
+    knowledgePath: '/k',
+    projects: [],
+    brainProvider: 'claude' as const
+  }
 
   it('says what the brain can and cannot do, and how approvals work for workers', () => {
     const prompt = buildBrainPrompt({ ...base, workersEnabled: true })
