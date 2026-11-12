@@ -796,6 +796,7 @@ export class Orchestrator {
         now: deps.now,
         newId,
         logEvent: (kind, text, data, workerId) => this.logEvent(kind, text, data, workerId ?? null),
+        log: deps.log,
         notifyBrain: (text) => this.notifyBrain(text),
         workerOf: (agent) => this.workers.workerOf(agent),
         isHelperToolUse: (workerId, toolUseId) => this.workers.isHelperToolUse(workerId, toolUseId),
