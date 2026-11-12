@@ -96,6 +96,22 @@ describe('GroupService.create', () => {
     expect(await codeOf(service.create('Storefront'))).toBe('IO_FAILED')
     expect(repo.list()).toEqual([])
   })
+
+  it('logs the underlying fs error when it reports IO_FAILED', async () => {
+    const warn = vi.fn()
+    const logged = new GroupService({
+      db: opened.db,
+      groupsRepo: repo,
+      appDataDir: userData,
+      log: { warn }
+    })
+    await writeFile(userData, 'x')
+    expect(await codeOf(logged.create('Storefront'))).toBe('IO_FAILED')
+    expect(warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ code: 'ENOTDIR' })
+    )
+  })
 })
 
 describe('GroupService.list', () => {

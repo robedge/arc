@@ -370,6 +370,7 @@ function registerHandlers(): void {
     db: getDb(),
     groupsRepo: new GroupsRepo(getDb()),
     appDataDir: app.getPath('userData'),
+    log: knowledgeLog,
     exportKnowledge: (groupId, token) => {
       if (!storageServiceRef) throw new AppErrorException('INTERNAL')
       return storageServiceRef.exportKnowledge(groupId, token)
@@ -551,7 +552,8 @@ function registerHandlers(): void {
     itemsRepo,
     index: knowledgeIndex,
     metaStore,
-    getKnowledgeRoot
+    getKnowledgeRoot,
+    log: knowledgeLog
   })
   const shellService = createShellService({
     env: process.env,

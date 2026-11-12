@@ -75,7 +75,8 @@ export class SectionService {
     }
     try {
       await mkdir(await resolveInRoot(root, [folderName]), { recursive: true })
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`could not create section folder ${folderName}`, error)
       this.repo.delete(row.id)
       throw new AppErrorException('IO_FAILED')
     }
@@ -182,6 +183,7 @@ export class SectionService {
         await this.moveFolder(root, oldFolder, newFolder)
       } catch (error: unknown) {
         if (error instanceof AppErrorException) throw error
+        this.log.warn(`could not rename section folder ${oldFolder} to ${newFolder}`, error)
         throw new AppErrorException('IO_FAILED')
       }
     }
@@ -209,6 +211,7 @@ export class SectionService {
       }
     } catch (error: unknown) {
       if (error instanceof AppErrorException) throw error
+      this.log.warn(`could not delete section folder ${existing.folderName}`, error)
       throw new AppErrorException('IO_FAILED')
     }
     this.repo.delete(sectionId)

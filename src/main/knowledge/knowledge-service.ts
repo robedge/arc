@@ -41,6 +41,8 @@ export interface KnowledgeServiceDeps {
   index: KnowledgeIndex
   metaStore: MetaStore
   getKnowledgeRoot: (groupId: string) => string
+  /** Receives the underlying fs error whenever one is reported to the caller as IO_FAILED. */
+  log?: { warn: (...args: unknown[]) => void }
 }
 
 /** True when `raw` parses as an absolute http or https URL. */
@@ -58,7 +60,11 @@ function fold(name: string): string {
 }
 
 export class KnowledgeService {
-  constructor(private readonly deps: KnowledgeServiceDeps) {}
+  private readonly log: { warn: (...args: unknown[]) => void }
+
+  constructor(private readonly deps: KnowledgeServiceDeps) {
+    this.log = deps.log ?? { warn: () => undefined }
+  }
 
   async list(sectionId: string): Promise<ItemSummary[]> {
     const section = this.requireSection(sectionId)
@@ -244,7 +250,8 @@ export class KnowledgeService {
     const { row, path, root } = await this.locate(itemId)
     try {
       await rm(path, { force: true })
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not delete ${row.relPath}`, error)
       throw new AppErrorException('IO_FAILED')
     }
     this.deps.itemsRepo.deleteByRelPath(row.groupId, row.relPath)
@@ -310,6 +317,9 @@ export class KnowledgeService {
         )
         report.added.push(this.toSummary(row))
       } catch (error: unknown) {
+        if (!(error instanceof AppErrorException)) {
+          this.log.warn(`knowledge: could not import ${source}`, error)
+        }
         report.failed.push({
           name,
           code: error instanceof AppErrorException ? error.code : 'IO_FAILED'
@@ -324,7 +334,8 @@ export class KnowledgeService {
     let info: Stats
     try {
       info = await stat(source)
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not stat import source ${source}`, error)
       throw new AppErrorException('IO_FAILED')
     }
     if (!info.isFile()) throw new AppErrorException('FILE_UNSUPPORTED')
@@ -343,7 +354,8 @@ export class KnowledgeService {
       } finally {
         await handle.close()
       }
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not read import source ${source}`, error)
       throw new AppErrorException('IO_FAILED')
     }
     const whole = info.size <= SNIFF_BYTES
@@ -402,6 +414,7 @@ export class KnowledgeService {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         this.deps.itemsRepo.deleteByRelPath(row.groupId, row.relPath)
       }
+      this.log.warn(`knowledge: could not read ${row.relPath}`, error)
       throw new AppErrorException('IO_FAILED')
     }
   }
@@ -413,6 +426,7 @@ export class KnowledgeService {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         this.deps.itemsRepo.deleteByRelPath(row.groupId, row.relPath)
       }
+      this.log.warn(`knowledge: could not stat ${row.relPath}`, error)
       throw new AppErrorException('IO_FAILED')
     }
   }
@@ -420,7 +434,8 @@ export class KnowledgeService {
   private async write(path: string, text: string): Promise<void> {
     try {
       await atomicWriteFile(path, text)
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not write ${path}`, error)
       throw new AppErrorException('IO_FAILED')
     }
   }
