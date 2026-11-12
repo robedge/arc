@@ -7,7 +7,7 @@ import WorkerCard from '../../src/renderer/src/lib/components/sessions/WorkerCar
 import WorkerDetails from '../../src/renderer/src/lib/components/sessions/WorkerDetails.svelte'
 import type { RunningOn } from '../../src/shared/types/provider'
 import type { PlanView, WorkerView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const claude: RunningOn = { provider: 'claude', model: 'sonnet' }
 const codex: RunningOn = { provider: 'codex', model: 'gpt-5.5' }
@@ -44,7 +44,7 @@ function worker(over: Partial<WorkerView> = {}): WorkerView {
 }
 
 beforeEach(() => {
-  mockHarness(() => ({ ok: true, data: undefined }))
+  mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(cleanup)
 

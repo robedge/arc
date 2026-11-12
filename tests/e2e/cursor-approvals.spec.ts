@@ -139,7 +139,7 @@ test("2.4: Settings > Providers warns about the user's Cursor allow rule", async
   rig = r
   const { page } = r
   // Main reads the temp HOME's ~/.cursor/cli-config.json.
-  const report = (await page.evaluate(() => window.harness.invoke('providers:bypass', {}))) as {
+  const report = (await page.evaluate(() => window.arc.invoke('providers:bypass', {}))) as {
     ok: boolean
     data?: { cursor?: { allowEntries: string[] } }
   }

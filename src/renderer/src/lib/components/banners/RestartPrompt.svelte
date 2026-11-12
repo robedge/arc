@@ -28,7 +28,7 @@
   }
 
   function restart(): void {
-    if (!preview) void window.harness.invoke('app:relaunch', {})
+    if (!preview) void window.arc.invoke('app:relaunch', {})
   }
 </script>
 

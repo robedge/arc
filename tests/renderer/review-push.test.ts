@@ -5,13 +5,13 @@ import { eventStyle } from '../../src/renderer/src/lib/components/sessions/event
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import type { ReviewPush } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const COMMAND = 'git push -u origin arc/s'
 let push: ReviewPush
 let previewResult: () => unknown
 let pushResult: () => unknown | Promise<unknown>
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   review.reset()
@@ -22,7 +22,7 @@ beforeEach(() => {
     push = { state: 'pushed', remote: 'origin', at: Date.now(), newerCommits: 0 }
     return { ok: true, data: { pushedAt: Date.now(), remote: 'origin', sha: 'abc' } }
   }
-  invoke = mockHarness(async (channel) => {
+  invoke = mockArc(async (channel) => {
     if (channel === 'review:get') {
       return {
         ok: true,

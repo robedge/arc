@@ -12,7 +12,7 @@ import type {
   WorkerStatus,
   WorkerView
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -74,10 +74,10 @@ function push(w: WorkerView): void {
   load(w)
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
-  invoke = mockHarness((channel) => {
+  invoke = mockArc((channel) => {
     if (channel === 'workers:open-terminal')
       return { ok: true, data: { backlog: 'first line\n', seq: 1, truncated: false } }
     if (channel === 'workers:interrupt') return { ok: true, data: { outcome: 'acked' } }

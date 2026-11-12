@@ -28,7 +28,7 @@ export interface TextItemContent {
 
 export interface BinaryItemContent {
   type: 'binary'
-  /** `harness-knowledge://<groupId>/<itemId>?rev=<revision>`; the renderer fetches the bytes. */
+  /** `arc-knowledge://<groupId>/<itemId>?rev=<revision>`; the renderer fetches the bytes. */
   url: string
   mime: string
 }

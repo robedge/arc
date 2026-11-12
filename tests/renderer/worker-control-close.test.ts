@@ -10,7 +10,7 @@ import type {
   WorkerStatus,
   WorkerView
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -86,12 +86,12 @@ const DETAILS = {
   unmergedCommits: 0
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 let handBackResult: { ok: true; data: unknown } | { ok: false; error: { code: string } }
 
 beforeEach(() => {
   handBackResult = { ok: true, data: { ok: true } }
-  invoke = mockHarness((channel) => {
+  invoke = mockArc((channel) => {
     if (channel === 'workers:open-terminal')
       return { ok: true, data: { backlog: 'x\n', seq: 1, truncated: false } }
     if (channel === 'workers:hand-back') return handBackResult as never
@@ -245,7 +245,7 @@ it('Details offers Hand back instead of Step in when controlled', async () => {
 })
 
 it('a failed Step in from Details shows the error and keeps Details open', async () => {
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'workers:step-in'
       ? { ok: false, error: { code: 'VALIDATION_FAILED' } }
       : ({ ok: true, data: channel === 'workers:get' ? DETAILS : { ok: true } } as never)

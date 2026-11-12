@@ -14,7 +14,7 @@ class SessionsListStore {
 
   /** Startup (and every change): `sessions:attention-summary` is the source of truth. */
   async loadAttention(): Promise<void> {
-    const res = await window.harness.invoke('sessions:attention-summary', {})
+    const res = await window.arc.invoke('sessions:attention-summary', {})
     if (res.ok) this.attentionByGroup = res.data.byGroup
   }
 
@@ -35,7 +35,7 @@ class SessionsListStore {
   }
 
   async load(groupId: string): Promise<void> {
-    const res = await window.harness.invoke('sessions:list', { groupId })
+    const res = await window.arc.invoke('sessions:list', { groupId })
     if (res.ok) this.byGroup = { ...this.byGroup, [groupId]: res.data }
   }
 

@@ -12,7 +12,7 @@ import type {
   SessionMessage,
   SessionSummary
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const summary = (
   id: string,
@@ -43,7 +43,7 @@ beforeEach(() => {
   sessionsList.byGroup = {}
   activeSession.close()
   ui.selectedGroupId = 'g1'
-  mockHarness(() => ({ ok: true, data: [] }))
+  mockArc(() => ({ ok: true, data: [] }))
 })
 afterEach(cleanup)
 
@@ -89,7 +89,7 @@ it('choosing Rename parks focus on the trigger and calls onrename', async () => 
 
 it('delete dialog states the consequences and confirm calls sessions:delete and removes the row', async () => {
   sessionsList.byGroup = { g1: [summary('a', 2), summary('b', 1)] }
-  const invoke = mockHarness((channel) =>
+  const invoke = mockArc((channel) =>
     channel === 'sessions:delete'
       ? { ok: true, data: undefined }
       : { ok: true, data: sessionsList.for('g1') }
@@ -112,7 +112,7 @@ it('deleting the open session returns to the list', async () => {
     await import('../../src/renderer/src/lib/components/sessions/DeleteSessionDialog.svelte')
   sessionsList.byGroup = { g1: [summary('s1', 1)] }
   activeSession.sessionId = 's1'
-  mockHarness(() => ({ ok: true, data: undefined }))
+  mockArc(() => ({ ok: true, data: undefined }))
   render(Dialog, { session: { id: 's1', name: 'x' }, onclose: () => {} })
   await fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(activeSession.sessionId).toBeNull())
@@ -120,7 +120,7 @@ it('deleting the open session returns to the list', async () => {
 
 it('Rename from the row calls sessions:rename and updates the row', async () => {
   sessionsList.byGroup = { g1: [summary('a', 1)] }
-  const invoke = mockHarness((channel, req) =>
+  const invoke = mockArc((channel, req) =>
     channel === 'sessions:rename'
       ? { ok: true, data: { ...summary('a', 1), name: (req as { name: string }).name } }
       : { ok: true, data: sessionsList.for('g1') }
@@ -149,7 +149,7 @@ it('a session:summary push upserts the row and re-sorts newest first', () => {
 it('Load earlier appears for a full snapshot, pages with the smallest id and prepends', async () => {
   const first = Array.from({ length: 100 }, (_, i) => message(101 + i))
   const older = Array.from({ length: 5 }, (_, i) => message(96 + i))
-  const invoke = mockHarness(() => ({ ok: true, data: older }))
+  const invoke = mockArc(() => ({ ok: true, data: older }))
   activeSession.setSnapshot({
     header: {
       id: 's1',

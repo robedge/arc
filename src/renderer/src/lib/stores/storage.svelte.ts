@@ -57,7 +57,7 @@ class StorageStore {
     }
     this.groupId = groupId
     if (groupId === null) return
-    const res = await window.harness.invoke('storage:get', { groupId })
+    const res = await window.arc.invoke('storage:get', { groupId })
     if (request !== this.requestId) return
     if (res.ok && res.data) this.state = res.data
   }
@@ -74,7 +74,7 @@ class StorageStore {
     if (groupId === null || this.busy) return
     this.error = null
     this.repoNote = null
-    const res = await window.harness.invoke('storage:pick-folder', { groupId })
+    const res = await window.arc.invoke('storage:pick-folder', { groupId })
     if (!res.ok) {
       this.error = messageFor(res.error)
       return
@@ -101,7 +101,7 @@ class StorageStore {
     this.progress = null
     this.opGroupId = groupId
     try {
-      const res = await window.harness.invoke('storage:link', {
+      const res = await window.arc.invoke('storage:link', {
         groupId,
         token: pick.token,
         choice
@@ -178,7 +178,7 @@ class StorageStore {
   /** Unlinks the folder; returns true on success. */
   async unlink(choice: StorageUnlinkChoice): Promise<boolean> {
     const done = await this.run((groupId) =>
-      window.harness.invoke('storage:unlink', { groupId, choice })
+      window.arc.invoke('storage:unlink', { groupId, choice })
     )
     if (done === null) return false
     if (ui.dialog?.kind === 'storage-unlink') ui.closeDialog()
@@ -188,7 +188,7 @@ class StorageStore {
   /** Opens the picker to point the group at the moved folder. */
   async locate(): Promise<void> {
     const res = await this.run(async (groupId) => {
-      const r = await window.harness.invoke('storage:locate', { groupId })
+      const r = await window.arc.invoke('storage:locate', { groupId })
       if (!r.ok) return r
       // Normalise "cancelled" into the current state so run() leaves things as they are.
       return {
@@ -209,7 +209,7 @@ class StorageStore {
   /** Gives up on the missing folder and switches to app storage; returns true on success. */
   async useAppStorage(): Promise<boolean> {
     const done = await this.run((groupId) =>
-      window.harness.invoke('storage:use-app-storage', { groupId })
+      window.arc.invoke('storage:use-app-storage', { groupId })
     )
     if (done === null) return false
     if (ui.dialog?.kind === 'storage-use-app') ui.closeDialog()

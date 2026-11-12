@@ -4,14 +4,14 @@ import Composer from '../../src/renderer/src/lib/components/sessions/Composer.sv
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import type { Result } from '../../src/shared/errors'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 let reply: Result<unknown>
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   reply = { ok: true, data: { messageId: 1 } }
-  invoke = mockHarness(() => reply)
+  invoke = mockArc(() => reply)
   providers.reset()
   activeSession.close()
   activeSession.sessionId = 's1'

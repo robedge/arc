@@ -6,7 +6,7 @@ import WorkerCard from '../../src/renderer/src/lib/components/sessions/WorkerCar
 import { usage } from '../../src/renderer/src/lib/stores/usage.svelte'
 import type { AgentUsage, SessionUsage, TokenTotals } from '../../src/shared/types/usage'
 import type { WorkerView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 // @spec: 008-plan-usage-and-token-spend (amendment 2: live token counts)
 
@@ -92,7 +92,7 @@ const chip = (): HTMLButtonElement =>
 
 beforeEach(() => {
   usage.reset()
-  mockHarness(() => ({ ok: true, data: midTurn() }))
+  mockArc(() => ({ ok: true, data: midTurn() }))
 })
 afterEach(cleanup)
 

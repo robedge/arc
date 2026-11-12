@@ -4,7 +4,7 @@ import BypassWarning from '../../src/renderer/src/lib/components/settings/Bypass
 import { models } from '../../src/renderer/src/lib/stores/models.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import { PROVIDER_IDS } from '../../src/shared/types/provider'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 beforeEach(() => {
   providers.reset()
@@ -17,7 +17,7 @@ it('busy has an entry for every provider', () => {
 })
 
 it('a models answer with no cursor key leaves Cursor with no models', async () => {
-  mockHarness(
+  mockArc(
     () =>
       ({
         ok: true,
@@ -34,14 +34,14 @@ it('a models answer with no cursor key leaves Cursor with no models', async () =
 
 it('keeps the cursor list main sends', async () => {
   const cursor = [{ ref: { provider: 'cursor', model: 'auto' }, label: 'Auto' }]
-  mockHarness(() => ({ ok: true, data: { claude: [], codex: [], cursor } }) as never)
+  mockArc(() => ({ ok: true, data: { claude: [], codex: [], cursor } }) as never)
   await models.load()
   expect(models.lists.cursor).toEqual(cursor)
 })
 
 it('a bypass report with only a cursor block reaches the store and shows the Cursor section', async () => {
   const cursor = { allowEntries: ['Shell(git)'], hookEvents: ['beforeShellExecution'] }
-  mockHarness(
+  mockArc(
     () =>
       ({
         ok: true,
@@ -55,7 +55,7 @@ it('a bypass report with only a cursor block reaches the store and shows the Cur
 })
 
 it('a bypass report whose cursor block lacks its arrays loads with empty lists and no rejection', async () => {
-  mockHarness(
+  mockArc(
     () =>
       ({
         ok: true,

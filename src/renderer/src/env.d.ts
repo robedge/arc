@@ -1,9 +1,9 @@
 /// <reference types="svelte" />
 /// <reference types="vite/client" />
-import type { HarnessApi } from '@shared/ipc/harness-api'
+import type { ArcApi } from '@shared/ipc/arc-api'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
   }
 }

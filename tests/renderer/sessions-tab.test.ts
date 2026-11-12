@@ -4,7 +4,7 @@ import SessionsTab from '../../src/renderer/src/lib/components/sessions/Sessions
 import CliBanner from '../../src/renderer/src/lib/components/sessions/CliBanner.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import type { CliStatus } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const MISSING =
   "Claude Code isn't installed. Install it from claude.com/claude-code, then click Retry."
@@ -14,7 +14,7 @@ const ERROR = "Couldn't check Claude Code. Click Retry. Details are in the logs.
 
 beforeEach(() => {
   providers.reset()
-  mockHarness(() => ({ ok: true, data: { state: 'ok', message: '' } }))
+  mockArc(() => ({ ok: true, data: { state: 'ok', message: '' } }))
 })
 afterEach(cleanup)
 
@@ -52,7 +52,7 @@ it('CliBanner renders nothing when ok or unknown', () => {
 
 it('Retry invokes providers:check, shows busy, then updates from the result', async () => {
   let resolve!: (v: unknown) => void
-  const invoke = mockHarness(() => new Promise((r) => (resolve = r)) as never)
+  const invoke = mockArc(() => new Promise((r) => (resolve = r)) as never)
   providers.set({
     claude: { provider: 'claude', checkedAt: 1, state: 'missing', message: MISSING }
   })

@@ -5,7 +5,7 @@ import { activeSession } from '../../src/renderer/src/lib/stores/active-session.
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import type { ReviewFile, ReviewFileDiff } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 type Marks = Record<string, Pick<ReviewFile, 'reviewed' | 'changedSinceReviewed'>>
 
@@ -38,7 +38,7 @@ const diff: ReviewFileDiff = {
 
 let marks: Marks
 let setReviewed: (req: unknown) => { ok: boolean; error?: unknown }
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   review.reset()
@@ -50,7 +50,7 @@ beforeEach(() => {
     marks[r.path] = { reviewed: r.reviewed, changedSinceReviewed: false }
     return { ok: true }
   }
-  invoke = mockHarness((channel, request) => {
+  invoke = mockArc((channel, request) => {
     if (channel === 'review:get') {
       return {
         ok: true,

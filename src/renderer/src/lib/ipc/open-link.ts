@@ -3,7 +3,7 @@ import { toasts } from '../stores/toasts.svelte'
 
 /** Opens an http(s) address from rendered markdown; main revalidates the scheme. */
 export async function openUrl(url: string): Promise<void> {
-  const res = await window.harness.invoke('shell:open-url', { url })
+  const res = await window.arc.invoke('shell:open-url', { url })
   if (!res.ok) toasts.show(messageFor(res.error), 'error')
 }
 
@@ -12,6 +12,6 @@ export async function openUrl(url: string): Promise<void> {
  * address from disk, so the renderer only ever sends the item id.
  */
 export async function openLink(itemId: string): Promise<void> {
-  const res = await window.harness.invoke('shell:open-link', { itemId })
+  const res = await window.arc.invoke('shell:open-link', { itemId })
   if (!res.ok) toasts.show(messageFor(res.error), 'error')
 }

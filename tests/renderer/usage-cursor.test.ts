@@ -14,7 +14,7 @@ import type {
   SessionUsage,
   TokenTotals
 } from '../../src/shared/types/usage'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const t = (total: number): TokenTotals => ({
   input: total,
@@ -69,7 +69,7 @@ const chip = (): HTMLElement => document.querySelector('[data-usage-chip]') as H
 beforeEach(() => {
   usage.reset()
   planUsage.reset()
-  mockHarness(() => ({ ok: true, data: snap({}) }))
+  mockArc(() => ({ ok: true, data: snap({}) }))
 })
 afterEach(cleanup)
 

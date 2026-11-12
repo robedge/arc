@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/svelte'
 import type { BypassReport } from '../../src/shared/types/provider'
 import ProvidersSettings from '../../src/renderer/src/lib/components/settings/ProvidersSettings.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const report = (patch: Partial<BypassReport> = {}): BypassReport => ({
   claudeHookEvents: [],
@@ -17,7 +17,7 @@ let current: BypassReport
 beforeEach(() => {
   current = report()
   providers.reset()
-  mockHarness((channel) =>
+  mockArc((channel) =>
     channel === 'providers:bypass'
       ? ({ ok: true, data: current } as never)
       : ({ ok: true, data: {} } as never)

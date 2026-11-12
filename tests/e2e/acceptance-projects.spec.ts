@@ -96,16 +96,16 @@ test('2.2 dropping onto the window never navigates; projects:add (the drop IPC) 
     expect(page.url()).toBe(urlBefore)
     await expect(page.getByRole('heading', { name: 'Storefront' })).toBeVisible()
 
-    const groups = await page.evaluate(() => window.harness.invoke('groups:list', {}))
+    const groups = await page.evaluate(() => window.arc.invoke('groups:list', {}))
     const gid = groups.ok ? groups.data[0]?.id : undefined
     if (!gid) throw new Error('no group')
     const added = await page.evaluate(
-      (a) => window.harness.invoke('projects:add', { groupId: a.gid, paths: [a.dir] }),
+      (a) => window.arc.invoke('projects:add', { groupId: a.gid, paths: [a.dir] }),
       { gid, dir }
     )
     expect(added).toMatchObject({ ok: true, data: { added: [{ path: dir }], skipped: [] } })
     const skipped = await page.evaluate(
-      (a) => window.harness.invoke('projects:add', { groupId: a.gid, paths: [a.file] }),
+      (a) => window.arc.invoke('projects:add', { groupId: a.gid, paths: [a.file] }),
       { gid, file: join(root, 'missing.txt') }
     )
     expect(skipped.ok).toBe(true)

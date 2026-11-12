@@ -14,7 +14,7 @@ function setup(save: () => Promise<unknown>): {
     if (channel === 'items:save') return save()
     return { ok: true, data: undefined }
   })
-  Object.defineProperty(window, 'harness', {
+  Object.defineProperty(window, 'arc', {
     configurable: true,
     value: {
       invoke,

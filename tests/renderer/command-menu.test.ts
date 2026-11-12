@@ -7,7 +7,7 @@ import { activeSession } from '../../src/renderer/src/lib/stores/active-session.
 import { commands } from '../../src/renderer/src/lib/stores/commands.svelte'
 import type { CommandInfo } from '../../src/shared/types/commands'
 import type { SessionMessage } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const LIST: CommandInfo[] = [
   {
@@ -45,12 +45,12 @@ const LIST: CommandInfo[] = [
   }
 ]
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 let listReply: () => unknown
 
 beforeEach(() => {
   listReply = () => ({ ok: true, data: LIST })
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'commands:list'
       ? (listReply() as never)
       : ({ ok: true, data: { messageId: 1 } } as never)

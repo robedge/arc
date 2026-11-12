@@ -94,7 +94,7 @@ class ActiveSessionStore {
     this.loading = true
     this.loadError = null
     this.dirtyChoice = null
-    const res = await window.harness.invoke('sessions:open', { sessionId })
+    const res = await window.arc.invoke('sessions:open', { sessionId })
     if (token !== this.openToken) return
     this.loading = false
     if (!res.ok) this.loadError = res.error
@@ -148,7 +148,7 @@ class ActiveSessionStore {
     const oldest = this.messages[0]
     if (sessionId === null || !oldest || this.loadingEarlier) return
     this.loadingEarlier = true
-    const res = await window.harness.invoke('sessions:page-messages', {
+    const res = await window.arc.invoke('sessions:page-messages', {
       sessionId,
       beforeId: oldest.id,
       limit: PAGE_SIZE
@@ -313,7 +313,7 @@ class ActiveSessionStore {
       | { decline: true },
     requestId: string
   ): Promise<AppError | null> {
-    const res = await window.harness.invoke('attention:answer', { requestId, ...answer })
+    const res = await window.arc.invoke('attention:answer', { requestId, ...answer })
     return res.ok ? null : res.error
   }
 
@@ -326,7 +326,7 @@ class ActiveSessionStore {
   async send(text: string): Promise<AppError | null> {
     const sessionId = this.sessionId
     if (sessionId === null) return null
-    const res = await window.harness.invoke('sessions:send-message', { sessionId, text })
+    const res = await window.arc.invoke('sessions:send-message', { sessionId, text })
     if (!res.ok) return res.error
     if (this.sessionId === sessionId && !this.messages.some((m) => m.id === res.data.messageId)) {
       const now = Date.now()
@@ -360,7 +360,7 @@ class ActiveSessionStore {
   async stop(): Promise<void> {
     const sessionId = this.sessionId
     if (sessionId === null) return
-    await window.harness.invoke('sessions:stop-reply', { sessionId })
+    await window.arc.invoke('sessions:stop-reply', { sessionId })
   }
 }
 

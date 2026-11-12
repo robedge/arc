@@ -14,7 +14,7 @@ import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { Result } from '../../src/shared/errors'
 import type { ItemSummary } from '../../src/shared/types/item'
 import type { Section } from '../../src/shared/types/section'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function item(id: string, title: string): ItemSummary {
   return {
@@ -43,9 +43,9 @@ const CONFLICT = 'You have unsaved changes to Alpha that conflict with the file 
 
 let diskRevision = 'r0'
 
-function setup(): ReturnType<typeof mockHarness> {
+function setup(): ReturnType<typeof mockArc> {
   diskRevision = 'r0'
-  return mockHarness((channel): Result<unknown> => {
+  return mockArc((channel): Result<unknown> => {
     if (channel === 'items:list') return { ok: true, data: [item('a', 'Alpha'), item('b', 'Beta')] }
     if (channel === 'items:read')
       return { ok: true, data: { type: 'text', content: 'disk', revision: diskRevision } }
@@ -62,11 +62,11 @@ async function confirm(text: string): Promise<HTMLElement> {
   return dialog
 }
 
-const calls = (invoke: ReturnType<typeof mockHarness>, channel: string): unknown[][] =>
+const calls = (invoke: ReturnType<typeof mockArc>, channel: string): unknown[][] =>
   invoke.mock.calls.filter((c) => c[0] === channel)
 
 /** Opens Alpha, types, and reports an outside change so the banner state is active. */
-async function conflicted(): Promise<ReturnType<typeof mockHarness>> {
+async function conflicted(): Promise<ReturnType<typeof mockArc>> {
   const invoke = setup()
   ui.selectedGroupId = 'g1'
   groupDetail.groupId = 'g1'
@@ -198,7 +198,7 @@ it('window close with a pending conflict saves a "(conflict)" copy and still rep
     if (event === 'app:before-close') listener = cb
     return () => {}
   })
-  Object.defineProperty(window, 'harness', {
+  Object.defineProperty(window, 'arc', {
     configurable: true,
     value: { invoke, on, getPathForFile: vi.fn(() => '') }
   })

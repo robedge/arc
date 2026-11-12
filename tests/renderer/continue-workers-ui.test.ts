@@ -9,7 +9,7 @@ import type {
   SessionMessage,
   WorkerView
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -66,11 +66,11 @@ function worker(over: Partial<WorkerView> = {}): WorkerView {
 }
 
 let refusal: string | null
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   refusal = null
-  invoke = mockHarness((channel) => {
+  invoke = mockArc((channel) => {
     if (channel === 'workers:continue' && refusal)
       return { ok: false, error: { code: 'VALIDATION_FAILED', details: { reason: refusal } } }
     return { ok: true, data: undefined }

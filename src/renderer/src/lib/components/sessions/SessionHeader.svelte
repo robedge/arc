@@ -109,7 +109,7 @@
 
   async function removeRule(ruleId: string): Promise<void> {
     configError = null
-    const res = await window.harness.invoke('sessions:remove-allow-rule', {
+    const res = await window.arc.invoke('sessions:remove-allow-rule', {
       sessionId: header.id,
       ruleId
     })
@@ -127,7 +127,7 @@
     autoApprove?: boolean
   }): Promise<void> {
     configError = null
-    const res = await window.harness.invoke('sessions:set-config', {
+    const res = await window.arc.invoke('sessions:set-config', {
       sessionId: header.id,
       ...patch
     })
@@ -201,7 +201,7 @@
   async function save(): Promise<void> {
     const name = draft.trim()
     if (name === '' || name === header.name) return cancel()
-    const res = await window.harness.invoke('sessions:rename', { sessionId: header.id, name })
+    const res = await window.arc.invoke('sessions:rename', { sessionId: header.id, name })
     if (!res.ok) {
       error = messageFor(res.error)
       return

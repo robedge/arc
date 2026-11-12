@@ -14,7 +14,7 @@ import type {
   WorkerStatus,
   WorkerView
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function plan(status: PlanStatus = 'proposed', over: Partial<PlanView> = {}): PlanView {
   return {
@@ -74,9 +74,9 @@ const header: Header = {
   branches: []
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
-  invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  invoke = mockArc(() => ({ ok: true, data: undefined }))
   activeSession.close()
 })
 afterEach(cleanup)
@@ -150,7 +150,7 @@ it('a worker card shows the status word for all nine statuses', () => {
 })
 
 it('WorkerDetails asks to confirm before calling workers:stop', async () => {
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'workers:get'
       ? {
           ok: true,

@@ -257,7 +257,7 @@ describe('binary import', () => {
     const read = await env.service.read(item.id)
     expect(read).toMatchObject({ type: 'binary', mime: 'image/png' })
     if (read.type !== 'binary') throw new Error('expected binary')
-    expect(read.url.startsWith(`harness-knowledge://${env.groupId}/${item.id}?rev=`)).toBe(true)
+    expect(read.url.startsWith(`arc-knowledge://${env.groupId}/${item.id}?rev=`)).toBe(true)
     expect(await codeOf(env.service.save(item.id, 'x', item.revision))).toBe('VALIDATION_FAILED')
   })
 })

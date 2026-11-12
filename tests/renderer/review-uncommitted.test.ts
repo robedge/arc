@@ -10,7 +10,7 @@ import type {
   ReviewUncommitted,
   ReviewUncommittedFile
 } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const session = (path: string): ReviewFile => ({
   path,
@@ -35,7 +35,7 @@ const hand = (path: string, over: Partial<ReviewUncommittedFile> = {}): ReviewUn
 
 let uncommitted: ReviewUncommitted = { state: 'ok', files: [] }
 let diffFor: (req: { path: string; source?: string }) => ReviewFileDiff
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 const textDiff = (text: string): ReviewFileDiff => ({
   kind: 'text',
@@ -56,7 +56,7 @@ beforeEach(() => {
   activeSession.close()
   uncommitted = { state: 'ok', files: [hand('src/hand.ts')] }
   diffFor = (req) => textDiff(req.source === 'uncommitted' ? 'from hand' : 'from session')
-  invoke = mockHarness((channel, request) => {
+  invoke = mockArc((channel, request) => {
     if (channel === 'review:get') {
       return {
         ok: true,

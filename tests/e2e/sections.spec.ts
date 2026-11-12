@@ -1,19 +1,19 @@
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import { expect, test } from './fixtures'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
   }
 }
 
 test('sections:* channels list built-ins and manage a custom section', async ({ window: page }) => {
-  const group = await page.evaluate(() => window.harness.invoke('groups:create', { name: 'Shop' }))
+  const group = await page.evaluate(() => window.arc.invoke('groups:create', { name: 'Shop' }))
   if (!group.ok) throw new Error('group create failed')
   const groupId = group.data.id
 
   const listed = await page.evaluate(
-    (id) => window.harness.invoke('sections:list', { groupId: id }),
+    (id) => window.arc.invoke('sections:list', { groupId: id }),
     groupId
   )
   expect(listed.ok && listed.data.map((s) => s.name)).toEqual([
@@ -25,7 +25,7 @@ test('sections:* channels list built-ins and manage a custom section', async ({ 
   ])
 
   const created = await page.evaluate(
-    (id) => window.harness.invoke('sections:create', { groupId: id, name: 'Runbooks' }),
+    (id) => window.arc.invoke('sections:create', { groupId: id, name: 'Runbooks' }),
     groupId
   )
   expect(created).toMatchObject({
@@ -35,25 +35,25 @@ test('sections:* channels list built-ins and manage a custom section', async ({ 
   if (!created.ok) return
 
   const dup = await page.evaluate(
-    (id) => window.harness.invoke('sections:create', { groupId: id, name: 'runbooks' }),
+    (id) => window.arc.invoke('sections:create', { groupId: id, name: 'runbooks' }),
     groupId
   )
   expect(dup).toMatchObject({ ok: false, error: { code: 'SECTION_NAME_DUPLICATE' } })
 
   const renamed = await page.evaluate(
-    (id) => window.harness.invoke('sections:rename', { sectionId: id, name: 'RUNBOOKS' }),
+    (id) => window.arc.invoke('sections:rename', { sectionId: id, name: 'RUNBOOKS' }),
     created.data.id
   )
   expect(renamed).toMatchObject({ ok: true, data: { name: 'RUNBOOKS' } })
 
   const removed = await page.evaluate(
-    (id) => window.harness.invoke('sections:delete', { sectionId: id }),
+    (id) => window.arc.invoke('sections:delete', { sectionId: id }),
     created.data.id
   )
   expect(removed).toEqual({ ok: true, data: { removed: 0 } })
 
   const after = await page.evaluate(
-    (id) => window.harness.invoke('sections:list', { groupId: id }),
+    (id) => window.arc.invoke('sections:list', { groupId: id }),
     groupId
   )
   expect(after.ok && after.data).toHaveLength(5)

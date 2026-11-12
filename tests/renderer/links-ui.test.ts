@@ -9,7 +9,7 @@ import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { ItemSummary } from '../../src/shared/types/item'
 import type { Section } from '../../src/shared/types/section'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const links: Section = {
   id: 'links1',
@@ -37,9 +37,9 @@ function link(id: string, url: string, title = url, description = ''): ItemSumma
 }
 
 /** A tiny in-memory links:upsert/items:list/items:delete backend. */
-function harness(initial: ItemSummary[] = []): ReturnType<typeof mockHarness> {
+function harness(initial: ItemSummary[] = []): ReturnType<typeof mockArc> {
   let store = [...initial]
-  return mockHarness((channel, request) => {
+  return mockArc((channel, request) => {
     const req = request as Record<string, string | undefined>
     if (channel === 'items:list') return { ok: true, data: store }
     if (channel === 'sections:list') return { ok: true, data: [links] }
@@ -121,7 +121,7 @@ it('rejects an address without http(s) inline and does not call main', async () 
 })
 
 it('maps a server LINK_URL_INVALID to the same message', async () => {
-  mockHarness((channel) => {
+  mockArc((channel) => {
     if (channel === 'links:upsert') {
       return { ok: false, error: { code: 'LINK_URL_INVALID' } }
     }
@@ -171,7 +171,7 @@ it('deletes a link after confirmation', async () => {
 })
 
 it('a form-level server error shows the error icon beside the exact text', async () => {
-  mockHarness((channel) => {
+  mockArc((channel) => {
     if (channel === 'links:upsert') return { ok: false, error: { code: 'VALIDATION_FAILED' } }
     return { ok: true, data: [] }
   })

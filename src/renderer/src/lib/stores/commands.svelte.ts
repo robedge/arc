@@ -33,7 +33,7 @@ class CommandsStore {
     this.generation.set(sessionId, generation)
     let next: CommandsEntry
     try {
-      const result = await window.harness.invoke('commands:list', { sessionId })
+      const result = await window.arc.invoke('commands:list', { sessionId })
       next =
         result.ok && Array.isArray(result.data)
           ? { status: 'ready', commands: result.data }

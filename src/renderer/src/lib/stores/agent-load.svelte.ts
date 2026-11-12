@@ -85,7 +85,7 @@ class AgentLoadStore {
     let status: AgentLoadStatus = 'error'
     let items: LoadItem[] = []
     try {
-      const result = await window.harness.invoke('agent-load:get', {})
+      const result = await window.arc.invoke('agent-load:get', {})
       if (result.ok && Array.isArray(result.data.items)) {
         status = 'ready'
         items = result.data.items
@@ -104,7 +104,7 @@ class AgentLoadStore {
     let items: LoadItem[] = []
     let state: CodexLoadState = 'unreadable'
     try {
-      const result = await window.harness.invoke('agent-load:codex', {})
+      const result = await window.arc.invoke('agent-load:codex', {})
       if (result.ok && Array.isArray(result.data.items)) {
         items = result.data.items
         state = result.data.state
@@ -121,7 +121,7 @@ class AgentLoadStore {
     let items: LoadItem[] = []
     let state: CursorLoadState = 'unreadable'
     try {
-      const result = await window.harness.invoke('agent-load:cursor', {})
+      const result = await window.arc.invoke('agent-load:cursor', {})
       if (result.ok && Array.isArray(result.data.items)) {
         items = result.data.items
         state = result.data.state

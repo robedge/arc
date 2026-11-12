@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import type { Result } from '../../src/shared/errors'
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import type { Group } from '../../src/shared/types/group'
 import type { ItemSummary } from '../../src/shared/types/item'
 import type { Section } from '../../src/shared/types/section'
@@ -16,7 +16,7 @@ import { expect, test } from './fixtures'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
     __avail?: { groupId: string; knowledgeRoot?: boolean; available: boolean }[]
   }
 }
@@ -33,7 +33,7 @@ async function createLinkedGroup(
   name: string
 ): Promise<{ id: string; notesId: string }> {
   const group = data<Group>(
-    await page.evaluate((n) => window.harness.invoke('groups:create', { name: n }), name)
+    await page.evaluate((n) => window.arc.invoke('groups:create', { name: n }), name)
   )
   await app.evaluate(
     (_e, paths) => {
@@ -44,16 +44,13 @@ async function createLinkedGroup(
     [folder]
   )
   const picked = data<StoragePickResult>(
-    await page.evaluate(
-      (g) => window.harness.invoke('storage:pick-folder', { groupId: g }),
-      group.id
-    )
+    await page.evaluate((g) => window.arc.invoke('storage:pick-folder', { groupId: g }), group.id)
   )
   if (!picked.picked || !picked.token) throw new Error('expected a token')
   data<StorageState>(
     await page.evaluate(
       ([g, t]) =>
-        window.harness.invoke('storage:link', {
+        window.arc.invoke('storage:link', {
           groupId: g as string,
           token: t as string,
           choice: 'move'
@@ -61,9 +58,9 @@ async function createLinkedGroup(
       [group.id, picked.token]
     )
   )
-  await page.evaluate((g) => window.harness.invoke('groups:open', { groupId: g }), group.id)
+  await page.evaluate((g) => window.arc.invoke('groups:open', { groupId: g }), group.id)
   const sections = data<Section[]>(
-    await page.evaluate((g) => window.harness.invoke('sections:list', { groupId: g }), group.id)
+    await page.evaluate((g) => window.arc.invoke('sections:list', { groupId: g }), group.id)
   )
   const notes = sections.find((s) => s.kind === 'notes')
   if (!notes) throw new Error('no Notes section')
@@ -82,19 +79,19 @@ test('storage:unlink keep-current copies the folder back and leaves it untouched
 
     const state = data<StorageState>(
       await page.evaluate(
-        (g) => window.harness.invoke('storage:unlink', { groupId: g, choice: 'keep-current' }),
+        (g) => window.arc.invoke('storage:unlink', { groupId: g, choice: 'keep-current' }),
         id
       )
     )
     expect(state).toMatchObject({ mode: 'app', linkedPath: null, keptAside: false })
     const items = data<ItemSummary[]>(
-      await page.evaluate((s) => window.harness.invoke('items:list', { sectionId: s }), notesId)
+      await page.evaluate((s) => window.arc.invoke('items:list', { sectionId: s }), notesId)
     )
     expect(items.map((i) => i.title)).toEqual(['Service map'])
     expect(await readFile(join(folder, 'Notes', 'Service map.md'), 'utf8')).toBe('folder text')
 
     const again = await page.evaluate(
-      (g) => window.harness.invoke('storage:unlink', { groupId: g, choice: 'keep-current' }),
+      (g) => window.arc.invoke('storage:unlink', { groupId: g, choice: 'keep-current' }),
       id
     )
     expect(again).toEqual({ ok: false, error: { code: 'STORAGE_NOT_LINKED' } })
@@ -115,17 +112,17 @@ test('a renamed folder raises availability, locate relinks it, use-app-storage g
     const { id, notesId } = await createLinkedGroup(page, app, folder, 'Shop')
     await page.evaluate(() => {
       window.__avail = []
-      window.harness.on('availability:changed', (e) => window.__avail?.push(e))
+      window.arc.on('availability:changed', (e) => window.__avail?.push(e))
     })
     const getState = async (): Promise<StorageState> =>
       data<StorageState>(
-        await page.evaluate((g) => window.harness.invoke('storage:get', { groupId: g }), id)
+        await page.evaluate((g) => window.arc.invoke('storage:get', { groupId: g }), id)
       )
     expect(await getState()).toMatchObject({ mode: 'linked', available: true })
 
     await rename(folder, moved)
     // groups:open runs an availability check (so do focus and the 30 s timer).
-    await page.evaluate((g) => window.harness.invoke('groups:open', { groupId: g }), id)
+    await page.evaluate((g) => window.arc.invoke('groups:open', { groupId: g }), id)
     await expect
       .poll(() => page.evaluate(() => window.__avail))
       .toEqual([{ groupId: id, knowledgeRoot: true, available: false }])
@@ -133,7 +130,7 @@ test('a renamed folder raises availability, locate relinks it, use-app-storage g
     // The items stay indexed while the folder is missing.
     expect(
       data<ItemSummary[]>(
-        await page.evaluate((s) => window.harness.invoke('items:list', { sectionId: s }), notesId)
+        await page.evaluate((s) => window.arc.invoke('items:list', { sectionId: s }), notesId)
       ).map((i) => i.title)
     ).toEqual(['Service map'])
 
@@ -147,7 +144,7 @@ test('a renamed folder raises availability, locate relinks it, use-app-storage g
       [moved]
     )
     const located = data<StorageLocateResult>(
-      await page.evaluate((g) => window.harness.invoke('storage:locate', { groupId: g }), id)
+      await page.evaluate((g) => window.arc.invoke('storage:locate', { groupId: g }), id)
     )
     expect(located).toMatchObject({
       located: true,
@@ -157,16 +154,16 @@ test('a renamed folder raises availability, locate relinks it, use-app-storage g
     expect(await getState()).toMatchObject({ available: true, hasKnowledge: true })
     expect(
       data<ItemSummary[]>(
-        await page.evaluate((s) => window.harness.invoke('items:list', { sectionId: s }), notesId)
+        await page.evaluate((s) => window.arc.invoke('items:list', { sectionId: s }), notesId)
       ).map((i) => i.title)
     ).toEqual(['Service map'])
     expect(
-      await page.evaluate((g) => window.harness.invoke('storage:use-app-storage', { groupId: g }), id)
+      await page.evaluate((g) => window.arc.invoke('storage:use-app-storage', { groupId: g }), id)
     ).toEqual({ ok: false, error: { code: 'STORAGE_ROOT_AVAILABLE' } })
 
     // Gone again, and this time the user gives up on it.
     await rename(moved, folder)
-    await page.evaluate((g) => window.harness.invoke('groups:open', { groupId: g }), id)
+    await page.evaluate((g) => window.arc.invoke('groups:open', { groupId: g }), id)
     await expect.poll(() => page.evaluate(() => window.__avail?.length)).toBe(2)
     expect((await page.evaluate(() => window.__avail))?.[1]).toEqual({
       groupId: id,
@@ -174,12 +171,12 @@ test('a renamed folder raises availability, locate relinks it, use-app-storage g
       available: false
     })
     const onApp = data<StorageState>(
-      await page.evaluate((g) => window.harness.invoke('storage:use-app-storage', { groupId: g }), id)
+      await page.evaluate((g) => window.arc.invoke('storage:use-app-storage', { groupId: g }), id)
     )
     expect(onApp).toMatchObject({ mode: 'app', hasKnowledge: false })
     expect(
       data<ItemSummary[]>(
-        await page.evaluate((s) => window.harness.invoke('items:list', { sectionId: s }), notesId)
+        await page.evaluate((s) => window.arc.invoke('items:list', { sectionId: s }), notesId)
       )
     ).toEqual([])
     expect(await readFile(join(folder, 'Notes', 'Service map.md'), 'utf8')).toBe('folder text')

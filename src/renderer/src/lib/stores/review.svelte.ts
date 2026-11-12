@@ -193,7 +193,7 @@ class ReviewStore {
   async undoPreview(projectId: string, path: string): Promise<string[] | AppError> {
     const sessionId = this.sessionId
     if (sessionId === null) return []
-    const res = await window.harness.invoke('review:undo-preview', { sessionId, projectId, path })
+    const res = await window.arc.invoke('review:undo-preview', { sessionId, projectId, path })
     return res.ok ? res.data.activeWorkers : res.error
   }
 
@@ -210,7 +210,7 @@ class ReviewStore {
           (f) => f.projectId === sel.projectId && f.source === sel.source && f.path === sel.path
         )
       : -1
-    const res = await window.harness.invoke('review:undo', { sessionId, projectId, path })
+    const res = await window.arc.invoke('review:undo', { sessionId, projectId, path })
     if (!res.ok) return res.error
     if (sessionId !== this.sessionId) return null
     await this.load()
@@ -226,7 +226,7 @@ class ReviewStore {
   async pushPreview(projectId: string): Promise<ReviewPushPreview | AppError> {
     const sessionId = this.sessionId
     if (sessionId === null) return { code: 'SESSION_NOT_FOUND' }
-    const res = await window.harness.invoke('review:push-preview', { sessionId, projectId })
+    const res = await window.arc.invoke('review:push-preview', { sessionId, projectId })
     return res.ok ? res.data : res.error
   }
 
@@ -234,7 +234,7 @@ class ReviewStore {
   async push(projectId: string): Promise<ReviewPushResult | AppError> {
     const sessionId = this.sessionId
     if (sessionId === null) return { code: 'SESSION_NOT_FOUND' }
-    const res = await window.harness.invoke('review:push', { sessionId, projectId, confirm: true })
+    const res = await window.arc.invoke('review:push', { sessionId, projectId, confirm: true })
     if (!res.ok) return res.error
     if (sessionId === this.sessionId) await this.load()
     return res.data
@@ -252,7 +252,7 @@ class ReviewStore {
     const before = this.fileState(projectId, path)
     if (!before) return
     this.patchFile(projectId, path, { reviewed, changedSinceReviewed: false })
-    const res = await window.harness.invoke('review:set-reviewed', {
+    const res = await window.arc.invoke('review:set-reviewed', {
       sessionId,
       projectId,
       path,
@@ -323,7 +323,7 @@ class ReviewStore {
     const sessionId = this.sessionId
     const target = this.composer
     if (sessionId === null || target === null) return null
-    const res = await window.harness.invoke('review:note-create', {
+    const res = await window.arc.invoke('review:note-create', {
       sessionId,
       projectId: target.projectId,
       path: target.path,
@@ -340,14 +340,14 @@ class ReviewStore {
   }
 
   async updateNote(noteId: string, body: string): Promise<AppError | null> {
-    const res = await window.harness.invoke('review:note-update', { noteId, body })
+    const res = await window.arc.invoke('review:note-update', { noteId, body })
     if (!res.ok) return res.error
     this.setNotes(this.notes.map((n) => (n.id === noteId ? res.data : n)))
     return null
   }
 
   async deleteNote(noteId: string): Promise<AppError | null> {
-    const res = await window.harness.invoke('review:note-delete', { noteId })
+    const res = await window.arc.invoke('review:note-delete', { noteId })
     if (!res.ok) return res.error
     this.setNotes(this.notes.filter((n) => n.id !== noteId))
     return null
@@ -357,7 +357,7 @@ class ReviewStore {
   async sendNotes(): Promise<AppError | null> {
     const sessionId = this.sessionId
     if (sessionId === null) return null
-    const res = await window.harness.invoke('review:send-notes', { sessionId })
+    const res = await window.arc.invoke('review:send-notes', { sessionId })
     if (!res.ok) return res.error
     if (sessionId !== this.sessionId) return null
     const { messageId, count } = res.data
@@ -371,7 +371,7 @@ class ReviewStore {
 
   /** The message the notes were sent in goes into the conversation, which is kept mounted behind the review. */
   private async showSentMessage(sessionId: string, messageId: number): Promise<void> {
-    const res = await window.harness.invoke('sessions:page-messages', {
+    const res = await window.arc.invoke('sessions:page-messages', {
       sessionId,
       beforeId: messageId + 1,
       limit: 1
@@ -405,7 +405,7 @@ class ReviewStore {
     const notesAtStart = this.notesVersion
     this.loading = true
     this.loadError = null
-    const res = await window.harness.invoke('review:get', { sessionId })
+    const res = await window.arc.invoke('review:get', { sessionId })
     if (token !== this.token) return
     this.loading = false
     if (!res.ok) {
@@ -491,7 +491,7 @@ class ReviewStore {
     if (!sel || sessionId === null) return
     const token = ++this.diffToken
     const showAnyway = this.shown.has(keyOf(sel.projectId, sel.source, sel.path))
-    const res = await window.harness.invoke('review:file', {
+    const res = await window.arc.invoke('review:file', {
       sessionId,
       projectId: sel.projectId,
       path: sel.path,

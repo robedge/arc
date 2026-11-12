@@ -5,7 +5,7 @@ import DialogHost from '../../src/renderer/src/lib/components/dialogs/DialogHost
 import { groupDetail } from '../../src/renderer/src/lib/stores/group-detail.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { Section } from '../../src/shared/types/section'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const BUILT_INS = ['Projects', 'Notes', 'Docs', 'Playbooks', 'Links']
 
@@ -42,8 +42,8 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-function harness(): ReturnType<typeof mockHarness> {
-  return mockHarness((channel) => {
+function harness(): ReturnType<typeof mockArc> {
+  return mockArc((channel) => {
     if (channel === 'sections:list') return { ok: true, data: groupDetail.sections }
     return { ok: true, data: { removed: 3 } }
   })

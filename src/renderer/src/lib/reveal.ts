@@ -9,6 +9,6 @@ export interface RevealTarget {
 
 /** Opens a knowledge location in Finder; failures surface as a toast. */
 export async function revealInFinder(target: RevealTarget): Promise<void> {
-  const res = await window.harness.invoke('shell:reveal', target)
+  const res = await window.arc.invoke('shell:reveal', target)
   if (!res.ok) toasts.show(messageFor(res.error), 'error')
 }

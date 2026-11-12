@@ -153,7 +153,7 @@
     if (decision === 'approve' && !forced) {
       for (const w of plan.workers) refs[w.name] = { provider: providerOf(w), model: modelOf(w) }
     }
-    const res = await window.harness.invoke('sessions:plan-decision', {
+    const res = await window.arc.invoke('sessions:plan-decision', {
       sessionId: plan.sessionId,
       planId: plan.id,
       decision,

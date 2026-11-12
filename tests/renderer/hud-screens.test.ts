@@ -8,7 +8,7 @@ import { groupDetail } from '../../src/renderer/src/lib/stores/group-detail.svel
 import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { Project } from '../../src/shared/types/project'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function project(over: Partial<Project> = {}): Project {
   return { id: 'p1', name: 'alpha', path: '/x/alpha', isGit: true, available: true, ...over }
@@ -41,7 +41,7 @@ it('shows "Not a git repository" with a warning icon and word', () => {
 })
 
 it('the empty projects list shows a muted state with an icon', () => {
-  mockHarness(() => ({ ok: true, data: [] }))
+  mockArc(() => ({ ok: true, data: [] }))
   const { container } = render(ProjectsSection)
   const empty = container.querySelector('[data-empty-state]')!
   expect(empty.textContent?.trim()).toBe('Add a project folder or drag one here')
@@ -49,7 +49,7 @@ it('the empty projects list shows a muted state with an icon', () => {
 })
 
 it('with no group, GroupView shows the empty state', () => {
-  mockHarness(() => ({ ok: true, data: null }))
+  mockArc(() => ({ ok: true, data: null }))
   const { container } = render(GroupView)
   expect(container.querySelector('[data-empty-state]')?.textContent?.trim()).toBe(
     'Create a group to get started.'

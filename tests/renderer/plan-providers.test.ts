@@ -5,7 +5,7 @@ import { models } from '../../src/renderer/src/lib/stores/models.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import type { ProviderModels, ProviderStatus, WorkersPref } from '../../src/shared/types/provider'
 import type { PlanView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const lists: ProviderModels = {
   claude: [
@@ -61,13 +61,13 @@ function plan(): PlanView {
 const select = (label: string): HTMLSelectElement =>
   screen.getByLabelText(label) as HTMLSelectElement
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
   providers.reset()
   models.reset()
   models.lists = lists
   providers.set({ codex: codex('ok') })
-  invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  invoke = mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(cleanup)
 

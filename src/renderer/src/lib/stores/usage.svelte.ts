@@ -25,7 +25,7 @@ class UsageStore {
 
   /** Reads one session's usage; the push keeps it current afterwards. */
   async loadSession(sessionId: string): Promise<void> {
-    const result = await window.harness.invoke('usage:get-session', { sessionId })
+    const result = await window.arc.invoke('usage:get-session', { sessionId })
     if (result.ok) this.applySession(result.data)
   }
 
@@ -45,7 +45,7 @@ class UsageStore {
   async loadReport(range: UsageRange = this.range): Promise<void> {
     this.range = range
     const request = ++this.reportRequest
-    const result = await window.harness.invoke('usage:get-report', { range })
+    const result = await window.arc.invoke('usage:get-report', { range })
     if (request !== this.reportRequest) return
     if (result.ok) this.report = result.data
   }
@@ -73,7 +73,7 @@ class UsageStore {
     if (this.report?.suggestions.some((s) => s.id === id)) {
       this.report = { ...this.report, suggestions: without(this.report.suggestions) }
     }
-    const result = await window.harness.invoke('usage:dismiss-suggestion', { id })
+    const result = await window.arc.invoke('usage:dismiss-suggestion', { id })
     if (result.ok) return
     const gone = back
     if (!gone) return

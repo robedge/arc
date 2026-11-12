@@ -42,7 +42,7 @@
     active = false
     // Paths must be read synchronously: the DataTransfer is cleared after the handler returns.
     const files = Array.from(event.dataTransfer?.files ?? [])
-    const paths = files.map((file) => window.harness.getPathForFile(file)).filter((p) => p !== '')
+    const paths = files.map((file) => window.arc.getPathForFile(file)).filter((p) => p !== '')
     if (paths.length > 0) ondrop(paths)
   }
 </script>

@@ -62,7 +62,7 @@
     if (preset) return
     void worker.updatedAt
     const workerId = worker.id
-    void window.harness.invoke('workers:get', { workerId }).then((res) => {
+    void window.arc.invoke('workers:get', { workerId }).then((res) => {
       if (res.ok && workerId === worker.id) details = res.data
       else if (!res.ok) error = messageFor(res.error)
     })
@@ -115,7 +115,7 @@
   async function stop(): Promise<void> {
     stopping = true
     error = null
-    const res = await window.harness.invoke('workers:stop', { workerId: worker.id })
+    const res = await window.arc.invoke('workers:stop', { workerId: worker.id })
     stopping = false
     if (!res.ok) {
       error = messageFor(res.error)

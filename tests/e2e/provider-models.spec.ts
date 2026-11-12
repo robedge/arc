@@ -17,7 +17,7 @@ test('providers:models lists Codex only while it is signed in, and settings roun
   try {
     const page = await mainWindow(app)
 
-    const models = await page.evaluate(() => window.harness.invoke('providers:models', {}))
+    const models = await page.evaluate(() => window.arc.invoke('providers:models', {}))
     expect(models.ok).toBe(true)
     if (!models.ok) return
     expect(models.data.claude.map((m) => m.ref.model)).toEqual(['opus', 'sonnet', 'haiku'])
@@ -32,7 +32,7 @@ test('providers:models lists Codex only while it is signed in, and settings roun
       (JSON.parse(readFileSync(cachePath, 'utf8')) as { codex: { models: unknown[] } }).codex.models
     ).toHaveLength(2)
 
-    const defaults = await page.evaluate(() => window.harness.invoke('settings:get', {}))
+    const defaults = await page.evaluate(() => window.arc.invoke('settings:get', {}))
     expect(defaults).toEqual({
       ok: true,
       data: {
@@ -47,10 +47,10 @@ test('providers:models lists Codex only while it is signed in, and settings roun
     await page.evaluate(() => {
       const w = window as unknown as { __changed: unknown[] }
       w.__changed = []
-      window.harness.on('settings:changed', (payload) => w.__changed.push(payload))
+      window.arc.on('settings:changed', (payload) => w.__changed.push(payload))
     })
     const set = await page.evaluate(() =>
-      window.harness.invoke('settings:set', {
+      window.arc.invoke('settings:set', {
         'providers.workers': { mode: 'provider', provider: 'codex' }
       })
     )
@@ -68,7 +68,7 @@ test('providers:models lists Codex only while it is signed in, and settings roun
       .toEqual([set.ok ? set.data : null])
 
     const invalid = await page.evaluate(() =>
-      window.harness.invoke('settings:set', {
+      window.arc.invoke('settings:set', {
         'providers.workers': { mode: 'provider', provider: 'gemini' } as never
       })
     )
@@ -87,7 +87,7 @@ test('with Codex signed out, providers:models offers no Codex models', async () 
   })
   try {
     const page = await mainWindow(app)
-    const models = await page.evaluate(() => window.harness.invoke('providers:models', {}))
+    const models = await page.evaluate(() => window.arc.invoke('providers:models', {}))
     expect(models.ok && models.data.codex).toEqual([])
     expect(models.ok && models.data.claude).toHaveLength(3)
     expect(existsSync(join(userDataDir, 'provider-cache.json'))).toBe(false)

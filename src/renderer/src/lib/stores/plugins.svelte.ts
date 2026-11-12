@@ -47,19 +47,19 @@ class PluginsStore {
 
   install(name: string, marketplace?: string): Promise<void> {
     const request = marketplace ? { name, marketplace } : { name }
-    return this.run('install', name, () => window.harness.invoke('plugins:install', request))
+    return this.run('install', name, () => window.arc.invoke('plugins:install', request))
   }
 
   update(id: string): Promise<void> {
-    return this.run('update', id, () => window.harness.invoke('plugins:update', { id }))
+    return this.run('update', id, () => window.arc.invoke('plugins:update', { id }))
   }
 
   uninstall(id: string): Promise<void> {
-    return this.run('uninstall', id, () => window.harness.invoke('plugins:uninstall', { id }))
+    return this.run('uninstall', id, () => window.arc.invoke('plugins:uninstall', { id }))
   }
 
   checkUpdates(): Promise<void> {
-    return this.run('check-updates', '', () => window.harness.invoke('plugins:check-updates', {}))
+    return this.run('check-updates', '', () => window.arc.invoke('plugins:check-updates', {}))
   }
 
   /** `plugins:progress`. A change started elsewhere (another window) is adopted too, so actions stay disabled. */
@@ -86,7 +86,7 @@ class PluginsStore {
     let rows: PluginRow[] = []
     let reason: string | null = null
     try {
-      const result = await window.harness.invoke('plugins:list', {})
+      const result = await window.arc.invoke('plugins:list', {})
       if (result.ok && Array.isArray(result.data)) {
         status = 'ready'
         rows = result.data

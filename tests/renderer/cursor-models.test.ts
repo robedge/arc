@@ -24,7 +24,7 @@ import type {
   ProviderStatus
 } from '../../src/shared/types/provider'
 import type { SessionHeader as Header, PlanView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const cursor = (
   model: string,
@@ -184,7 +184,7 @@ const header: Header = {
 }
 
 let saved: AppSettings
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   providers.reset()
@@ -198,7 +198,7 @@ beforeEach(() => {
     'usage.checkClaudePlanOnLaunch': true,
     'agents.loadOff': { brain: [], workers: [] }
   }
-  invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  invoke = mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(cleanup)
 

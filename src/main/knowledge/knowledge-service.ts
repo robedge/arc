@@ -87,7 +87,7 @@ export class KnowledgeService {
     if (isBinary) {
       return {
         type: 'binary',
-        url: `harness-knowledge://${row.groupId}/${row.id}?rev=${encodeURIComponent(this.revisionOf(row))}`,
+        url: `arc-knowledge://${row.groupId}/${row.id}?rev=${encodeURIComponent(this.revisionOf(row))}`,
         mime
       }
     }

@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import ReviewScreen from '../../src/renderer/src/lib/components/review/ReviewScreen.svelte'
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import type { ReviewFile, ReviewSnapshot } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const file = (path: string, workers: string[]): ReviewFile => ({
   path,
@@ -48,7 +48,7 @@ const paths = (): string[] =>
   )
 
 async function setup(): Promise<void> {
-  mockHarness((channel) => {
+  mockArc((channel) => {
     if (channel === 'review:get') return { ok: true, data }
     return { ok: true, data: { kind: 'text', hunks: [] } }
   })

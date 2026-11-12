@@ -4,7 +4,7 @@ import GroupSidebar from '../../src/renderer/src/lib/components/shell/GroupSideb
 import DialogHost from '../../src/renderer/src/lib/components/dialogs/DialogHost.svelte'
 import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const seed = [
   { id: 'a', name: 'Alpha', createdAt: 1, updatedAt: 1 },
@@ -18,8 +18,8 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-function harness(): ReturnType<typeof mockHarness> {
-  return mockHarness((channel, request) => {
+function harness(): ReturnType<typeof mockArc> {
+  return mockArc((channel, request) => {
     if (channel === 'groups:list') return { ok: true, data: groups.list }
     if (channel === 'groups:rename') {
       const { groupId, name } = request as { groupId: string; name: string }

@@ -51,7 +51,7 @@ export default tseslint.config(
           patterns: [
             {
               group: ['**/main/**', '**/main', '@main/*', 'electron'],
-              message: 'The renderer must not import from src/main or Electron; use window.harness.'
+              message: 'The renderer must not import from src/main or Electron; use window.arc.'
             }
           ]
         }

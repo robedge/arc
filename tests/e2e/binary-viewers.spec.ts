@@ -62,7 +62,7 @@ test('PNG and PDF open in read-only viewers without CSP violations', async ({
     await expect(list.getByText('doc.pdf', { exact: true })).toBeVisible()
 
     await list.getByRole('button', { name: /pic\.png/ }).click()
-    const img = page.locator('img[src^="harness-knowledge:"]')
+    const img = page.locator('img[src^="arc-knowledge:"]')
     await expect(img).toBeVisible()
     await expect
       .poll(() => img.evaluate((el) => (el as HTMLImageElement).naturalWidth))

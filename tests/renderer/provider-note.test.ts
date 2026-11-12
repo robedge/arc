@@ -6,7 +6,7 @@ import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { ProviderState } from '../../src/shared/types/provider'
 import type { SessionHeader, WorkerView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const base: SessionHeader = {
   id: 's1',
@@ -59,13 +59,13 @@ function setStatus(
 const note = (): HTMLElement | null => document.querySelector('[data-kind="info"]')
 const notes = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('[data-kind="info"]')]
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
   providers.reset()
   activeSession.close()
   ui.closeSettings()
   setStatus('claude', 'ok')
-  invoke = mockHarness(() => ({ ok: true, data: [] }))
+  invoke = mockArc(() => ({ ok: true, data: [] }))
 })
 afterEach(cleanup)
 

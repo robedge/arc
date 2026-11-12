@@ -7,7 +7,7 @@ import { activeSession } from '../../src/renderer/src/lib/stores/active-session.
 import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { storage } from '../../src/renderer/src/lib/stores/storage.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const APP: StorageState = {
   mode: 'app',
@@ -25,7 +25,7 @@ const MISSING: StorageState = {
 }
 
 function mount(state: StorageState): void {
-  mockHarness((channel) => {
+  mockArc((channel) => {
     if (channel === 'storage:get') return ok(state)
     if (channel === 'sessions:list' || channel === 'sections:list' || channel === 'projects:list')
       return ok([])

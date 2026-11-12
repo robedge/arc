@@ -1,15 +1,15 @@
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import { expect, test } from './fixtures'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
   }
 }
 
 test('app:ping returns the app version', async ({ app, window: page }) => {
   const version = await app.evaluate(({ app: a }) => a.getVersion())
-  const res = await page.evaluate(() => window.harness.invoke('app:ping', {}))
+  const res = await page.evaluate(() => window.arc.invoke('app:ping', {}))
   expect(res).toEqual({ ok: true, data: expect.objectContaining({ version }) })
 })
 

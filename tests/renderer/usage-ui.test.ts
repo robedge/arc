@@ -7,7 +7,7 @@ import WorkerDetails from '../../src/renderer/src/lib/components/sessions/Worker
 import { usage } from '../../src/renderer/src/lib/stores/usage.svelte'
 import type { AgentUsage, SessionUsage, TokenTotals } from '../../src/shared/types/usage'
 import type { WorkerDetails as WorkerDetailsData, WorkerView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const totals = (total: number): TokenTotals => ({
   input: total,
@@ -28,10 +28,10 @@ const snap = (total: number, updatedAt = 1): SessionUsage => ({
   updatedAt
 })
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
   usage.reset()
-  invoke = mockHarness(() => ({ ok: true, data: snap(1_200_000) }))
+  invoke = mockArc(() => ({ ok: true, data: snap(1_200_000) }))
 })
 afterEach(cleanup)
 

@@ -7,7 +7,7 @@ import KnowledgeStorageSettings from '../../src/renderer/src/lib/components/sett
 import { groupDetail } from '../../src/renderer/src/lib/stores/group-detail.svelte'
 import { storage } from '../../src/renderer/src/lib/stores/storage.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const APP: StorageState = {
   mode: 'app',
@@ -34,7 +34,7 @@ function picked(
 }
 
 function host(over: { pick?: StoragePickResult; link?: () => unknown; state?: StorageState } = {}) {
-  return mockHarness((channel) => {
+  return mockArc((channel) => {
     if (channel === 'storage:get') return ok(over.state ?? APP)
     if (channel === 'storage:pick-folder') return ok(over.pick ?? picked())
     if (channel === 'storage:link') return (over.link?.() as never) ?? ok(LINKED)
@@ -106,7 +106,9 @@ describe('KnowledgeStorageSettings', () => {
     const invoke = host({ pick: { picked: false } })
     await mountSettings(APP)
     await fireEvent.click(await screen.findByRole('button', { name: 'Link folder…' }))
-    await waitFor(() => expect(invoke).toHaveBeenCalledWith('storage:pick-folder', { groupId: 'g' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith('storage:pick-folder', { groupId: 'g' })
+    )
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
   })

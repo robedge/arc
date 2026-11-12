@@ -6,7 +6,7 @@ import type { StorageState } from '@shared/types/storage'
 import DialogHost from '../../src/renderer/src/lib/components/dialogs/DialogHost.svelte'
 import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const APP: StorageState = {
   mode: 'app',
@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 function host(state: StorageState, extra: (channel: string) => Result<unknown> | undefined) {
-  return mockHarness((channel) => {
+  return mockArc((channel) => {
     const custom = extra(channel)
     if (custom) return custom
     if (channel === 'storage:get') return ok(state)
@@ -103,7 +103,7 @@ describe('Export knowledge first', () => {
   it('disables Delete, Cancel and the button while exporting', async () => {
     let release: (r: Result<unknown>) => void = () => {}
     const pending = new Promise<Result<unknown>>((resolve) => (release = resolve))
-    mockHarness((channel) => {
+    mockArc((channel) => {
       if (channel === 'storage:get') return ok(APP)
       if (channel === 'storage:pick-export-folder')
         return ok({ picked: true, path: '/out', blocked: null, token: 't1' })

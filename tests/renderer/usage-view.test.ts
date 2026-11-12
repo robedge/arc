@@ -16,7 +16,7 @@ import { motion } from '../../src/renderer/src/lib/stores/motion.svelte'
 import { sessionsList } from '../../src/renderer/src/lib/stores/sessions-list.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import { usage } from '../../src/renderer/src/lib/stores/usage.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const t = (total: number): TokenTotals => ({
   input: total,
@@ -90,7 +90,7 @@ function report(range: UsageRange = '7d', over: Partial<UsageReport> = {}): Usag
   }
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 let handler: (channel: string, request: unknown) => Result<unknown> | Promise<Result<unknown>>
 
 beforeEach(() => {
@@ -105,7 +105,7 @@ beforeEach(() => {
       error: { code: 'INTERNAL', message: 'unexpected' }
     } as unknown as Result<unknown>
   }
-  invoke = mockHarness((c, r) => handler(c, r))
+  invoke = mockArc((c, r) => handler(c, r))
 })
 afterEach(() => {
   cleanup()

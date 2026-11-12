@@ -22,7 +22,7 @@ class ModelsStore {
   lists = $state<ProviderModels>(FALLBACK)
 
   async load(): Promise<void> {
-    const result = await window.harness.invoke('providers:models', {})
+    const result = await window.arc.invoke('providers:models', {})
     if (result.ok && Array.isArray(result.data?.claude) && Array.isArray(result.data?.codex)) {
       // A main process that predates a provider sends no key for it: that provider offers nothing.
       this.lists = { ...result.data, cursor: result.data.cursor ?? [] }

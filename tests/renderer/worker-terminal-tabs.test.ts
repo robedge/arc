@@ -13,7 +13,7 @@ import type {
   SessionSnapshot,
   WorkerView
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -69,10 +69,10 @@ function load(workers: WorkerView[], attention: AttentionView[] = []): void {
   activeSession.setSnapshot(snapshot)
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
-  invoke = mockHarness((channel) => {
+  invoke = mockArc((channel) => {
     if (channel === 'workers:open-terminal')
       return { ok: true, data: { backlog: 'first line\nsecond line\n', seq: 3, truncated: false } }
     if (channel === 'workers:get')

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Result } from '../../src/shared/errors'
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import type { Group } from '../../src/shared/types/group'
 import type { StoragePickResult } from '../../src/shared/types/storage'
 import {
@@ -20,7 +20,7 @@ import type { Rig } from './sessions-rig'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
   }
 }
 
@@ -112,7 +112,7 @@ test('2.11: a project added to the group joins the open session, gets a worker t
   await expect(page.getByText('Summary: web got web.txt.')).toBeVisible()
 
   // Link the group's knowledge to the external folder that already holds a note.
-  const groups = data<Group[]>(await page.evaluate(() => window.harness.invoke('groups:list', {})))
+  const groups = data<Group[]>(await page.evaluate(() => window.arc.invoke('groups:list', {})))
   const groupId = groups.find((g) => g.name === 'Storefront')!.id
   await app.evaluate(
     (_, p) => {
@@ -123,13 +123,13 @@ test('2.11: a project added to the group joins the open session, gets a worker t
     [folder]
   )
   const picked = data<StoragePickResult>(
-    await page.evaluate((g) => window.harness.invoke('storage:pick-folder', { groupId: g }), groupId)
+    await page.evaluate((g) => window.arc.invoke('storage:pick-folder', { groupId: g }), groupId)
   )
   if (!picked.picked || !picked.token) throw new Error('expected a token')
   data(
     await page.evaluate(
       ([g, t]) =>
-        window.harness.invoke('storage:link', {
+        window.arc.invoke('storage:link', {
           groupId: g as string,
           token: t as string,
           choice: 'move'

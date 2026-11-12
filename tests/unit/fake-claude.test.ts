@@ -23,10 +23,15 @@ interface Run {
   waitForLine: (pred: (o: Record<string, unknown>) => boolean) => Promise<void>
 }
 
+/** The parent env without the ARC_* markers an enclosing agent session sets. */
+const parentEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([k]) => !k.startsWith('ARC_'))
+)
+
 function run(args: string[], env: Record<string, string> = {}): Run {
   // process.execPath is Electron under test:unit, so force node mode.
   const child = spawn(process.execPath, [fake, ...args], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', ...env }
+    env: { ...parentEnv, ELECTRON_RUN_AS_NODE: '1', ...env }
   })
   let out = ''
   let err = ''

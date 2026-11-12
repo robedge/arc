@@ -19,7 +19,7 @@ import type {
   WorkerView
 } from '../../src/shared/types/session'
 import type { AttentionRequest } from '../../src/renderer/src/lib/components/ui/attention/types'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -91,9 +91,9 @@ function snapshot(attention: AttentionView[], workers: WorkerView[] = []): Sessi
   }
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
-  invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  invoke = mockArc(() => ({ ok: true, data: undefined }))
   activeSession.close()
   sessionsList.byGroup = {}
   sessionsList.attentionByGroup = {}
@@ -206,7 +206,7 @@ it('a worker card in an attention state opens the dialog with its request first'
 })
 
 it('a worker card that is not in an attention state opens its terminal instead', async () => {
-  mockHarness(() => ({ ok: true, data: { backlog: '', seq: 0, truncated: false } }))
+  mockArc(() => ({ ok: true, data: { backlog: '', seq: 0, truncated: false } }))
   activeSession.setSnapshot(snapshot([], [worker('w1', 1, 'working')]))
   render(AgentColumn, { brainState: 'idle', workers: activeSession.workers })
   await fireEvent.click(screen.getByText('W1 · task-1'))
@@ -216,7 +216,7 @@ it('a worker card that is not in an attention state opens its terminal instead',
 })
 
 it('shows an amber dot for groups with pending requests and follows pushes', async () => {
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'sessions:attention-summary'
       ? { ok: true, data: { byGroup: { g1: 2 } } }
       : { ok: true, data: [] }
@@ -233,7 +233,7 @@ it('shows an amber dot for groups with pending requests and follows pushes', asy
   ).toBeTruthy()
 
   // another session in group g2 raises a request: the summary is refetched
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'sessions:attention-summary'
       ? { ok: true, data: { byGroup: { g1: 2, g2: 1 } } }
       : { ok: true, data: [] }
@@ -244,7 +244,7 @@ it('shows an amber dot for groups with pending requests and follows pushes', asy
   )
 
   // session:summary with a changed count also refetches
-  invoke = mockHarness(() => ({ ok: true, data: { byGroup: {} } }))
+  invoke = mockArc(() => ({ ok: true, data: { byGroup: {} } }))
   sessionsList.byGroup = { g2: [] }
   sessionsList.applySummary({
     groupId: 'g2',
@@ -264,7 +264,7 @@ it('shows an amber dot for groups with pending requests and follows pushes', asy
 })
 
 it('navigateToAttention selects group, Sessions tab and session, then opens the dialog', async () => {
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'sessions:open'
       ? { ok: true, data: snapshot([perm, question]) }
       : { ok: true, data: [] }
@@ -278,7 +278,7 @@ it('navigateToAttention selects group, Sessions tab and session, then opens the 
 })
 
 it('navigateToAttention finds the group from loaded sessions when the payload has none', async () => {
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'sessions:open' ? { ok: true, data: snapshot([perm]) } : { ok: true, data: [] }
   )
   sessionsList.byGroup = {

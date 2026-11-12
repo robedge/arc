@@ -4,7 +4,7 @@ import type { BypassReport } from '../../src/shared/types/provider'
 import PermissionCard from '../../src/renderer/src/lib/components/ui/attention/PermissionCard.svelte'
 import ProvidersSettings from '../../src/renderer/src/lib/components/settings/ProvidersSettings.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 afterEach(cleanup)
 
@@ -95,7 +95,7 @@ let invoke: ReturnType<typeof vi.fn>
 beforeEach(() => {
   current = report()
   providers.reset()
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'providers:bypass'
       ? ({ ok: true, data: current } as never)
       : ({ ok: true, data: {} } as never)

@@ -5,7 +5,7 @@ import { activeSession } from '../../src/renderer/src/lib/stores/active-session.
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import type { ReviewFile, ReviewFileDiff, ReviewRepo } from '../../src/shared/types/review'
 import type { SessionSnapshot } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const file = (path: string, added = 1): ReviewFile => ({
   path,
@@ -50,10 +50,10 @@ const textDiff: ReviewFileDiff = {
 }
 
 let diffs: Record<string, ReviewFileDiff | { error: string }> = {}
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 function setup(): void {
-  invoke = mockHarness((channel, request) => {
+  invoke = mockArc((channel, request) => {
     if (channel === 'review:get') return { ok: true, data: { sessionId: 's1', repos } }
     if (channel === 'review:file') {
       const req = request as { path: string; showAnyway?: boolean }

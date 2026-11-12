@@ -4,7 +4,7 @@ import SessionHeader from '../../src/renderer/src/lib/components/sessions/Sessio
 import RingLogo from '../../src/renderer/src/lib/components/ui/RingLogo.svelte'
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
 import type { SessionHeader as Header } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -22,9 +22,9 @@ const header: Header = {
   branches: []
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
-  invoke = mockHarness(() => ({
+  invoke = mockArc(() => ({
     ok: true,
     data: {
       id: 's1',

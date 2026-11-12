@@ -3,16 +3,16 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/sve
 import DesignPreview from '../../src/renderer/src/lib/preview/DesignPreview.svelte'
 
 beforeEach(() => {
-  Object.defineProperty(window, 'harness', {
+  Object.defineProperty(window, 'arc', {
     configurable: true,
     get() {
-      throw new Error('DesignPreview must not touch window.harness')
+      throw new Error('DesignPreview must not touch window.arc')
     }
   })
 })
 afterEach(() => {
   cleanup()
-  delete (window as unknown as Record<string, unknown>).harness
+  delete (window as unknown as Record<string, unknown>).arc
 })
 
 it('labels samples and has the Design Preview heading', () => {

@@ -49,7 +49,7 @@
   async function renameTo(name: string): Promise<AppError | null> {
     const target = renaming
     if (!target) return null
-    const res = await window.harness.invoke('sessions:rename', {
+    const res = await window.arc.invoke('sessions:rename', {
       sessionId: target.id,
       name: name.trim()
     })

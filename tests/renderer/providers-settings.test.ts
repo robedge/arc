@@ -5,7 +5,7 @@ import ProvidersSettings from '../../src/renderer/src/lib/components/settings/Pr
 import SettingsView from '../../src/renderer/src/lib/components/settings/SettingsView.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function status(p: Partial<ProviderStatus> & Pick<ProviderStatus, 'provider'>): ProviderStatus {
   return { state: 'ok', message: '', checkedAt: 1, ...p }
@@ -18,7 +18,7 @@ beforeEach(() => {
   initial = {}
   checkResult = () => ({ ok: true, data: {} })
   providers.reset()
-  mockHarness((channel) =>
+  mockArc((channel) =>
     channel === 'providers:get' ? ({ ok: true, data: initial } as never) : (checkResult() as never)
   )
 })
@@ -120,7 +120,7 @@ it('Check again invokes providers:check for that provider and shows the result',
       loginCommand: 'codex login'
     })
   }
-  const invoke = mockHarness((channel) =>
+  const invoke = mockArc((channel) =>
     channel === 'providers:get'
       ? ({ ok: true, data: initial } as never)
       : ({ ok: true, data: { codex: status({ provider: 'codex' }) } } as never)
@@ -197,7 +197,7 @@ it.each([
 })
 
 it('Check Cursor again checks only Cursor', async () => {
-  const invoke = mockHarness((channel) =>
+  const invoke = mockArc((channel) =>
     channel === 'providers:get' || channel === 'providers:bypass'
       ? ({ ok: true, data: {} } as never)
       : ({ ok: true, data: { cursor: status({ provider: 'cursor' }) } } as never)

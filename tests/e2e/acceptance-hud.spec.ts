@@ -4,12 +4,12 @@ import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import { expect, test } from './fixtures'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
   }
 }
 
@@ -44,7 +44,7 @@ async function openPreview(app: ElectronApplication): Promise<Page> {
 
 /** Creates a note through the IPC bridge and returns its id. */
 async function seedNote(page: Page, sectionId: string, title: string): Promise<string> {
-  const res = await page.evaluate((a) => window.harness.invoke('items:create', a), {
+  const res = await page.evaluate((a) => window.arc.invoke('items:create', a), {
     sectionId,
     title
   })
@@ -53,11 +53,11 @@ async function seedNote(page: Page, sectionId: string, title: string): Promise<s
 }
 
 async function sectionId(page: Page, groupName: string, kind: string): Promise<string> {
-  const groups = await page.evaluate(() => window.harness.invoke('groups:list', {}))
+  const groups = await page.evaluate(() => window.arc.invoke('groups:list', {}))
   const group = groups.ok ? groups.data.find((g) => g.name === groupName) : undefined
   if (!group) throw new Error('group not found')
   const sections = await page.evaluate(
-    (id) => window.harness.invoke('sections:list', { groupId: id }),
+    (id) => window.arc.invoke('sections:list', { groupId: id }),
     group.id
   )
   const section = sections.ok ? sections.data.find((s) => s.kind === kind) : undefined
@@ -216,7 +216,7 @@ test('2.2/2.3 delete confirmation: red Delete, outlined Cancel, Escape closes wi
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
   await expect(nav.getByText('Shop')).toBeVisible()
-  const listed = await page.evaluate(() => window.harness.invoke('groups:list', {}))
+  const listed = await page.evaluate(() => window.arc.invoke('groups:list', {}))
   expect(listed.ok && listed.data.map((x) => x.name)).toEqual(['Shop'])
 })
 
@@ -505,10 +505,10 @@ test('2.7 a note longer than the editor scrolls inside the editor only', async (
   await newGroup(page, 'Shop')
   const notes = await sectionId(page, 'Shop', 'notes')
   const id = await seedNote(page, notes, 'Long note')
-  const read = await page.evaluate((itemId) => window.harness.invoke('items:read', { itemId }), id)
+  const read = await page.evaluate((itemId) => window.arc.invoke('items:read', { itemId }), id)
   if (!read.ok || read.data.type !== 'text') throw new Error('items:read failed')
   const body = Array.from({ length: 300 }, (_, i) => `line ${i}`).join('\n')
-  const saved = await page.evaluate((a) => window.harness.invoke('items:save', a), {
+  const saved = await page.evaluate((a) => window.arc.invoke('items:save', a), {
     itemId: id,
     content: body,
     baseRevision: read.data.revision
@@ -559,10 +559,10 @@ test('2.8 the Markdown preview shows display headings, monospace code on a darke
   await newGroup(page, 'Shop')
   const notes = await sectionId(page, 'Shop', 'notes')
   const id = await seedNote(page, notes, 'Styled')
-  const read = await page.evaluate((itemId) => window.harness.invoke('items:read', { itemId }), id)
+  const read = await page.evaluate((itemId) => window.arc.invoke('items:read', { itemId }), id)
   if (!read.ok || read.data.type !== 'text') throw new Error('items:read failed')
   const md = '# Title here\n\n```\nconst x = 1\n```\n\n[docs](https://example.com)\n'
-  const saved = await page.evaluate((a) => window.harness.invoke('items:save', a), {
+  const saved = await page.evaluate((a) => window.arc.invoke('items:save', a), {
     itemId: id,
     content: md,
     baseRevision: read.data.revision

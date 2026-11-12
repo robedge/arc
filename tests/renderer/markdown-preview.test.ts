@@ -1,7 +1,7 @@
 import { afterEach, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import MarkdownPreview from '../../src/renderer/src/lib/components/items/MarkdownPreview.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 afterEach(cleanup)
 
@@ -13,8 +13,8 @@ const source = [
   '[js](javascript:alert(1))'
 ].join('\n\n')
 
-async function click(name: string): Promise<ReturnType<typeof mockHarness>> {
-  const invoke = mockHarness(() => ({ ok: true, data: undefined }))
+async function click(name: string): Promise<ReturnType<typeof mockArc>> {
+  const invoke = mockArc(() => ({ ok: true, data: undefined }))
   render(MarkdownPreview, { source })
   const link = screen.queryByText(name)
   if (link) await fireEvent.click(link)

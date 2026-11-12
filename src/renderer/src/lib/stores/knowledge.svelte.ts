@@ -38,7 +38,7 @@ class KnowledgeStore {
     if (sectionId !== this.sectionId) this.items = []
     this.sectionId = sectionId
     if (sectionId === null) return
-    const res = await window.harness.invoke('items:list', { sectionId })
+    const res = await window.arc.invoke('items:list', { sectionId })
     if (request !== this.requestId) return
     if (res.ok && Array.isArray(res.data)) this.items = res.data
   }
@@ -49,7 +49,7 @@ class KnowledgeStore {
 
   async create(title: string, description?: string): Promise<ItemSummary | AppError> {
     if (this.sectionId === null) return { code: 'INTERNAL' }
-    const res = await window.harness.invoke('items:create', {
+    const res = await window.arc.invoke('items:create', {
       sectionId: this.sectionId,
       title,
       ...(description ? { description } : {})
@@ -65,7 +65,7 @@ class KnowledgeStore {
     itemId?: string
   ): Promise<ItemSummary | AppError> {
     if (this.sectionId === null) return { code: 'INTERNAL' }
-    const res = await window.harness.invoke('links:upsert', {
+    const res = await window.arc.invoke('links:upsert', {
       sectionId: this.sectionId,
       ...(itemId ? { itemId } : {}),
       url: values.url.trim(),
@@ -78,21 +78,21 @@ class KnowledgeStore {
   }
 
   async rename(itemId: string, title: string): Promise<ItemSummary | AppError> {
-    const res = await window.harness.invoke('items:rename', { itemId, title })
+    const res = await window.arc.invoke('items:rename', { itemId, title })
     if (!res.ok) return res.error
     await this.refresh()
     return res.data
   }
 
   async setDescription(itemId: string, description: string): Promise<AppError | null> {
-    const res = await window.harness.invoke('items:set-description', { itemId, description })
+    const res = await window.arc.invoke('items:set-description', { itemId, description })
     if (!res.ok) return res.error
     await this.refresh()
     return null
   }
 
   async remove(itemId: string): Promise<AppError | null> {
-    const res = await window.harness.invoke('items:delete', { itemId })
+    const res = await window.arc.invoke('items:delete', { itemId })
     if (!res.ok) return res.error
     await this.afterCountChange()
     return null
