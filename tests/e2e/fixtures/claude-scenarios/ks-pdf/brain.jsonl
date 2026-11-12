@@ -1,0 +1,9 @@
+# The brain tries to change a PDF in Docs, then to add a PDF, and finally suggests a plain text note next to it (spec 011).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Schema question\n\nThe schema is described in the PDF under Docs."}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"update","title":"Orders schema has a status column","reason":"The schema PDF lists a status column on orders.","section":"Docs","file":"Schema.pdf","edits":[{"old_text":"PDF","new_text":"PDF with a status column"}]}}}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"new","title":"Orders schema summary","reason":"The schema PDF is worth keeping as a file.","section":"Docs","name":"Orders schema.pdf","content":"Orders have a status column."}}}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"new","title":"Orders have a status column","reason":"The schema PDF lists a status column on orders.","section":"Docs","name":"Orders status","content":"Orders have a status column: open, paid or shipped."}}}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

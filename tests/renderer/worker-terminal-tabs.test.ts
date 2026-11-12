@@ -64,6 +64,7 @@ function load(workers: WorkerView[], attention: AttentionView[] = []): void {
     plan: null,
     workers,
     attention,
+    knowledgeSuggestions: [],
     seq: 0
   }
   activeSession.setSnapshot(snapshot)

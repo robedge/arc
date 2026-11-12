@@ -4,7 +4,12 @@ import { randomBytes } from 'node:crypto'
 import { basename, dirname, extname, join, posix } from 'node:path'
 import { AppErrorException } from '@shared/errors'
 import type { ErrorCode } from '@shared/errors'
-import { IMPORT_MAX_BYTES, ITEM_DESCRIPTION_MAX, ITEM_TITLE_MAX } from '@shared/limits'
+import {
+  IMPORT_MAX_BYTES,
+  ITEM_DESCRIPTION_MAX,
+  ITEM_TITLE_MAX,
+  TEXT_EXTENSIONS
+} from '@shared/limits'
 import type { ConflictResolution, ImportReport, ItemContent, ItemSummary } from '@shared/types/item'
 import type { KnowledgeItemRow, KnowledgeItemsRepo } from '../db/repositories/knowledge-items-repo'
 import type { SectionRow, SectionsRepo } from '../db/repositories/sections-repo'
@@ -32,7 +37,7 @@ import {
   revisionOfRow
 } from './knowledge-index'
 import type { KnowledgeIndex } from './knowledge-index'
-import { resolveInRoot, sanitizeName, uniqueName } from './knowledge-paths'
+import { isNameTaken, resolveInRoot, sanitizeName, uniqueName } from './knowledge-paths'
 import type { MetaStore } from './meta-store'
 
 export interface KnowledgeServiceDeps {
@@ -118,6 +123,42 @@ export class KnowledgeService {
     const relPath = `${folder}/${name}`
     if (description) await this.setMetaDescription(root, relPath, description)
     return this.toSummary(await this.indexOne(section, relPath, description || null))
+  }
+
+  /**
+   * Creates a file holding `content` in one atomic write. `name` is the full file name: a text extension
+   * from `TEXT_EXTENSIONS` is kept, `.md` is added when there is none. The name is already a plain file
+   * name, so no title front matter is needed. With `failOnExisting` a taken name (NFC, case-insensitive)
+   * throws `ITEM_NAME_TAKEN`; otherwise it is numbered like `create`.
+   */
+  async createWithContent(
+    sectionId: string,
+    name: string,
+    content: string,
+    opts: { failOnExisting?: boolean } = {}
+  ): Promise<ItemSummary> {
+    const section = this.requireSection(sectionId)
+    const kind = kindForSection(section.kind)
+    if (!kind || kind === 'link' || !section.folderName) {
+      throw new AppErrorException('VALIDATION_FAILED')
+    }
+    const fileName = this.textFileName(name)
+    const root = this.deps.getKnowledgeRoot(section.groupId)
+    const folder = section.folderName
+    const folderPath = await resolveInRoot(root, [folder])
+    let existing: string[]
+    try {
+      existing = await readdir(folderPath)
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not list ${folderPath}`, error)
+      throw new AppErrorException('IO_FAILED')
+    }
+    if (opts.failOnExisting && isNameTaken(existing, fileName)) {
+      throw new AppErrorException('ITEM_NAME_TAKEN')
+    }
+    const finalName = opts.failOnExisting ? fileName : uniqueName(existing, fileName)
+    await this.write(await resolveInRoot(root, [folder, finalName]), content)
+    return this.toSummary(await this.indexOne(section, `${folder}/${finalName}`, null))
   }
 
   /**
@@ -507,6 +548,25 @@ export class KnowledgeService {
     return ext && title.toLowerCase().endsWith(ext.toLowerCase())
       ? title.slice(0, title.length - ext.length)
       : title
+  }
+
+  /** A sanitised file name with a `TEXT_EXTENSIONS` extension; `.md` when none, VALIDATION_FAILED otherwise. */
+  private textFileName(raw: string): string {
+    let base = sanitizeName(raw)
+    let ext = '.md'
+    const match = /\.([A-Za-z][A-Za-z0-9]{0,7})$/.exec(base)
+    if (match?.[1] !== undefined) {
+      const found = match[1].toLowerCase()
+      if (!(TEXT_EXTENSIONS as readonly string[]).includes(found)) {
+        throw new AppErrorException('VALIDATION_FAILED')
+      }
+      ext = `.${found}`
+      base = sanitizeName(base.slice(0, match.index))
+    }
+    if (base === '' || [...base].length > ITEM_TITLE_MAX) {
+      throw new AppErrorException('VALIDATION_FAILED')
+    }
+    return `${base}${ext}`
   }
 
   /** The filename differs from the title, so the title must live in front matter. */

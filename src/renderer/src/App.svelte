@@ -7,6 +7,7 @@
   import { models } from './lib/stores/models.svelte'
   import { providers } from './lib/stores/providers.svelte'
   import { usage } from './lib/stores/usage.svelte'
+  import { knowledgeSuggestions } from './lib/stores/knowledge-suggestions.svelte'
   import { planUsage } from './lib/stores/plan-usage.svelte'
   import { settings } from './lib/stores/settings.svelte'
   import { commands } from './lib/stores/commands.svelte'
@@ -98,6 +99,9 @@
       sessionsList.applyAttention(e)
       activeSession.applyAttention(e)
     })
+  )
+  $effect(() =>
+    window.arc.on('session:knowledge-suggestions', (e) => knowledgeSuggestions.apply(e))
   )
   $effect(() => window.arc.on('session:open-attention', (e) => void navigateToAttention(e)))
   $effect(() => window.arc.on('storage:progress', (e) => storage.handleProgress(e)))

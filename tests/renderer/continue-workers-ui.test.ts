@@ -84,6 +84,7 @@ beforeEach(() => {
     plan: null,
     workers: [],
     attention: [],
+    knowledgeSuggestions: [],
     seq: 0
   })
 })

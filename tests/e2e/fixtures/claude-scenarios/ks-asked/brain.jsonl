@@ -1,0 +1,7 @@
+# The brain makes one suggestion the user asked for (asked_by_user), so it is stored even while the switch is off (spec 011).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Orders question\n\nThe orders table is partitioned by month."}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"new","title":"Orders table is partitioned by month","reason":"The user asked what to add; the schema dump shows one partition per month.","section":"Notes","name":"Orders partitioning","content":"The orders table is partitioned by month.\nQueries should filter on created_at to hit one partition.","asked_by_user":true}}}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

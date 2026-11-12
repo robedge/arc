@@ -263,6 +263,7 @@ it('reducers apply plan and worker events, guarded by seq', () => {
     workers: [],
     plan: null,
     attention: [],
+    knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 0,
     seq: 10

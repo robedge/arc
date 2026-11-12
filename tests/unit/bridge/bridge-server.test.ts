@@ -48,6 +48,7 @@ function fakeServices(overrides: Partial<BridgeServices> = {}): BridgeServices {
     resolveRequest: vi.fn(() => ({ ok: true as const })),
     escalateToUser: vi.fn(() => ({ ok: true as const })),
     askUser: vi.fn(() => Promise.resolve({ answer: 'yes' })),
+    suggestKnowledgeUpdate: vi.fn(() => Promise.resolve({ id: 'k1', remainingThisRequest: 4 })),
     ...overrides
   }
 }
@@ -127,6 +128,7 @@ describe('tools by role', () => {
       'request_permission',
       'resolve_request',
       'spawn_worker',
+      'suggest_knowledge_update',
       'sync_worker'
     ])
     expect(await listTools(workerConfig)).toEqual([
@@ -169,6 +171,21 @@ describe('tools by role', () => {
       asBrain['error'] !== undefined ||
         (asBrain['result'] as { isError?: boolean } | undefined)?.isError === true
     ).toBe(true)
+  })
+
+  it('refuses suggest_knowledge_update from a worker token', async () => {
+    const services = fakeServices()
+    const workerConfig = readMcpConfig(bridge.registerAgent(worker, services).configPath)
+    expect(await listTools(workerConfig)).not.toContain('suggest_knowledge_update')
+    const asWorker = await mcpRequest(workerConfig, 'tools/call', {
+      name: 'suggest_knowledge_update',
+      arguments: { kind: 'new', title: 't', reason: 'r', section: 'Notes', name: 'n', content: 'c' }
+    })
+    const failed =
+      asWorker['error'] !== undefined ||
+      (asWorker['result'] as { isError?: boolean } | undefined)?.isError === true
+    expect(failed).toBe(true)
+    expect(services.suggestKnowledgeUpdate).not.toHaveBeenCalled()
   })
 
   it('returns JSON text and passes the caller identity from the token', async () => {
@@ -337,5 +354,141 @@ describe('agent registration', () => {
       log: { warn: vi.fn(), error: vi.fn() }
     })
     expect(() => idle.registerAgent(brain, fakeServices())).toThrow(/not running/)
+  })
+})
+
+describe('suggest_knowledge_update', () => {
+  const call = {
+    kind: 'new',
+    title: 'Orders table is partitioned by month',
+    reason: 'Read in the schema dump',
+    section: 'Notes',
+    name: 'Service map',
+    content: 'Checkout calls pricing twice.'
+  }
+
+  it('passes a new suggestion to the services and returns its id', async () => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const outcome = await callTool(config, 'suggest_knowledge_update', {
+      ...call,
+      asked_by_user: true
+    })
+    expect(outcome).toEqual({
+      isError: false,
+      value: { ok: true, id: 'k1', remainingThisRequest: 4 }
+    })
+    expect(services.suggestKnowledgeUpdate).toHaveBeenCalledWith(brain, {
+      ...call,
+      askedByUser: true
+    })
+  })
+
+  it('does not pass askedByUser when the brain leaves it out or says false', async () => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    await callTool(config, 'suggest_knowledge_update', call)
+    await callTool(config, 'suggest_knowledge_update', { ...call, asked_by_user: false })
+    const sent = vi.mocked(services.suggestKnowledgeUpdate).mock.calls.map((c) => c[1])
+    expect(sent).toHaveLength(2)
+    expect(sent[0]).toEqual(call)
+    expect(sent[1]).toEqual(call)
+    expect(sent.some((input) => 'askedByUser' in input && input.askedByUser === true)).toBe(false)
+  })
+
+  it.each([
+    ['cap_reached', 'This request already has 5 suggestions. Stop suggesting for this request.'],
+    [
+      'workers_running',
+      'Workers are still running. Wait until the work is finished, or the user asks.'
+    ]
+  ])('returns %s as an error result with its hint', async (code, hint) => {
+    const services = fakeServices()
+    vi.mocked(services.suggestKnowledgeUpdate).mockRejectedValueOnce(
+      new BridgeToolError(code, hint)
+    )
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const outcome = await callTool(config, 'suggest_knowledge_update', call)
+    expect(outcome.isError).toBe(true)
+    expect(outcome.value).toMatchObject({ error: code, message: hint })
+  })
+
+  it('rejects a title over 80 characters before it reaches the services', async () => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const answer = await mcpRequest(config, 'tools/call', {
+      name: 'suggest_knowledge_update',
+      arguments: { ...call, title: 'x'.repeat(81) }
+    })
+    const result = answer['result'] as { isError?: boolean } | undefined
+    expect(answer['error'] !== undefined || result?.isError === true).toBe(true)
+    expect(services.suggestKnowledgeUpdate).not.toHaveBeenCalled()
+  })
+
+  it('passes an update with its file and edits to the services', async () => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const update = {
+      kind: 'update',
+      title: 'Orders table is partitioned by month',
+      reason: 'Read in the schema dump',
+      section: 'Docs',
+      file: 'Database schema',
+      edits: [{ old_text: 'stored daily', new_text: 'partitioned by month' }]
+    }
+    const outcome = await callTool(config, 'suggest_knowledge_update', update)
+    expect(outcome).toEqual({
+      isError: false,
+      value: { ok: true, id: 'k1', remainingThisRequest: 4 }
+    })
+    expect(services.suggestKnowledgeUpdate).toHaveBeenCalledWith(brain, update)
+  })
+
+  it.each([
+    ['without edits', { file: 'a.md' }],
+    ['without a file', { edits: [{ old_text: 'a', new_text: 'b' }] }]
+  ])('answers an update %s with invalid_input', async (_label, extra) => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const outcome = await callTool(config, 'suggest_knowledge_update', {
+      kind: 'update',
+      title: 't',
+      reason: 'r',
+      section: 'Notes',
+      ...extra
+    })
+    expect(outcome.isError).toBe(true)
+    expect(outcome.value).toMatchObject({ error: 'invalid_input' })
+    expect(services.suggestKnowledgeUpdate).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['six edits', Array.from({ length: 6 }, (_, i) => ({ old_text: `a${i}`, new_text: 'b' }))],
+    ['no edits', []],
+    ['an empty old_text', [{ old_text: '', new_text: 'b' }]]
+  ])('rejects %s before they reach the services', async (_label, edits) => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const answer = await mcpRequest(config, 'tools/call', {
+      name: 'suggest_knowledge_update',
+      arguments: { kind: 'update', title: 't', reason: 'r', section: 'Notes', file: 'a.md', edits }
+    })
+    const result = answer['result'] as { isError?: boolean } | undefined
+    expect(answer['error'] !== undefined || result?.isError === true).toBe(true)
+    expect(services.suggestKnowledgeUpdate).not.toHaveBeenCalled()
+  })
+
+  it('needs a name and content for a new note', async () => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const outcome = await callTool(config, 'suggest_knowledge_update', {
+      kind: 'new',
+      title: 't',
+      reason: 'r',
+      section: 'Notes'
+    })
+    expect(outcome.isError).toBe(true)
+    expect(outcome.value).toMatchObject({ error: 'invalid_input' })
+    expect(services.suggestKnowledgeUpdate).not.toHaveBeenCalled()
   })
 })

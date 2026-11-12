@@ -1,0 +1,17 @@
+# Autonomous brain: spawns one worker and, while it is still working, suggests a note (refused: workers_running), suggests it again
+# with asked_by_user (accepted), then after the worker finished (Arc merges it in autonomous mode) suggests a plain note (accepted). Project: api (spec 011).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Queue work\n\nStarting one worker."}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "ks-job", "task": "Add a retry file to the API client", "repos": ["api"]}}}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Queue jobs are retried", "reason": "Seen while the worker ran.", "section": "Notes", "name": "Queue retries", "content": "Queue jobs are retried."}}}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Queue jobs are retried", "reason": "Seen while the worker ran.", "section": "Notes", "name": "Queue retries", "content": "Queue jobs are retried.", "asked_by_user": true}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"Merged"}
+{"say":"The worker was merged."}
+{"result":true}
+{"waitForStdin":"All workers finished"}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Queue workers log to stderr", "reason": "Seen while the worker ran.", "section": "Notes", "name": "Queue logging", "content": "Queue workers log to stderr."}}}
+{"say":"Summary: retry.txt was added to api."}
+{"result":true}

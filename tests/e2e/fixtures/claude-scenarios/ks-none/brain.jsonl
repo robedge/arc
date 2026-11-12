@@ -1,0 +1,9 @@
+# The brain answers from what the group's knowledge already says and makes no suggestion; asked later, it says it has none (spec 011).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Orders question\n\nThe orders table is partitioned by month, as the Notes already say."}
+{"result":true}
+{"waitForStdin":"NONE-ASK"}
+{"say":"I have no suggestions for this group's knowledge right now."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

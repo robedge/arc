@@ -127,8 +127,8 @@ describe('Commands available block', () => {
 })
 
 describe('prompt update note for commands', () => {
-  it('is version 6 with Cursor as a third provider', () => {
-    expect(BRAIN_PROMPT_VERSION).toBe(6)
+  it('is version 7 with knowledge suggestions', () => {
+    expect(BRAIN_PROMPT_VERSION).toBe(7)
   })
 
   it('gives a version 3 session only the commands note, with the current list', () => {

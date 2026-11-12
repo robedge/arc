@@ -138,6 +138,24 @@ export class WorkersRepo {
     return row?.n ?? 0
   }
 
+  /**
+   * Workers whose work is not over: the active ones and those waiting in the queue for a free slot.
+   * A worker the user stepped in on keeps its status, so it counts too.
+   */
+  countUnfinished(sessionId: string): number {
+    const row = this.db
+      .select({ n: sql<number>`count(*)` })
+      .from(workers)
+      .where(
+        and(
+          eq(workers.sessionId, sessionId),
+          inArray(workers.status, [...activeStatuses, 'queued'])
+        )
+      )
+      .get()
+    return row?.n ?? 0
+  }
+
   /** Startup recovery: starting/working become stopped (crash). Returns the affected rows, before the change. */
   recoverInterrupted(now: number): WorkerRow[] {
     return this.stopInterrupted(now, 'crash')

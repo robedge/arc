@@ -62,6 +62,7 @@ function load(w: WorkerView): void {
     plan: null,
     workers: [w],
     attention: [],
+    knowledgeSuggestions: [],
     seq: 0
   })
 }

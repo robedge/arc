@@ -29,6 +29,7 @@ import { BridgeToolError, MCP_SERVER_NAME } from '../bridge/types'
 import type {
   BridgeAgent,
   BridgeServices,
+  SuggestKnowledgeInput,
   SpawnWorkerInput,
   SpawnWorkerResult
 } from '../bridge/types'
@@ -49,6 +50,9 @@ import type { HeldMessagesRepo } from '../db/repositories/held-messages-repo'
 import type { WorktreesRepo } from '../db/repositories/worktrees-repo'
 import type { WorktreeGit } from '../git/worktrees'
 import { ulid } from '../db/ids'
+import type { SuggestResult } from '../knowledge/knowledge-suggestion-service'
+import { suggestForBrain } from './knowledge-suggestion-bridge'
+import type { KnowledgeSuggestionPort } from './knowledge-suggestion-bridge'
 import type { ClassifyContext } from '../policy/classify'
 import type { IpcEvents } from '@shared/ipc/contract'
 import { AppErrorException } from '@shared/errors'
@@ -72,7 +76,7 @@ import { RateLimitGate } from './rate-limit-gate'
 import type { UsageRecorder } from '../usage/usage-recorder'
 import { forwardRateLimit } from '../usage/plan-usage-service'
 import type { PlanUsageService } from '../usage/plan-usage-service'
-import { continuePromptText, messageRowDto } from './message-prompt'
+import { continuePromptText, messageRowDto, suggestionsPromptText } from './message-prompt'
 import type { AttentionAnswer, AttentionState } from './attention-coordinator'
 import { DeltaBatcher, IntervalBatcher } from './batcher'
 import type { DeltaBatcherOptions } from './batcher'
@@ -195,6 +199,8 @@ export interface BrainPromptInput {
   brainProvider: ProviderId
   /** With workers: the models, availability and Workers choice behind the "Providers and models" block. */
   providers?: ProvidersPromptInput
+  /** The Settings switch "Suggest knowledge updates" as it is now; absent means on. */
+  suggestOnOwn?: boolean
 }
 
 export function modeLabel(mode: SessionMode): string {
@@ -223,11 +229,26 @@ export function undoNote(files: readonly string[]): string {
 }
 
 /**
+ * The note put in front of the brain's next message after the user discarded knowledge suggestions: one note
+ * however many were discarded in between. `titles` are the suggestions' titles.
+ */
+export function discardedSuggestionsNote(titles: readonly string[]): string {
+  return `[Arc] The user discarded these knowledge suggestions: ${titles.map((t) => `"${t}"`).join(', ')}. Don't suggest them again.`
+}
+
+/** The note after the user switched knowledge suggestions off or on while the brain runs. */
+export function suggestSettingNote(on: boolean): string {
+  return on
+    ? '[Arc] The user switched knowledge suggestions on. You may suggest knowledge updates again when a request is finished.'
+    : "[Arc] The user switched knowledge suggestions off. Don't suggest knowledge updates on your own; only when they ask."
+}
+
+/**
  * Bump when the brain's capabilities or the prompt text that describes them change. A session whose
  * stored `brain_prompt_version` is lower keeps its snapshotted old prompt on resume, so its next
  * message carries the notes from `promptUpdateNote` once.
  */
-export const BRAIN_PROMPT_VERSION = 6
+export const BRAIN_PROMPT_VERSION = 7
 
 const CAPABILITIES: Readonly<Record<ProviderId, readonly string[]>> = {
   claude: [
@@ -287,18 +308,28 @@ export const PROMPT_UPDATE_NOTE_V5 =
 export const PROMPT_UPDATE_NOTE_V6 =
   "[Arc] Updated instructions: workers can now also run on Cursor; spawn_worker and propose_plan take provider 'cursor' and a Cursor model id."
 
+/** What version 7 added (suggesting knowledge updates). */
+export const PROMPT_UPDATE_NOTE_V7 =
+  "[Arc] Updated instructions: you can now suggest additions to the group's knowledge with suggest_knowledge_update, at the end of a finished request, up to 5. Read the knowledge folder first, suggest only lasting facts, and say nothing when you have none."
+
+/** Version 7's note for a brain whose Settings switch is off: no invitation to suggest on its own. */
+export const PROMPT_UPDATE_NOTE_V7_OFF =
+  "[Arc] Updated instructions: you have a new tool, suggest_knowledge_update, for suggesting additions to the group's knowledge. The user switched knowledge suggestions off, so do not call it on your own. If the user asks what to add to the knowledge, call it with asked_by_user: true, or say you have none."
+
 /**
  * The note a resumed session gets once, in front of its next message: everything added after the
  * version it was stamped with, oldest first. Undefined when the session is current.
  * `commands` is the catalogue read now, added to the version 4 note: a list, null when it is
  * unavailable, or undefined (no workers or repositories) to leave version 4 out.
  * `providers` is the "Providers and models" block as it is now, added to the version 5 and 6 notes;
- * undefined (no workers) leaves them out. A session from before version 5 gets the block once, with the version 5 note.
+ * undefined (no workers) leaves them out, and version 7 with them. A session from before version 5 gets the block once, with the version 5 note.
+ * `suggestOnOwn` is the Settings switch for knowledge suggestions; off, the version 7 note does not invite them.
  */
 export function promptUpdateNote(
   storedVersion: number,
   commands?: readonly CommandInfo[] | null,
-  providers?: string
+  providers?: string,
+  suggestOnOwn = true
 ): string | undefined {
   const notes: string[] = []
   if (storedVersion < 2) notes.push(PROMPT_UPDATE_NOTE_V2)
@@ -312,6 +343,10 @@ export function promptUpdateNote(
   if (storedVersion < 6 && providers !== undefined) {
     // A session older than version 5 already got the block with the version 5 note.
     notes.push(storedVersion < 5 ? PROMPT_UPDATE_NOTE_V6 : `${PROMPT_UPDATE_NOTE_V6}\n${providers}`)
+  }
+  // The tool needs the bridge, which only a brain with workers has (the same sessions that get `providers`).
+  if (storedVersion < 7 && providers !== undefined) {
+    notes.push(suggestOnOwn ? PROMPT_UPDATE_NOTE_V7 : PROMPT_UPDATE_NOTE_V7_OFF)
   }
   return notes.length === 0 ? undefined : notes.join('\n\n')
 }
@@ -341,7 +376,8 @@ const BRAIN_TOOLS: readonly string[] = [
   'sync_worker',
   'resolve_request',
   'escalate_to_user',
-  'ask_user'
+  'ask_user',
+  'suggest_knowledge_update'
 ]
 
 /** How the brain is told to reach the bridge tools: Claude defers them behind ToolSearch, Codex lists them. */
@@ -371,6 +407,16 @@ const WORKER_INSTRUCTIONS_AFTER_INTRO: readonly string[] = [
   'If propose_plan returns changes_requested, revise the plan using the comment and propose again. If it returns rejected, start no workers and ask the user what they want instead.',
   'When a worker finishes or fails, Arc sends you a message that starts with "[Arc]". Then tell the user what happened and what comes next.'
 ]
+
+/** The brain's knowledge-suggestion guidance (prompt version 7); `onOwn` is the Settings switch. */
+function suggestionsSection(namer: BridgeToolNamer, onOwn: boolean): string {
+  const tool = namer.name('suggest_knowledge_update')
+  const rules = `Read the group's knowledge folder first and do not suggest what it already says. Do not suggest session summaries, lists of your changes, or one-off details. Only text files in Notes, Docs, Playbooks or custom sections; never Projects, Links or PDFs.`
+  if (!onOwn) {
+    return `Knowledge suggestions are switched off: do not call ${tool} on your own. If the user asks what to add to the knowledge, call it with asked_by_user: true, or say you have none. A suggestion is a lasting fact about the user's system or how they work (up to 5 per request, one call per suggestion). ${rules}`
+  }
+  return `Knowledge suggestions: when you finish a request, nothing is running and no question is pending, you may call ${tool} (up to 5 per request, one call per suggestion) for a lasting fact about the user's system or how they work: how parts fit together, a fact about the data, a convention, an easily missed step. ${rules} Call it at the end of your reply, and never mention suggestions when you have none. When the user asked for suggestions in this request, pass asked_by_user: true; that also lets you suggest while workers are running. If the user asks what to add, answer with suggestions or say you have none.`
+}
 
 function workerInstructions(provider: ProviderId, namer: BridgeToolNamer): string[] {
   return [toolIntro(provider, namer), ...WORKER_INSTRUCTIONS_AFTER_INTRO]
@@ -403,6 +449,7 @@ export function buildBrainPrompt(input: BrainPromptInput): string {
     'Title: <3-6 word title for this session>',
     'Do not mention the title line again.',
     ...(input.workersEnabled ? ['', ...workerInstructions(provider, namer)] : []),
+    ...(input.workersEnabled ? ['', suggestionsSection(namer, input.suggestOnOwn ?? true)] : []),
     ...(input.workersEnabled && input.providers ? ['', providersSection(input.providers)] : []),
     ...(input.workersEnabled && input.mode !== undefined && input.workerLimit !== undefined
       ? ['', ...modeInstructions(input.mode, input.workerLimit)]
@@ -573,6 +620,13 @@ export interface OrchestratorDeps {
   prepareCursorBrainDir?: (dir: string, offMcp: readonly string[]) => void
   /** Records token usage for the brain and, through the worker manager, for workers and resolvers. */
   usage?: UsageRecorder | undefined
+  /** Stores the brain's knowledge suggestions; left out (tests), the tool refuses with `unavailable`. */
+  knowledgeSuggestions?: KnowledgeSuggestionPort | undefined
+  /**
+   * The Settings switch "Suggest knowledge updates", read when a call arrives or a prompt is built (a getter, so a
+   * change needs no subscription). Left out (tests), it is on.
+   */
+  suggestKnowledge?: (() => boolean) | undefined
   /** Receives the plan windows of `rate-limit` events (brain and workers); left out (tests), nothing is kept. */
   planUsage?: Pick<PlanUsageService, 'ingest'> | undefined
 }
@@ -667,11 +721,22 @@ export class Orchestrator {
   private pendingCommandsNote: string | undefined
   /** "<repo>/<path>" of files the user undid since the brain's last message; one note on its next message. */
   private pendingUndoNotes: string[] = []
+  /** Titles of knowledge suggestions the user discarded since the brain's last message; one note on its next. */
+  private pendingDiscardedSuggestions: string[] = []
+  /** What the running brain was last told about the switch: its prompt at launch, or the last note sent. */
+  private suggestKnown = true
+  /** The switch's new value, set while it differs from `suggestKnown`; one note on the brain's next message. */
+  private pendingSuggestChange: boolean | undefined
   /**
    * Set while the reply to the final summary request is awaited. `row` is the brain's last complete
    * message since the request; the turn's end tags it with the Review changes link (spec 004 2.7).
    */
   private summaryReply: { row: number | undefined } | undefined
+  /**
+   * Knowledge suggestions stored during the current brain turn (refused calls do not count) and the
+   * turn's last visible brain message. Both are cleared when the turn settles.
+   */
+  private turnSuggestions = { count: 0, row: undefined as number | undefined }
 
   constructor(private readonly deps: OrchestratorDeps) {
     this.brainAgentId = `brain-${deps.sessionId}`
@@ -956,8 +1021,10 @@ export class Orchestrator {
     if (!handle) return false
     this.setBrainState('thinking')
     const undone = this.pendingUndoNotes
+    const discarded = this.pendingDiscardedSuggestions
     const groupNote = this.pendingGroupNote
     const commandsNote = this.pendingCommandsNote
+    const suggestChange = this.pendingSuggestChange
     const handoff = this.pendingHandoff
     this.pendingHandoff = undefined
     const notes = [
@@ -966,7 +1033,9 @@ export class Orchestrator {
       this.pendingModeNote,
       groupNote,
       commandsNote,
-      undone.length > 0 ? undoNote(undone) : undefined
+      undone.length > 0 ? undoNote(undone) : undefined,
+      discarded.length > 0 ? discardedSuggestionsNote(discarded) : undefined,
+      suggestChange !== undefined ? suggestSettingNote(suggestChange) : undefined
     ].filter((n): n is string => n !== undefined)
     const promptNoteSent = this.pendingPromptNote !== undefined
     this.pendingPromptNote = undefined
@@ -974,13 +1043,18 @@ export class Orchestrator {
     this.pendingGroupNote = undefined
     this.pendingCommandsNote = undefined
     this.pendingUndoNotes = []
+    this.pendingDiscardedSuggestions = []
+    this.pendingSuggestChange = undefined
     const written = await handle.send([...notes, text].join('\n\n'))
     if (!written) {
       this.pendingHandoff ??= handoff
       this.pendingUndoNotes = [...undone, ...this.pendingUndoNotes]
+      this.pendingDiscardedSuggestions = [...discarded, ...this.pendingDiscardedSuggestions]
       this.pendingGroupNote ??= groupNote
       this.pendingCommandsNote ??= commandsNote
+      this.pendingSuggestChange ??= suggestChange
     }
+    if (written && suggestChange !== undefined) this.suggestKnown = suggestChange
     if (written && promptNoteSent) {
       this.deps.sessionsRepo.setBrainPromptVersion(this.deps.sessionId, BRAIN_PROMPT_VERSION)
     }
@@ -998,6 +1072,7 @@ export class Orchestrator {
     await handle.interrupt()
     this.finalizeSlot('stopped')
     this.settleSummaryReply(false)
+    this.settleSuggestionsReply()
     this.setBrainState('idle')
     this.settleName()
   }
@@ -1067,6 +1142,18 @@ export class Orchestrator {
       result.projectId,
       result.oldPath !== undefined ? [result.path, result.oldPath] : [result.path]
     )
+  }
+
+  /**
+   * The user discarded knowledge suggestions: the brain hears their titles with its next message, in one note
+   * (in memory only, like an undo; a brain started later knows nothing of it).
+   */
+  recordSuggestionsDiscarded(titles: readonly string[]): void {
+    for (const title of titles) {
+      if (!this.pendingDiscardedSuggestions.includes(title)) {
+        this.pendingDiscardedSuggestions.push(title)
+      }
+    }
   }
 
   /** A push finished (`review:push`): the event log says so and the review refreshes. */
@@ -1161,6 +1248,21 @@ export class Orchestrator {
   commandsChanged(commands: readonly CommandInfo[]): void {
     if (this.closed) return
     this.pendingCommandsNote = commandsChangedNote(commands)
+  }
+
+  /**
+   * The Settings switch for knowledge suggestions was saved with a new value. A running brain hears it with its
+   * next message, once; a brain that is not running reads the switch into its prompt when it starts. Switching off
+   * and on again before a message leaves no note when the brain's prompt already says so.
+   */
+  suggestSettingChanged(): void {
+    if (this.closed || !this.handle) return
+    const now = this.suggestOn()
+    this.pendingSuggestChange = now === this.suggestKnown ? undefined : now
+  }
+
+  private suggestOn(): boolean {
+    return this.deps.suggestKnowledge?.() ?? true
   }
 
   /** `workers:open-terminal` for a worker of this session. */
@@ -1488,8 +1590,35 @@ export class Orchestrator {
       askUser: (agent, input, call) => {
         brainOnly(agent)
         return this.attention.askUser(input, call.signal)
+      },
+      suggestKnowledgeUpdate: (agent, input) => {
+        brainOnly(agent)
+        return this.suggestKnowledge(input)
       }
     }
+  }
+
+  /**
+   * A request runs from one user message to the next, so its id is the newest user message's id (the
+   * session id before the first one). Arc's own "[Arc]" turns do not start a request.
+   */
+  private suggestKnowledge(input: SuggestKnowledgeInput): Promise<SuggestResult> {
+    const port = this.deps.knowledgeSuggestions
+    const groupId = this.deps.sessionsRepo.getById(this.deps.sessionId)?.groupId
+    if (port === undefined || groupId === undefined) {
+      throw new BridgeToolError('unavailable', 'Knowledge suggestions are not available.')
+    }
+    const latest = this.deps.messagesRepo.latestUserId(this.deps.sessionId)
+    const requestId = latest === undefined ? this.deps.sessionId : String(latest)
+    return suggestForBrain(port, this.deps.sessionId, groupId, requestId, input, {
+      askedByUser: input.askedByUser === true,
+      // A worker the user stepped in on or one waiting in the queue still has work in front of it.
+      workersRunning: this.deps.resources.workersRepo.countUnfinished(this.deps.sessionId) > 0,
+      suggestionsOn: this.suggestOn()
+    }).then((result) => {
+      this.turnSuggestions.count += 1
+      return result
+    })
   }
 
   /**
@@ -1534,6 +1663,26 @@ export class Orchestrator {
       return
     }
     this.postSystemMessage('All work is merged.', { kind: 'review-link' })
+  }
+
+  /**
+   * The brain's turn ended. When it stored suggestions, the turn's last visible reply is tagged
+   * `knowledge-suggestions` (stored and pushed again). A reply that already carries a prompt (the
+   * summary's `review-link`) keeps it and a system message carries this one; so does a turn with no
+   * visible reply. A stopped or failed turn still counts, since the suggestions wait either way. Runs
+   * after `settleSummaryReply`, so the review link is already on the row.
+   */
+  private settleSuggestionsReply(): void {
+    const { count, row } = this.turnSuggestions
+    this.turnSuggestions = { count: 0, row: undefined }
+    if (count === 0 || this.closed) return
+    const prompt: MessagePrompt = { kind: 'knowledge-suggestions', count }
+    const stored = row === undefined ? undefined : this.deps.messagesRepo.get(row)
+    if (stored && stored.promptJson === null) {
+      this.setPromptStatus(stored.id, prompt)
+      return
+    }
+    this.postSystemMessage(suggestionsPromptText(count), prompt)
   }
 
   /**
@@ -1931,6 +2080,9 @@ export class Orchestrator {
       ? await adapter.resume({ ...options, resume: { threadId: launch.resumeThreadId } })
       : await adapter.start(options)
     this.handle = handle
+    // The prompt just built carries the switch as it is now, so nothing earlier is left to tell the brain.
+    this.suggestKnown = this.suggestOn()
+    this.pendingSuggestChange = undefined
     this.detachMcp?.()
     this.detachMcp = this.deps.resources.personal?.mcp?.attachHandle(this.brainAgentId, handle)
     this.noteBypassOnce()
@@ -2021,7 +2173,9 @@ export class Orchestrator {
   ): void {
     const stored = this.deps.sessionsRepo.getById(this.deps.sessionId)?.brainPromptVersion
     if (stored === undefined || stored >= BRAIN_PROMPT_VERSION) return
-    const note = resumed ? promptUpdateNote(stored, commands, providers) : undefined
+    const note = resumed
+      ? promptUpdateNote(stored, commands, providers, this.suggestOn())
+      : undefined
     if (note !== undefined) this.pendingPromptNote = note
     else this.deps.sessionsRepo.setBrainPromptVersion(this.deps.sessionId, BRAIN_PROMPT_VERSION)
   }
@@ -2082,6 +2236,7 @@ export class Orchestrator {
         if (event.ok) this.rateLimit.cancel(this.brainAgentId)
         this.finalizeSlot(event.interrupted ? 'stopped' : 'complete')
         this.settleSummaryReply(!event.interrupted)
+        this.settleSuggestionsReply()
         this.setBrainState('idle')
         this.settleName()
         this.touch()
@@ -2199,6 +2354,7 @@ export class Orchestrator {
     }
     this.finalizeSlot('stopped')
     this.settleSummaryReply(false)
+    this.settleSuggestionsReply()
     this.setBrainState('idle')
     this.settleName()
     if (!event.expected) {
@@ -2276,6 +2432,7 @@ export class Orchestrator {
     if (this.summaryReply && state === 'complete' && slot.shown.trim() !== '') {
       this.summaryReply.row = slot.rowId
     }
+    if (slot.shown.trim() !== '') this.turnSuggestions.row = slot.rowId
     this.seen.add(slot.providerId)
     this.touch()
     this.deps.emit('session:message', {

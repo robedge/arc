@@ -49,6 +49,8 @@ const expected: Record<string, string> = {
   NOTE_NOT_FOUND: 'That note no longer exists.',
   NOT_DRAFT: 'This note was already sent.',
   TOO_MANY_NOTES: 'You can send up to 50 notes at a time.',
+  ITEM_NAME_TAKEN: 'A note with this name already exists.',
+  SUGGESTION_NOT_FOUND: 'That suggestion is no longer waiting.',
   IO_FAILED: GENERIC,
   INTERNAL: GENERIC,
   VALIDATION_FAILED: GENERIC

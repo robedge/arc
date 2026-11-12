@@ -14,6 +14,8 @@ import { MetaStore } from '../knowledge/meta-store'
 import { KnowledgeIndex } from '../knowledge/knowledge-index'
 import { KnowledgeService } from '../knowledge/knowledge-service'
 import { KnowledgeItemsRepo } from '../db/repositories/knowledge-items-repo'
+import { KnowledgeSuggestionService } from '../knowledge/knowledge-suggestion-service'
+import { KnowledgeSuggestionsRepo } from '../db/repositories/knowledge-suggestions-repo'
 import { SectionService } from '../knowledge/section-service'
 import { KnowledgeWatcher } from '../knowledge/knowledge-watcher'
 import { KnowledgeStorageService } from '../knowledge/knowledge-storage-service'
@@ -257,6 +259,24 @@ function buildKnowledgeServices(core: CoreServices) {
     getKnowledgeRoot,
     log: knowledgeLog
   })
+  // Events are written through the session service, which is built later and reads the repo built here.
+  const sessionEventsRef = new LateRef<Pick<SessionService, 'logEvent' | 'knowledgeDiscarded'>>(
+    'the session service'
+  )
+  const knowledgeSuggestionsRepo = new KnowledgeSuggestionsRepo(db)
+  const knowledgeSuggestions = new KnowledgeSuggestionService({
+    repo: knowledgeSuggestionsRepo,
+    sectionsRepo,
+    getKnowledgeRoot,
+    knowledge: knowledgeService,
+    itemsRepo,
+    emitChanged: (payload) => emit('knowledge:changed', payload),
+    isStorageLocked: (groupId) => storageService.isLocked(groupId),
+    logSessionEvent: (sessionId, kind, text, data) =>
+      sessionEventsRef.get().logEvent(sessionId, kind, text, data),
+    publish: (sessionId, waiting) => emit('session:knowledge-suggestions', { sessionId, waiting }),
+    onDiscarded: (sessionId, titles) => sessionEventsRef.get().knowledgeDiscarded(sessionId, titles)
+  })
   const shellService = createShellService({
     env: process.env,
     openExternal: (url) => shell.openExternal(url),
@@ -275,6 +295,9 @@ function buildKnowledgeServices(core: CoreServices) {
     knowledgeWatcher,
     storageService,
     knowledgeService,
+    knowledgeSuggestions,
+    knowledgeSuggestionsRepo,
+    sessionEventsRef,
     shellService,
     projectService
   }
@@ -473,6 +496,9 @@ function buildSessionServices(
     heldMessagesRepo: new HeldMessagesRepo(db),
     commitsRepo: new CommitsRepo(db),
     attentionRepo: new AttentionRepo(db),
+    knowledgeSuggestionsRepo: knowledge.knowledgeSuggestionsRepo,
+    knowledgeItemsRepo: knowledge.itemsRepo,
+    knowledgeSuggestions: knowledge.knowledgeSuggestions,
     allowRulesRepo: new AllowRulesRepo(db),
     worktreeGit,
     mergesRepo: new MergesRepo(db),
@@ -504,6 +530,7 @@ function buildSessionServices(
     models,
     providers: providerStatus,
     appSettings,
+    suggestKnowledge: () => appSettings.get('knowledge.suggestOnFinish'),
     onSettingsSaved: () => emit('settings:changed', appSettings.getAll()),
     registry: new AdapterRegistry({
       claude: new ClaudeAdapter({
@@ -594,6 +621,7 @@ export function buildServices(deps: BuildServicesDeps): AppServices {
     usage
   )
   const { sessions } = sessionServices
+  knowledge.sessionEventsRef.bind(sessions)
   const { providerStatus, models } = providers
 
   const groupService = new GroupService({

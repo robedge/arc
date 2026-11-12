@@ -96,7 +96,7 @@ describe('session service with the real bridge and the fake CLI', () => {
     expect(brainArgs.some((a) => a.startsWith('--mcp-config=') && a.endsWith('.json'))).toBe(true)
     expect(brainArgs).toContain('--strict-mcp-config')
     expect(brainArgs[brainArgs.indexOf('--allowedTools') + 1]).toBe(
-      'Read Grep Glob WebFetch WebSearch ToolSearch mcp__arc__propose_plan mcp__arc__spawn_worker mcp__arc__message_worker mcp__arc__get_worker_status mcp__arc__merge_worker mcp__arc__sync_worker mcp__arc__resolve_request mcp__arc__escalate_to_user mcp__arc__ask_user'
+      'Read Grep Glob WebFetch WebSearch ToolSearch mcp__arc__propose_plan mcp__arc__spawn_worker mcp__arc__message_worker mcp__arc__get_worker_status mcp__arc__merge_worker mcp__arc__sync_worker mcp__arc__resolve_request mcp__arc__escalate_to_user mcp__arc__ask_user mcp__arc__suggest_knowledge_update'
     )
     const workerRuns = argvs.filter((r) => r.argv?.some((a) => a.includes('arc-role:worker')))
     expect(workerRuns).toHaveLength(2)

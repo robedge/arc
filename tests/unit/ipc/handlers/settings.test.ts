@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { call, type Captured } from './capture'
+import { channelSchemas } from '../../../../src/shared/ipc/contract'
 import type { AppServices } from '../../../../src/main/app/app-services'
 
 const captured = vi.hoisted<Captured>(() => new Map())
@@ -68,5 +69,78 @@ describe('settings:set', () => {
       expect.any(Number)
     )
     expect(services.commandCatalogue.invalidate).not.toHaveBeenCalled()
+  })
+
+  it('persists knowledge.suggestOnFinish, returns it and announces it', async () => {
+    const store: Record<string, unknown> = { 'knowledge.suggestOnFinish': true }
+    const appSettings = {
+      get: vi.fn(),
+      getAll: vi.fn(() => ({ ...store })),
+      setMany: vi.fn((entries: Record<string, unknown>) => Object.assign(store, entries))
+    }
+    const services = {
+      appSettings,
+      commandCatalogue: { invalidate: vi.fn() },
+      sessions: { knowledgeSuggestSettingChanged: vi.fn() }
+    }
+    await register(services as never)
+    const result = await call(captured, 'settings:set', { 'knowledge.suggestOnFinish': false })
+    expect(appSettings.setMany).toHaveBeenCalledWith(
+      { 'knowledge.suggestOnFinish': false },
+      expect.any(Number)
+    )
+    expect(result).toMatchObject({ 'knowledge.suggestOnFinish': false })
+    expect(await call(captured, 'settings:get')).toMatchObject({
+      'knowledge.suggestOnFinish': false
+    })
+    expect(emit).toHaveBeenCalledWith(
+      'settings:changed',
+      expect.objectContaining({ 'knowledge.suggestOnFinish': false })
+    )
+  })
+
+  it('rejects a non-boolean knowledge.suggestOnFinish in the schema', () => {
+    const schema = channelSchemas['settings:set']
+    expect(schema.safeParse({ 'knowledge.suggestOnFinish': false }).success).toBe(true)
+    expect(schema.safeParse({ 'knowledge.suggestOnFinish': 'no' }).success).toBe(false)
+  })
+
+  describe('telling open sessions about knowledge.suggestOnFinish', () => {
+    function suggestRig(before: boolean, after: boolean) {
+      let value = before
+      const appSettings = {
+        get: vi.fn((key: string) => (key === 'knowledge.suggestOnFinish' ? value : undefined)),
+        getAll: vi.fn(() => ({ 'knowledge.suggestOnFinish': value })),
+        setMany: vi.fn(() => {
+          value = after
+        })
+      }
+      const sessions = { knowledgeSuggestSettingChanged: vi.fn(), pluginsChanged: vi.fn() }
+      return { appSettings, commandCatalogue: { invalidate: vi.fn() }, sessions }
+    }
+
+    it('calls the hook, after the value is saved, when it changed', async () => {
+      const services = suggestRig(true, false)
+      services.sessions.knowledgeSuggestSettingChanged.mockImplementation(() => {
+        expect(services.appSettings.setMany).toHaveBeenCalled()
+      })
+      await register(services as never)
+      await call(captured, 'settings:set', { 'knowledge.suggestOnFinish': false })
+      expect(services.sessions.knowledgeSuggestSettingChanged).toHaveBeenCalledOnce()
+    })
+
+    it('does not call it when the value is the same', async () => {
+      const services = suggestRig(true, true)
+      await register(services as never)
+      await call(captured, 'settings:set', { 'knowledge.suggestOnFinish': true })
+      expect(services.sessions.knowledgeSuggestSettingChanged).not.toHaveBeenCalled()
+    })
+
+    it('does not call it when the patch leaves the key out', async () => {
+      const services = suggestRig(true, true)
+      await register(services as never)
+      await call(captured, 'settings:set', { 'usage.checkClaudePlanOnLaunch': false })
+      expect(services.sessions.knowledgeSuggestSettingChanged).not.toHaveBeenCalled()
+    })
   })
 })

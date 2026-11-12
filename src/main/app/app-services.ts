@@ -8,6 +8,7 @@ import type { ProcessSupervisor } from '../agents/process-supervisor'
 import type { BridgeServer } from '../bridge/bridge-server'
 import type { AppSettingsRepo } from '../db/repositories/app-settings-repo'
 import type { KnowledgeItemsRepo } from '../db/repositories/knowledge-items-repo'
+import type { KnowledgeSuggestionsRepo } from '../db/repositories/knowledge-suggestions-repo'
 import type { UsageRepo } from '../db/repositories/usage-repo'
 import type { UsageSuggestionsRepo } from '../db/repositories/usage-suggestions-repo'
 import type { GroupService } from '../groups/group-service'
@@ -15,6 +16,7 @@ import type { ProjectService } from '../groups/project-service'
 import type { AvailabilityService } from '../knowledge/availability-service'
 import type { KnowledgeIndex } from '../knowledge/knowledge-index'
 import type { KnowledgeService } from '../knowledge/knowledge-service'
+import type { KnowledgeSuggestionService } from '../knowledge/knowledge-suggestion-service'
 import type { KnowledgeStorageService } from '../knowledge/knowledge-storage-service'
 import type { KnowledgeWatcher } from '../knowledge/knowledge-watcher'
 import type { SectionService } from '../knowledge/section-service'
@@ -63,6 +65,8 @@ export interface AppServices {
   sectionService: SectionService
   storageService: KnowledgeStorageService
   knowledgeService: KnowledgeService
+  knowledgeSuggestions: KnowledgeSuggestionService
+  knowledgeSuggestionsRepo: KnowledgeSuggestionsRepo
   shellService: ShellService
   groupService: GroupService
   projectService: ProjectService

@@ -105,6 +105,7 @@ function load(workers: WorkerView[]): void {
     plan: null,
     workers,
     attention: [],
+    knowledgeSuggestions: [],
     seq: 0
   })
 }

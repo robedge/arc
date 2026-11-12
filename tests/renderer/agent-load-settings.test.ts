@@ -88,6 +88,7 @@ function appSettings(): AppSettings {
     'providers.brain': { provider: 'claude', model: 'sonnet' },
     'providers.workers': { mode: 'auto' },
     'usage.checkClaudePlanOnLaunch': true,
+    'knowledge.suggestOnFinish': true,
     'agents.loadOff': stored
   }
 }

@@ -33,6 +33,7 @@ const snapshotOf = (changedFileCount: number): SessionSnapshot => ({
   workers: [],
   plan: null,
   attention: [],
+  knowledgeSuggestions: [],
   brainState: 'idle',
   changedFileCount,
   seq: 0

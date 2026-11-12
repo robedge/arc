@@ -13,12 +13,19 @@ export function registerSettingsHandlers(services: SettingsServices): void {
   handle('settings:get', () => appSettings.getAll())
   handle('settings:set', (patch) => {
     const loadBefore = patch['agents.loadOff'] ? appSettings.get('agents.loadOff') : undefined
+    const suggestBefore =
+      patch['knowledge.suggestOnFinish'] !== undefined
+        ? appSettings.get('knowledge.suggestOnFinish')
+        : undefined
     appSettings.setMany(
       {
         ...(patch['providers.brain'] ? { 'providers.brain': patch['providers.brain'] } : {}),
         ...(patch['providers.workers'] ? { 'providers.workers': patch['providers.workers'] } : {}),
         ...(patch['usage.checkClaudePlanOnLaunch'] !== undefined
           ? { 'usage.checkClaudePlanOnLaunch': patch['usage.checkClaudePlanOnLaunch'] }
+          : {}),
+        ...(patch['knowledge.suggestOnFinish'] !== undefined
+          ? { 'knowledge.suggestOnFinish': patch['knowledge.suggestOnFinish'] }
           : {}),
         ...(patch['agents.loadOff'] ? { 'agents.loadOff': patch['agents.loadOff'] } : {})
       },
@@ -31,6 +38,10 @@ export function registerSettingsHandlers(services: SettingsServices): void {
       commandCatalogue.invalidate()
       emit('commands:changed', {})
       void sessions.pluginsChanged()
+    }
+    // Open brains hear about the knowledge suggestions switch with their next message, once, and only on a change.
+    if (suggestBefore !== undefined && suggestBefore !== all['knowledge.suggestOnFinish']) {
+      sessions.knowledgeSuggestSettingChanged()
     }
     return all
   })

@@ -63,6 +63,17 @@ export class MessagesRepo {
     return this.page(sessionId, null, limit)
   }
 
+  /** The id of the session's newest user message; undefined before the user has written one. */
+  latestUserId(sessionId: string): number | undefined {
+    return this.db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(and(eq(messages.sessionId, sessionId), eq(messages.role, 'user')))
+      .orderBy(desc(messages.id))
+      .limit(1)
+      .get()?.id
+  }
+
   /** Startup recovery: streaming rows become stopped. Returns how many changed. */
   recoverStreaming(now: number): number {
     return this.db

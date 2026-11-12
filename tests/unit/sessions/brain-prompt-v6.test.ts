@@ -6,6 +6,7 @@ import {
   BRAIN_PROMPT_VERSION,
   PROMPT_UPDATE_NOTE_V5,
   PROMPT_UPDATE_NOTE_V6,
+  PROMPT_UPDATE_NOTE_V7,
   buildBrainPrompt,
   promptUpdateNote
 } from '../../../src/main/sessions/orchestrator'
@@ -86,7 +87,7 @@ const base = {
 
 describe('brain prompt version 6', () => {
   it('is version 6', () => {
-    expect(BRAIN_PROMPT_VERSION).toBe(6)
+    expect(BRAIN_PROMPT_VERSION).toBeGreaterThanOrEqual(6)
   })
 
   it('names three providers and lists the Cursor models as label (id)', () => {
@@ -207,9 +208,11 @@ describe('the version 6 update note', () => {
   })
 
   it('gives a version 5 session the note and the current block once', () => {
-    expect(promptUpdateNote(5, undefined, section)).toBe(`${PROMPT_UPDATE_NOTE_V6}\n${section}`)
+    expect(promptUpdateNote(5, undefined, section)).toBe(
+      `${PROMPT_UPDATE_NOTE_V6}\n${section}\n\n${PROMPT_UPDATE_NOTE_V7}`
+    )
     expect(promptUpdateNote(5, undefined, section)).not.toContain(PROMPT_UPDATE_NOTE_V5)
-    expect(promptUpdateNote(6, undefined, section)).toBeUndefined()
+    expect(promptUpdateNote(7, undefined, section)).toBeUndefined()
     expect(promptUpdateNote(5, undefined, undefined)).toBeUndefined()
   })
 })

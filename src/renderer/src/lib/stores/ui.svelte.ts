@@ -18,7 +18,7 @@ export type DialogSpec =
   | { kind: 'storage-unlink' }
   | { kind: 'storage-use-app' }
 
-export type SettingsPage = 'providers' | 'plugins' | 'agent-load'
+export type SettingsPage = 'providers' | 'plugins' | 'agent-load' | 'knowledge'
 
 class UiStore {
   selectedGroupId = $state<string | null>(null)

@@ -54,7 +54,8 @@
 //
 // Environment:
 //   FAKE_CODEX_LOG   If set, appends one JSON record per line: {"argv"} and {"env"} at start, {"recv"} for every
-//                    client line, {"send"} for every line written to the client, {"thread"} at thread/start|resume,
+//                    client line, {"send"} for every line written to the client, {"thread"} at thread/start|resume (config and
+//                    developerInstructions included),
 //                    {"mcpResult"} for an mcp step, {"shell"} for a shell step.
 //   FAKE_CODEX_THREAD_ID   the id thread/start answers with (default: a fresh one per run).
 //
@@ -874,6 +875,7 @@ async function onThread(msg, resumed) {
       sandbox: p.sandbox,
       config: p.config,
       hasDeveloperInstructions: Boolean(p.developerInstructions),
+      developerInstructions: p.developerInstructions,
       hasBaseInstructions: p.baseInstructions !== undefined
     }
   })

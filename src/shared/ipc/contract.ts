@@ -7,6 +7,7 @@ import type {
   ReviewSnapshot,
   ReviewUndoPreview
 } from '../types/review'
+import { IMPORT_MAX_BYTES } from '../limits'
 import { PROVIDER_IDS } from '../types/provider'
 import type {
   AppSettings,
@@ -20,6 +21,11 @@ import type { CommandInfo } from '../types/commands'
 import type { PluginProgress, PluginRow } from '../types/plugins'
 import type { PlanSnapshot, SessionUsage, UsageReport } from '../types/usage'
 import type { Group } from '../types/group'
+import type {
+  AcceptAllResult,
+  AcceptOutcome,
+  KnowledgeSuggestionView
+} from '../types/knowledge-suggestion'
 import type { Section } from '../types/section'
 import type { ImportReport, ItemContent, ItemSummary } from '../types/item'
 import type { AddProjectsResult, Project } from '../types/project'
@@ -166,6 +172,7 @@ export const channelSchemas = {
       'providers.brain': modelRefSchema.optional(),
       'providers.workers': workersPrefSchema.optional(),
       'usage.checkClaudePlanOnLaunch': z.boolean().optional(),
+      'knowledge.suggestOnFinish': z.boolean().optional(),
       'agents.loadOff': agentLoadOffSchema.optional()
     })
     .strict(),
@@ -304,6 +311,25 @@ export const channelSchemas = {
   'usage:get-report': z.object({ range: z.enum(['today', '7d', '30d', 'all']) }).strict(),
   // Dismisses a suggestion for good; the session's snapshot and `usage:changed` follow as pushes.
   'usage:dismiss-suggestion': z.object({ id: z.string() }).strict(),
+  'knowledge-suggestions:list': z.object({ sessionId: z.string() }).strict(),
+  'knowledge-suggestions:discard': z.object({ id: z.string() }).strict(),
+  'knowledge-suggestions:accept-all': z.object({ sessionId: z.string() }).strict(),
+  'knowledge-suggestions:discard-all': z.object({ sessionId: z.string() }).strict(),
+  'knowledge-suggestions:current': z.object({ id: z.string() }).strict(),
+  'knowledge-suggestions:result-text': z.object({ id: z.string() }).strict(),
+  'knowledge-suggestions:accept': z
+    .object({
+      id: z.string(),
+      edits: z
+        .object({
+          text: z.string().max(IMPORT_MAX_BYTES).optional(),
+          name: z.string().min(1).max(80).optional(),
+          sectionId: z.string().min(1).optional()
+        })
+        .strict()
+        .optional()
+    })
+    .strict(),
   // The plan meters per set-up provider and the open plan notices. Kept live by `plan:changed`.
   'plan:get': z.object({}).strict(),
   // Reads the Codex limits now (Claude's come from the agents' own events); answers like `plan:get`.
@@ -448,6 +474,31 @@ export interface ChannelResponses {
   'usage:get-session': SessionUsage
   'usage:get-report': UsageReport
   'usage:dismiss-suggestion': void
+  /** The brain's waiting knowledge suggestions of a session, newest first. */
+  'knowledge-suggestions:list': KnowledgeSuggestionView[]
+  /** Discards a waiting suggestion; an id that is not waiting is ignored. */
+  'knowledge-suggestions:discard': void
+  /** Applies a waiting suggestion; a typed error (name taken, write failed, ...) leaves it waiting. */
+  'knowledge-suggestions:accept': AcceptOutcome
+  /**
+   * Applies every waiting suggestion of the session as suggested, oldest first, and never stops on a
+   * failure: one that cannot be applied stays waiting and carries its typed error (`{ code, details? }`,
+   * the shape a failed single accept gives) in its result.
+   */
+  'knowledge-suggestions:accept-all': AcceptAllResult
+  /** Discards every waiting suggestion of the session. */
+  'knowledge-suggestions:discard-all': void
+  /**
+   * The current body text of the note an update suggestion changes, for "Show current". Errors:
+   * `ITEM_NOT_FOUND` (file gone), `SUGGESTION_NOT_FOUND` (unknown or resolved id), `VALIDATION_FAILED`
+   * (a new-note suggestion).
+   */
+  'knowledge-suggestions:current': { text: string }
+  /**
+   * The full proposed text of a waiting suggestion, for the editor: the new note's text, or an update's
+   * full resulting body (no front matter). Error `SUGGESTION_NOT_FOUND` for an unknown or resolved id.
+   */
+  'knowledge-suggestions:result-text': { text: string }
   'plan:get': PlanSnapshot
   'plan:refresh': PlanSnapshot
   'plan:dismiss-notice': void
@@ -565,6 +616,11 @@ export interface IpcEvents {
   /** A notification was clicked: select the session and open the dialog (first `requestId` if given). */
   'session:open-attention': { sessionId: string; groupId?: string; requestId?: string }
   /**
+   * A session's waiting knowledge suggestions changed: the full list, newest first. Never raises a
+   * notification and is not part of the attention count.
+   */
+  'session:knowledge-suggestions': { sessionId: string; waiting: KnowledgeSuggestionView[] }
+  /**
    * A session's token usage changed: the full snapshot, at most one push per second per session
    * (trailing edge) after rows are recorded. Not part of the per-session `seq` stream.
    */
@@ -619,7 +675,8 @@ export interface KnowledgeChangedPayload {
    * (more than 500 items): re-list `sectionIds` instead.
    */
   items?: KnowledgeChangedItem[]
-  reason: 'external' | 'storage'
+  /** `suggestion`: Accept wrote a file itself (the watcher drops Arc's own writes). */
+  reason: 'external' | 'storage' | 'suggestion'
 }
 
 export type IpcEventName = keyof IpcEvents
@@ -649,7 +706,8 @@ const eventFlags = {
   'session:review-changed': true,
   'worker:terminal': true,
   'session:attention': true,
-  'session:open-attention': true
+  'session:open-attention': true,
+  'session:knowledge-suggestions': true
 } satisfies Record<IpcEventName, true>
 
 export const eventNames = Object.keys(eventFlags) as IpcEventName[]

@@ -1,0 +1,17 @@
+# The brain suggests six different new notes in one turn: the sixth is refused with cap_reached (spec 011).
+# A second user message starts a new request, so one more note is accepted.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Queue facts\n\nHere is what I found about the queue client."}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Cap fact 1", "reason": "Seen while reading the queue client.", "section": "Notes", "name": "Cap fact 1", "content": "Cap fact 1: the queue client keeps 1 pending jobs per worker."}}}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Cap fact 2", "reason": "Seen while reading the queue client.", "section": "Notes", "name": "Cap fact 2", "content": "Cap fact 2: the queue client keeps 2 pending jobs per worker."}}}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Cap fact 3", "reason": "Seen while reading the queue client.", "section": "Notes", "name": "Cap fact 3", "content": "Cap fact 3: the queue client keeps 3 pending jobs per worker."}}}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Cap fact 4", "reason": "Seen while reading the queue client.", "section": "Notes", "name": "Cap fact 4", "content": "Cap fact 4: the queue client keeps 4 pending jobs per worker."}}}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Cap fact 5", "reason": "Seen while reading the queue client.", "section": "Notes", "name": "Cap fact 5", "content": "Cap fact 5: the queue client keeps 5 pending jobs per worker."}}}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Cap fact 6", "reason": "Seen while reading the queue client.", "section": "Notes", "name": "Cap fact 6", "content": "Cap fact 6: the queue client keeps 6 pending jobs per worker."}}}
+{"result":true}
+{"waitForStdin":"ANOTHER-ASK"}
+{"say":"One more thing about the queue client."}
+{"mcp": {"tool": "suggest_knowledge_update", "args": {"kind": "new", "title": "Cap fact 7", "reason": "Seen while reading the queue client.", "section": "Notes", "name": "Cap fact 7", "content": "Cap fact 7: the queue client keeps 7 pending jobs per worker."}}}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

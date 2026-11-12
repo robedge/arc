@@ -24,6 +24,9 @@ export const EVENT_STYLE: Record<string, EventStyle> = {
   shared: { icon: 'link', tone: 'accent', label: 'Shared' },
   'repo-settings': { icon: 'info', tone: 'accent', label: 'Repository settings' },
   'cursor-blocked': { icon: 'warning', tone: 'attention', label: 'Blocked' },
+  'knowledge-suggested': { icon: 'info', tone: 'accent', label: 'Knowledge suggested' },
+  'knowledge-accepted': { icon: 'success', tone: 'success', label: 'Knowledge accepted' },
+  'knowledge-discarded': { icon: 'info', tone: 'faint', label: 'Knowledge discarded' },
   'worktree-kept': { icon: 'info', tone: 'faint', label: 'Working copy kept' }
 }
 

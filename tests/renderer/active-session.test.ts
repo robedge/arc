@@ -39,6 +39,7 @@ function snapshot(over: Partial<SessionSnapshot> = {}): SessionSnapshot {
     workers: [],
     plan: null,
     attention: [],
+    knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 0,
     seq: 10,

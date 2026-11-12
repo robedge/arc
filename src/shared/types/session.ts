@@ -1,4 +1,5 @@
 import type { TokenTotals } from './usage'
+import type { KnowledgeSuggestionView } from './knowledge-suggestion'
 import type { ProviderId, ProviderState, ProviderStatus, RunningOn, WorkersPref } from './provider'
 
 export type CliState = ProviderState
@@ -103,6 +104,7 @@ export type MessagePrompt =
       status: 'open' | 'continued' | 'dismissed'
     }
   | ReviewLinkPrompt
+  | KnowledgeSuggestionsPrompt
 
 /**
  * Marks the brain's reply to the final summary (or the "All work is merged." fallback system
@@ -110,6 +112,16 @@ export type MessagePrompt =
  */
 export interface ReviewLinkPrompt {
   kind: 'review-link'
+}
+
+/**
+ * Marks the brain's reply (or a system message when the turn had no reply to carry it) after a turn
+ * in which it stored `count` knowledge suggestions. The conversation shows a line that opens the
+ * Knowledge suggestions dialog. `count` is what that turn made, not what is waiting now.
+ */
+export interface KnowledgeSuggestionsPrompt {
+  kind: 'knowledge-suggestions'
+  count: number
 }
 
 export interface SessionMessage {
@@ -387,6 +399,8 @@ export interface SessionSnapshot {
   workers: WorkerView[]
   plan: PlanView | null
   attention: AttentionView[]
+  /** The brain's waiting knowledge suggestions, newest first. */
+  knowledgeSuggestions: KnowledgeSuggestionView[]
   brainState: BrainState
   /** Files the session changed over all its repositories (change review); 0 when it could not be computed. */
   changedFileCount: number

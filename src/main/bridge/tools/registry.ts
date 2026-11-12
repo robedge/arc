@@ -11,6 +11,7 @@ import { reportProgressTool } from './report-progress'
 import { requestPermissionTool } from './request-permission'
 import { resolveRequestTool } from './resolve-request'
 import { spawnWorkerTool } from './spawn-worker'
+import { suggestKnowledgeUpdateTool } from './suggest-knowledge-update'
 import { syncWorkerTool } from './sync-worker'
 
 /** Adding a tool: write one file in this folder and list it here. */
@@ -24,6 +25,7 @@ export const BRIDGE_TOOLS: readonly AnyBridgeTool[] = [
   resolveRequestTool,
   escalateToUserTool,
   askUserTool,
+  suggestKnowledgeUpdateTool,
   reportProgressTool,
   reportDoneTool,
   askBrainTool,

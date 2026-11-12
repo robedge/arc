@@ -39,6 +39,7 @@ test('providers:models lists Codex only while it is signed in, and settings roun
         'providers.brain': { provider: 'claude', model: 'sonnet' },
         'providers.workers': { mode: 'auto' },
         'usage.checkClaudePlanOnLaunch': true,
+        'knowledge.suggestOnFinish': true,
         'agents.loadOff': { brain: [], workers: [] }
       }
     })
@@ -60,6 +61,7 @@ test('providers:models lists Codex only while it is signed in, and settings roun
         'providers.brain': { provider: 'claude', model: 'sonnet' },
         'providers.workers': { mode: 'provider', provider: 'codex' },
         'usage.checkClaudePlanOnLaunch': true,
+        'knowledge.suggestOnFinish': true,
         'agents.loadOff': { brain: [], workers: [] }
       }
     })

@@ -3,6 +3,7 @@ import { channelSchemas } from '../../../src/shared/ipc/contract'
 import type { IpcEvents } from '../../../src/shared/ipc/contract'
 import { AttentionService, attentionView } from '../../../src/main/sessions/attention-service'
 import type { AttentionNotice } from '../../../src/main/sessions/attention-service'
+import type { KnowledgeSuggestionsRepo } from '../../../src/main/db/repositories/knowledge-suggestions-repo'
 import type { AttentionRequestRow } from '../../../src/main/db/repositories/attention-repo'
 import { useTempDir } from '../helpers/temp-dir'
 import { makeRig } from './helpers'
@@ -234,6 +235,38 @@ describe('counts and pushes', () => {
         reason: 'Leaves the machine'
       }
     ])
+  })
+
+  it('puts the waiting knowledge suggestions in the session snapshot, newest first', () => {
+    addSession('s1', rig.groupId)
+    const repo = rig.deps.knowledgeSuggestionsRepo as KnowledgeSuggestionsRepo
+    const make = (id: string, createdAt: number) =>
+      repo.insert({
+        id,
+        sessionId: 's1',
+        groupId: rig.groupId,
+        requestId: 'm1',
+        action: 'new',
+        title: `Title ${id}`,
+        reason: 'why',
+        sectionId: 'sec',
+        sectionName: 'Notes',
+        proposedName: `${id}.md`,
+        proposedContent: `text ${id}`,
+        dedupeKey: id,
+        createdAt
+      })
+    make('a', 1)
+    make('b', 2)
+    make('c', 3)
+    repo.setOutcome('c', 'discarded', 4)
+    expect(rig.service.snapshot('s1').knowledgeSuggestions.map((v) => v.id)).toEqual(['b', 'a'])
+    expect(rig.service.snapshot('s1').knowledgeSuggestions[0]).toMatchObject({
+      kind: 'new',
+      title: 'Title b',
+      target: { itemId: null, name: 'b.md', relPath: null },
+      text: 'text b'
+    })
   })
 
   it('pushes session:attention with the group and the requests, and reports each request to notify', () => {

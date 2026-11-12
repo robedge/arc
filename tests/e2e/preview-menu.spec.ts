@@ -75,3 +75,74 @@ test('select-all, cut and paste work through the Edit roles', async ({ app, wind
   await click('v')
   await expect(name).toHaveValue('hello')
 })
+
+test('the Knowledge suggestions block renders in the real preview window', async ({
+  app,
+  window: main
+}) => {
+  await main.waitForLoadState('domcontentloaded')
+  const problems: string[] = []
+  app.context().on('page', (p) => {
+    p.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`))
+    p.on('console', (m) => {
+      if (m.type() === 'error') problems.push(`console: ${m.text()}`)
+    })
+  })
+  const preview = await openPreview(app)
+  await preview.setViewportSize({ width: 900, height: 900 }).catch(() => undefined)
+  const block = preview.locator('[data-preview-knowledge-suggestions]')
+  await block.scrollIntoViewIfNeeded()
+  await expect(preview.getByRole('heading', { name: 'Knowledge suggestions' })).toBeVisible()
+
+  const chips = block.locator('[data-knowledge-suggestions-chip]')
+  await expect(chips).toHaveCount(3)
+  for (const [i, n] of [1, 3, 12].entries()) {
+    await expect(chips.nth(i)).toBeVisible()
+    await expect(chips.nth(i)).toHaveAccessibleName(`Knowledge suggestions, ${n} waiting`)
+    expect((await chips.nth(i).innerText()).replace(/\s+/g, ' ').trim().toLowerCase()).toBe(
+      `suggestions ${n}`
+    )
+  }
+
+  const snippet = block.locator('[data-diff-snippet]').first()
+  await expect(snippet).toBeVisible()
+  await expect(snippet.locator('[data-diff-line="add"]').first()).toBeVisible()
+  await expect(snippet.locator('[data-diff-line="del"]').first()).toBeVisible()
+  const sizes = await snippet.evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth }))
+  expect(sizes.sw).toBeGreaterThan(sizes.cw)
+  const page = await preview.evaluate(() => {
+    const d = document.documentElement
+    const s = document.querySelector('[data-preview-scroll]') as HTMLElement
+    return { doc: d.scrollWidth - d.clientWidth, scroll: s.scrollWidth - s.clientWidth }
+  })
+  expect(page.doc).toBeLessThanOrEqual(0)
+  expect(page.scroll).toBeLessThanOrEqual(0)
+
+  const states = [
+    'new',
+    'update',
+    'too-large',
+    'changed',
+    'missing',
+    'name-taken',
+    'save-failed',
+    'storage-busy',
+    'unsaved-edits',
+    'failed',
+    'busy',
+    'editing'
+  ]
+  await expect(block.locator('[data-preview-card]')).toHaveCount(states.length)
+  for (const s of states) {
+    const card = block.locator(`[data-preview-card="${s}"]`)
+    await card.scrollIntoViewIfNeeded()
+    await expect(card).toBeVisible()
+  }
+  const editing = block.locator('[data-preview-card="editing"]')
+  for (const label of ['Text', 'Name', 'Section']) {
+    await expect(editing.getByLabel(label, { exact: true })).toBeVisible()
+  }
+
+  expect(await preview.evaluate(() => typeof (window as { arc?: unknown }).arc)).toBe('undefined')
+  expect(problems).toEqual([])
+})

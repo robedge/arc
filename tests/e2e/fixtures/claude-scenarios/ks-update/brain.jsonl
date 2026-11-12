@@ -1,0 +1,7 @@
+# The brain answers, then suggests one edit to the existing note "Service map" in Notes (spec 011). Nothing is written to knowledge.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry question\n\nThe retry delay is no longer fixed: it backs off exponentially."}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"update","title":"Retries use exponential backoff","reason":"The queue client in the api repo doubles the delay after each failed attempt.","section":"Notes","file":"service map","edits":[{"old_text":"Retries use a fixed delay of 30 seconds.","new_text":"Retries use exponential backoff starting at 5 seconds.\nThe maximum is 5 attempts."}]}}}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

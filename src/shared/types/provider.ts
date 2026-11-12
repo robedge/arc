@@ -88,6 +88,7 @@ export interface AppSettings {
   'providers.workers': WorkersPref
   /** Send one tiny Claude request when Arc opens so the plan meter has a value (default true). */
   'usage.checkClaudePlanOnLaunch': boolean
+  'knowledge.suggestOnFinish': boolean
   /** What Arc agents do not load, per role (spec 009). Everything is on by default. */
   'agents.loadOff': AgentLoadOff
 }

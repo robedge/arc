@@ -7,9 +7,11 @@
     row: DiffRow
     /** Shows the "Add note" gutter button; absent where notes are not allowed (hand edits). */
     onaddnote?: (anchor: NoteAnchor) => void
+    /** One narrow line-number gutter instead of the old and new columns (diff snippets). */
+    compact?: boolean
   }
 
-  let { row, onaddnote }: Props = $props()
+  let { row, onaddnote, compact = false }: Props = $props()
 
   const anchor = $derived(row.type === 'line' ? unifiedAnchor(row) : null)
 
@@ -27,9 +29,11 @@
   </div>
 {:else if row.type === 'noNewline'}
   <div
-    class="flex h-full items-center {onaddnote
-      ? 'pl-[calc(8rem+2.25rem)]'
-      : 'pl-[calc(8rem+0.75rem)]'} font-mono text-xs whitespace-pre text-text-muted italic"
+    class="flex h-full items-center {compact
+      ? 'pl-[calc(2.5rem+1.25rem)]'
+      : onaddnote
+        ? 'pl-[calc(8rem+2.25rem)]'
+        : 'pl-[calc(8rem+0.75rem)]'} font-mono text-xs whitespace-pre text-text-muted italic"
     data-diff-no-newline
   >
     \ No newline at end of file
@@ -54,16 +58,24 @@
         {/if}
       </span>
     {/if}
-    <span
-      class="w-16 shrink-0 pr-2 text-right text-text-muted select-none"
-      aria-hidden="true"
-      data-old-no>{row.oldNo ?? ''}</span
-    >
-    <span
-      class="w-16 shrink-0 pr-2 text-right text-text-muted select-none"
-      aria-hidden="true"
-      data-new-no>{row.newNo ?? ''}</span
-    >
+    {#if compact}
+      <span
+        class="w-10 shrink-0 pr-2 text-right text-text-muted select-none"
+        aria-hidden="true"
+        data-line-no>{row.newNo ?? row.oldNo ?? ''}</span
+      >
+    {:else}
+      <span
+        class="w-16 shrink-0 pr-2 text-right text-text-muted select-none"
+        aria-hidden="true"
+        data-old-no>{row.oldNo ?? ''}</span
+      >
+      <span
+        class="w-16 shrink-0 pr-2 text-right text-text-muted select-none"
+        aria-hidden="true"
+        data-new-no>{row.newNo ?? ''}</span
+      >
+    {/if}
     <span class="w-5 shrink-0 text-center select-none" data-sign>{SIGN[row.kind]}</span>
     <span class="pr-3 whitespace-pre">{row.text}</span>
   </div>

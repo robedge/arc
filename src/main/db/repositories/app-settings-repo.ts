@@ -14,6 +14,7 @@ export const appSettingSchemas = {
   'providers.brain': modelRefSchema,
   'providers.workers': workersPrefSchema,
   'usage.checkClaudePlanOnLaunch': z.boolean(),
+  'knowledge.suggestOnFinish': z.boolean(),
   'agents.loadOff': agentLoadOffSchema
 } as const
 
@@ -24,6 +25,7 @@ export const appSettingDefaults: AppSettingValues = {
   'providers.brain': { provider: 'claude', model: 'sonnet' },
   'providers.workers': { mode: 'auto' },
   'usage.checkClaudePlanOnLaunch': true,
+  'knowledge.suggestOnFinish': true,
   'agents.loadOff': { brain: [], workers: [] }
 }
 
@@ -75,6 +77,7 @@ export class AppSettingsRepo {
       'providers.brain': this.get('providers.brain'),
       'providers.workers': this.get('providers.workers'),
       'usage.checkClaudePlanOnLaunch': this.get('usage.checkClaudePlanOnLaunch'),
+      'knowledge.suggestOnFinish': this.get('knowledge.suggestOnFinish'),
       'agents.loadOff': this.get('agents.loadOff')
     }
   }

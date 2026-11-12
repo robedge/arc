@@ -171,6 +171,7 @@ it('Load earlier appears for a full snapshot, pages with the smallest id and pre
     workers: [],
     plan: null,
     attention: [],
+    knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 0,
     seq: 0

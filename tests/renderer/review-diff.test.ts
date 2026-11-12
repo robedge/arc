@@ -90,6 +90,7 @@ function snapshot(): SessionSnapshot {
     workers: [],
     plan: null,
     attention: [],
+    knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 2,
     seq: 5

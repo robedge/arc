@@ -154,6 +154,31 @@ export interface ResolveRequestInput {
   note?: string | undefined
 }
 
+/** A brain's knowledge suggestion as the tool passes it on. */
+export interface SuggestKnowledgeNewInput {
+  kind: 'new'
+  title: string
+  reason: string
+  section: string
+  name: string
+  content: string
+}
+
+export interface SuggestKnowledgeUpdateInput {
+  kind: 'update'
+  title: string
+  reason: string
+  section: string
+  /** Name or path of the file inside the section. */
+  file: string
+  edits: { old_text: string; new_text: string }[]
+}
+
+export type SuggestKnowledgeInput = (SuggestKnowledgeNewInput | SuggestKnowledgeUpdateInput) & {
+  /** The brain's claim that the user asked for suggestions in this request; absent means false. */
+  askedByUser?: boolean
+}
+
 /** What the tools need from a session. Its orchestrator implements it. */
 export interface BridgeServices {
   /** Blocks until the user decides. The bridge keeps the MCP call alive with progress notifications. */
@@ -210,6 +235,11 @@ export interface BridgeServices {
     input: { question: string; choices?: string[] },
     call: { signal: AbortSignal }
   ): Promise<{ answer: string }>
+  /** Brain. Stores a knowledge suggestion for the user to review; refusals are `BridgeToolError`s. */
+  suggestKnowledgeUpdate(
+    agent: BridgeAgent,
+    input: SuggestKnowledgeInput
+  ): Promise<{ id: string; remainingThisRequest: number }>
 }
 
 export interface BridgeCallContext {

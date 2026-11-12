@@ -33,6 +33,7 @@ function open(header: SessionHeader, workers: WorkerView[] = []): void {
     workers,
     plan: null,
     attention: [],
+    knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 0,
     seq: 0

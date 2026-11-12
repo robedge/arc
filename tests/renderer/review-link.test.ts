@@ -46,6 +46,7 @@ function load(messages: SessionMessage[], changedFileCount = 2): void {
     plan: null,
     workers: [],
     attention: [],
+    knowledgeSuggestions: [],
     seq: 0
   })
 }
