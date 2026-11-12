@@ -20,10 +20,6 @@ export interface TierInput {
   isDefault?: boolean
 }
 
-/**
- * The override for the exact id, else `fast` for a fast name, else `balanced` for the provider's
- * default, else `deep`.
- */
 export function codexTier(input: TierInput): ModelTier {
   const override = CODEX_TIER_OVERRIDES[input.model]
   if (override !== undefined) return override
