@@ -6,9 +6,9 @@ import {
   GLOBAL_INSTALLS,
   LEAVES_MACHINE,
   NETWORK_TOOLS,
-  excludeFromGit,
   type Prefix
-} from '../codex/codex-rules'
+} from '../protected-commands'
+import { excludeFromGit } from '../worktree-git'
 
 /**
  * `<worktree>/.cursor/cli.json`: Arc's deny file for a Cursor worker (tech spec 2.4). Cursor runs an

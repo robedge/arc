@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { PROTECTED_PREFIXES } from './codex-rules'
+import { PROTECTED_PREFIXES } from '../protected-commands'
 
 /**
  * Reads the allow entries of the user's own Codex execpolicy rules (`$CODEX_HOME/rules/*.rules`), to

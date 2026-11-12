@@ -14,10 +14,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   ARC_RULES_RELATIVE_PATH,
   EXCLUDE_LINE,
-  PROTECTED_PREFIXES,
   arcRulesText,
   writeArcRules
 } from '../../../../src/main/agents/codex/codex-rules'
+import { PROTECTED_PREFIXES } from '../../../../src/main/agents/protected-commands'
 import { createGitFixture, git, trackedFile } from '../../../helpers/git-fixtures'
 import type { GitFixture } from '../../../helpers/git-fixtures'
 
