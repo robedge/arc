@@ -39,7 +39,7 @@
     if (id === null) return
     let stale = false
     void window.arc.invoke('storage:get', { groupId: id }).then((res) => {
-      if (!stale && res.ok && res.data) storageMode = res.data.mode
+      if (!stale && res.ok) storageMode = res.data.mode
     })
     const off = window.arc.on('storage:progress', (e) => {
       if (e.groupId === id) exportProgress = { phase: e.phase, done: e.done, total: e.total }

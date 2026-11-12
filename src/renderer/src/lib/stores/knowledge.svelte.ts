@@ -40,7 +40,7 @@ class KnowledgeStore {
     if (sectionId === null) return
     const res = await window.arc.invoke('items:list', { sectionId })
     if (request !== this.requestId) return
-    if (res.ok && Array.isArray(res.data)) this.items = res.data
+    if (res.ok) this.items = res.data
   }
 
   refresh(): Promise<void> {

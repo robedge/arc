@@ -49,6 +49,18 @@ function setup(disk: Disk): ReturnType<typeof mockArc> {
     if (channel === 'items:create') return { ok: true, data: item({ id: 'new', revision: 'n0' }) }
     if (channel === 'items:list') return { ok: true, data: [item()] }
     if (channel === 'sections:list' || channel === 'projects:list') return { ok: true, data: [] }
+    if (channel === 'storage:get') {
+      return {
+        ok: true,
+        data: {
+          mode: 'app',
+          linkedPath: null,
+          keptAside: false,
+          available: true,
+          hasKnowledge: true
+        }
+      }
+    }
     return { ok: true, data: undefined }
   })
 }

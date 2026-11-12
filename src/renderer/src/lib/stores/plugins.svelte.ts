@@ -30,19 +30,14 @@ class PluginsStore {
     this.failure = null
     this.op = { kind, target }
     this.opId = null
-    try {
-      const result = await start()
-      if (result.ok) {
-        if (this.op) this.opId = result.data.opId
-        return
-      }
-      this.op = null
-      if (result.error.code === 'PLUGIN_BUSY') toasts.show(messageFor(result.error), 'warning')
-      else this.failure = result.error.details?.reason ?? messageFor(result.error)
-    } catch {
-      this.op = null
-      this.failure = 'The plugin change failed.'
+    const result = await start()
+    if (result.ok) {
+      if (this.op) this.opId = result.data.opId
+      return
     }
+    this.op = null
+    if (result.error.code === 'PLUGIN_BUSY') toasts.show(messageFor(result.error), 'warning')
+    else this.failure = result.error.details?.reason ?? messageFor(result.error)
   }
 
   install(name: string, marketplace?: string): Promise<void> {
@@ -82,24 +77,11 @@ class PluginsStore {
   async load(silent = false): Promise<void> {
     const generation = ++this.generation
     if (!silent || this.status !== 'ready') this.status = 'loading'
-    let status: PluginsStatus = 'error'
-    let rows: PluginRow[] = []
-    let reason: string | null = null
-    try {
-      const result = await window.arc.invoke('plugins:list', {})
-      if (result.ok && Array.isArray(result.data)) {
-        status = 'ready'
-        rows = result.data
-      } else if (!result.ok) {
-        reason = result.error.details?.reason ?? null
-      }
-    } catch {
-      // Shown as the generic error below.
-    }
+    const result = await window.arc.invoke('plugins:list', {})
     if (generation !== this.generation) return
-    this.rows = rows
-    this.reason = reason
-    this.status = status
+    this.rows = result.ok ? result.data : []
+    this.reason = result.ok ? null : (result.error.details?.reason ?? null)
+    this.status = result.ok ? 'ready' : 'error'
   }
 
   reset(): void {

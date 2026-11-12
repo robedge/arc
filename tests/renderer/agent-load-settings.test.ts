@@ -252,6 +252,7 @@ it('shows the Claude items while Codex is still starting, then adds the Codex se
   mockArc(async (channel) => {
     if (channel === 'agent-load:get') return { ok: true, data: catalogue }
     if (channel === 'agent-load:codex') return { ok: true, data: await pending }
+    if (channel === 'agent-load:cursor') return { ok: true, data: cursor }
     return { ok: true, data: appSettings() }
   })
   render(AgentLoadSettings)
@@ -340,11 +341,12 @@ it('shows the Cursor group loading without holding back Codex or Claude', async 
 })
 
 it('shows an error and no switches when the list cannot be loaded', async () => {
-  mockArc((channel) =>
-    channel === 'agent-load:get'
-      ? { ok: false, error: { code: 'INTERNAL' } }
-      : { ok: true, data: appSettings() }
-  )
+  mockArc((channel) => {
+    if (channel === 'agent-load:get') return { ok: false, error: { code: 'INTERNAL' } }
+    if (channel === 'agent-load:codex') return { ok: true, data: codex }
+    if (channel === 'agent-load:cursor') return { ok: true, data: cursor }
+    return { ok: true, data: appSettings() }
+  })
   render(AgentLoadSettings)
   await waitFor(() => expect(screen.getByText(/Couldn.t list what agents load/)).toBeTruthy())
   expect(screen.queryAllByRole('switch')).toHaveLength(0)

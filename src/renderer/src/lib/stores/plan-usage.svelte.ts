@@ -32,12 +32,8 @@ class PlanUsageStore {
   async dismissNotice(key: string): Promise<void> {
     const before = this.notices
     this.notices = before.filter((n) => n.key !== key)
-    try {
-      const result = await window.arc.invoke('plan:dismiss-notice', { key })
-      if (!result.ok) this.restore(before, key)
-    } catch {
-      this.restore(before, key)
-    }
+    const result = await window.arc.invoke('plan:dismiss-notice', { key })
+    if (!result.ok) this.restore(before, key)
   }
 
   private restore(before: PlanNotice[], key: string): void {

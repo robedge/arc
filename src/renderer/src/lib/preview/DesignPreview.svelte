@@ -1,9 +1,11 @@
 <script lang="ts">
   // Design Preview: a catalog of the ui/ building blocks with local state only.
-  // No IPC, no preload, no global stores except the motion store (reduced-motion).
+  // No IPC, no preload; the only global stores used are motion (reduced-motion) and commands,
+  // which is given the sample `/` list so the step-in sample never asks main.
   import { onMount } from 'svelte'
   import type { Snippet } from 'svelte'
   import { motion } from '../stores/motion.svelte'
+  import { commands } from '../stores/commands.svelte'
   import type { DraftStatus } from '../stores/item-draft.svelte'
   import Panel from '../components/ui/Panel.svelte'
   import Wordmark from '../components/ui/Wordmark.svelte'
@@ -126,6 +128,8 @@
       source: 'codex'
     }
   ]
+  // The step-in sample's `/` list comes from here, so it never asks main (there is no preload).
+  commands.provide('preview', sampleCommands)
 
   const colors = [
     ['ground', 'bg-ground'],

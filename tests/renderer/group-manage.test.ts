@@ -31,6 +31,18 @@ function harness(): ReturnType<typeof mockArc> {
       groups.list = groups.list.filter((g) => g.id !== groupId)
       return { ok: true, data: undefined }
     }
+    if (channel === 'storage:get') {
+      return {
+        ok: true,
+        data: {
+          mode: 'app',
+          linkedPath: null,
+          keptAside: false,
+          available: true,
+          hasKnowledge: true
+        }
+      }
+    }
     return { ok: true, data: undefined }
   })
 }

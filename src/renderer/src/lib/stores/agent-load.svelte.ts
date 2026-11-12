@@ -82,56 +82,27 @@ class AgentLoadStore {
     // Codex is asked at the same time but shown when it answers, so a slow start never holds the page back.
     const codexAsk = this.loadCodex(generation)
     const cursorAsk = this.loadCursor(generation)
-    let status: AgentLoadStatus = 'error'
-    let items: LoadItem[] = []
-    try {
-      const result = await window.arc.invoke('agent-load:get', {})
-      if (result.ok && Array.isArray(result.data.items)) {
-        status = 'ready'
-        items = result.data.items
-      }
-    } catch {
-      // Shown as the error below.
-    }
+    const result = await window.arc.invoke('agent-load:get', {})
     if (generation === this.generation) {
-      this.claudeItems = items
-      this.status = status
+      this.claudeItems = result.ok ? result.data.items : []
+      this.status = result.ok ? 'ready' : 'error'
     }
     await Promise.all([codexAsk, cursorAsk])
   }
 
   private async loadCodex(generation: number): Promise<void> {
-    let items: LoadItem[] = []
-    let state: CodexLoadState = 'unreadable'
-    try {
-      const result = await window.arc.invoke('agent-load:codex', {})
-      if (result.ok && Array.isArray(result.data.items)) {
-        items = result.data.items
-        state = result.data.state
-      }
-    } catch {
-      // The group says Arc couldn't read the servers.
-    }
+    const result = await window.arc.invoke('agent-load:codex', {})
     if (generation !== this.generation) return
-    this.codexItems = items
-    this.codex = state
+    // On failure the group says Arc couldn't read the servers.
+    this.codexItems = result.ok ? result.data.items : []
+    this.codex = result.ok ? result.data.state : 'unreadable'
   }
 
   private async loadCursor(generation: number): Promise<void> {
-    let items: LoadItem[] = []
-    let state: CursorLoadState = 'unreadable'
-    try {
-      const result = await window.arc.invoke('agent-load:cursor', {})
-      if (result.ok && Array.isArray(result.data.items)) {
-        items = result.data.items
-        state = result.data.state
-      }
-    } catch {
-      // The group says Arc couldn't read the servers.
-    }
+    const result = await window.arc.invoke('agent-load:cursor', {})
     if (generation !== this.generation) return
-    this.cursorItems = items
-    this.cursor = state
+    this.cursorItems = result.ok ? result.data.items : []
+    this.cursor = result.ok ? result.data.state : 'unreadable'
   }
 
   reset(): void {

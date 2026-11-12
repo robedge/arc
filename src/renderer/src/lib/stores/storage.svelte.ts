@@ -59,7 +59,7 @@ class StorageStore {
     if (groupId === null) return
     const res = await window.arc.invoke('storage:get', { groupId })
     if (request !== this.requestId) return
-    if (res.ok && res.data) this.state = res.data
+    if (res.ok) this.state = res.data
   }
 
   /** Push handler for `storage:progress`. */
@@ -95,39 +95,21 @@ class StorageStore {
 
   /** Runs `storage:link` for a picked folder; returns true on success. */
   async link(pick: PickedFolder, choice: StorageLinkChoice): Promise<boolean> {
+    const token = pick.token
+    if (token === null) return false
     const groupId = this.groupId
-    if (groupId === null || pick.token === null) return false
-    this.error = null
-    this.progress = null
-    this.opGroupId = groupId
-    try {
-      const res = await window.arc.invoke('storage:link', {
-        groupId,
-        token: pick.token,
-        choice
-      })
-      if (!res.ok) {
-        this.error = messageFor(res.error)
-        this.opGroupId = null
-        this.progress = null
-        await this.load(groupId)
-        return false
-      }
-      if (groupId === this.groupId) {
-        this.state = res.data
-        this.pending = null
-        this.repoNote = pick.insideProjectRepo
-          ? `This folder is inside the project '${pick.insideProjectRepo.projectName}'. Edits to your knowledge will show up as changes in that repository.`
-          : null
-        if (ui.dialog?.kind === 'storage-link') ui.closeDialog()
-      }
-      // The list normally refreshes from `knowledge:changed`; make it explicit too.
-      await groupDetail.load(groupId)
-      return true
-    } finally {
-      this.opGroupId = null
-      this.progress = null
+    const linked = await this.run((id) =>
+      window.arc.invoke('storage:link', { groupId: id, token, choice })
+    )
+    if (linked === null) return false
+    if (groupId === this.groupId) {
+      this.pending = null
+      this.repoNote = pick.insideProjectRepo
+        ? `This folder is inside the project '${pick.insideProjectRepo.projectName}'. Edits to your knowledge will show up as changes in that repository.`
+        : null
+      if (ui.dialog?.kind === 'storage-link') ui.closeDialog()
     }
+    return true
   }
 
   /** Push handler for `availability:changed`; only the linked-folder events (no projectId). */
@@ -157,22 +139,24 @@ class StorageStore {
     this.progress = null
     this.repoNote = null
     this.opGroupId = groupId
+    let res: Awaited<ReturnType<typeof call>>
     try {
-      const res = await call(groupId)
-      if (!res.ok) {
-        this.error = messageFor(res.error)
-        await this.load(groupId)
-        return null
-      }
-      if (groupId === this.groupId) {
-        this.state = 'state' in res.data ? res.data.state : res.data
-      }
-      await groupDetail.load(groupId)
-      return res.data
+      res = await call(groupId)
     } finally {
+      // The operation is over once main answers; the reloads below run with the controls enabled.
       this.opGroupId = null
       this.progress = null
     }
+    if (!res.ok) {
+      this.error = messageFor(res.error)
+      await this.load(groupId)
+      return null
+    }
+    if (groupId === this.groupId) {
+      this.state = 'state' in res.data ? res.data.state : res.data
+    }
+    await groupDetail.load(groupId)
+    return res.data
   }
 
   /** Unlinks the folder; returns true on success. */

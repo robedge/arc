@@ -25,22 +25,21 @@ class CommandsStore {
     void this.load(sessionId)
   }
 
+  /** Sets a session's list without asking main; the Design Preview has no IPC to ask. */
+  provide(sessionId: string, list: CommandInfo[]): void {
+    this.entries[sessionId] = { status: 'ready', commands: list }
+  }
+
   /** Fetches again, keeping the old list visible while it loads. */
   async load(sessionId: string): Promise<void> {
     const previous = this.entries[sessionId]
     this.entries[sessionId] = { status: 'loading', commands: previous?.commands ?? [] }
     const generation = (this.generation.get(sessionId) ?? 0) + 1
     this.generation.set(sessionId, generation)
-    let next: CommandsEntry
-    try {
-      const result = await window.arc.invoke('commands:list', { sessionId })
-      next =
-        result.ok && Array.isArray(result.data)
-          ? { status: 'ready', commands: result.data }
-          : { status: 'error', commands: previous?.commands ?? [] }
-    } catch {
-      next = { status: 'error', commands: previous?.commands ?? [] }
-    }
+    const result = await window.arc.invoke('commands:list', { sessionId })
+    const next: CommandsEntry = result.ok
+      ? { status: 'ready', commands: result.data }
+      : { status: 'error', commands: previous?.commands ?? [] }
     if (this.generation.get(sessionId) === generation) this.entries[sessionId] = next
   }
 
