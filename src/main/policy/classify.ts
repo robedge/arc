@@ -69,11 +69,13 @@ const SEVERITY: readonly PolicyCategory[] = [
   PolicyCategory.ChangesCheckout
 ]
 
-export function none(): Classification {
+/** The verdict for an action that touches nothing protected: no category, nothing to escalate. */
+export function unclassified(): Classification {
   return { category: null, mustEscalate: false, reason: '', paths: [] }
 }
 
-export function pick(findings: readonly Finding[]): Classification {
+/** The verdict for the most severe category among `findings` (SEVERITY order); unclassified when empty. */
+export function mostSevere(findings: readonly Finding[]): Classification {
   for (const category of SEVERITY) {
     const found = findings.find((f) => f.category === category)
     if (found) {
@@ -88,7 +90,7 @@ export function pick(findings: readonly Finding[]): Classification {
       }
     }
   }
-  return none()
+  return unclassified()
 }
 
 // ---- paths ----
@@ -984,7 +986,7 @@ export function classifyBashCommand(command: string, ctx: ClassifyContext): Clas
   const findings: Finding[] = []
   for (const problem of parsed.problems) findings.push(cannotRead(problem))
   for (const segment of parsed.segments) classifySegment(segment, scope, findings)
-  return pick(findings)
+  return mostSevere(findings)
 }
 
 function classifyFiles(
@@ -997,7 +999,7 @@ function classifyFiles(
     findings.push(outside(`Arc can't tell which file ${action.tool} changes, so this needs you.`))
   }
   for (const path of action.paths) checkWrite(path, scope, action.tool, findings)
-  return pick(findings)
+  return mostSevere(findings)
 }
 
 /**
@@ -1009,7 +1011,7 @@ function classifyFiles(
 export function classifyAction(action: NormalizedAction, ctx: ClassifyContext): Classification {
   switch (action.kind) {
     case 'bash':
-      if (action.command === null) return pick([unreadable('a command Arc could not read')])
+      if (action.command === null) return mostSevere([unreadable('a command Arc could not read')])
       return classifyBashCommand(
         action.command,
         action.cwd === undefined ? ctx : { ...ctx, cwd: action.cwd }
@@ -1017,8 +1019,8 @@ export function classifyAction(action: NormalizedAction, ctx: ClassifyContext): 
     case 'edit':
       return classifyFiles(action, ctx)
     case 'mcp':
-      if (action.readOnly === 'yes') return none()
-      return pick([
+      if (action.readOnly === 'yes') return unclassified()
+      return mostSevere([
         {
           category: PolicyCategory.McpWrite,
           reason:
@@ -1028,14 +1030,14 @@ export function classifyAction(action: NormalizedAction, ctx: ClassifyContext): 
         }
       ])
     case 'permission':
-      return pick([
+      return mostSevere([
         {
           category: PolicyCategory.ExtraPermissions,
           reason: 'The agent asks for access beyond its working copy, so this needs you.'
         }
       ])
     case 'other':
-      return none()
+      return unclassified()
   }
 }
 

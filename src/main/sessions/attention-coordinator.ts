@@ -11,7 +11,7 @@ import type { AttentionRepo, AttentionRequestRow } from '../db/repositories/atte
 import { allowRuleMatches, allowRuleText, deriveAllowRule } from '../policy/allow-rules'
 import type { AllowRuleSpec } from '../policy/allow-rules'
 import { classifyBrainAction } from '../policy/brain-policy'
-import { classifyAction, isPublishAction, none } from '../policy/classify'
+import { classifyAction, isPublishAction, unclassified } from '../policy/classify'
 import type { Classification, ClassifyContext } from '../policy/classify'
 import {
   CODEX_PERMISSIONS_TOOL,
@@ -899,7 +899,7 @@ export class AttentionCoordinator {
     const action = normalizeClaudeCall(toolName, input)
     if (row.source === 'brain') {
       const brain = classifyBrainAction(action, this.host.policyContext(null))
-      return brain.refuse === undefined ? brain.classification : none()
+      return brain.refuse === undefined ? brain.classification : unclassified()
     }
     return classifyAction(action, this.host.policyContext(row.workerId ?? ''))
   }
