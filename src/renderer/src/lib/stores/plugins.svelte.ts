@@ -18,7 +18,6 @@ class PluginsStore {
   /** Counts finished changes so a form can clear itself when its install succeeds. */
   done = $state<{ seq: number; kind: PluginKind | null }>({ seq: 0, kind: null })
   private generation = 0
-  private opId: string | null = null
 
   /** Starts a change and returns once main accepted it; progress then arrives as `plugins:progress`. */
   async run(
@@ -29,12 +28,8 @@ class PluginsStore {
     if (this.op) return
     this.failure = null
     this.op = { kind, target }
-    this.opId = null
     const result = await start()
-    if (result.ok) {
-      if (this.op) this.opId = result.data.opId
-      return
-    }
+    if (result.ok) return
     this.op = null
     if (result.error.code === 'PLUGIN_BUSY') toasts.show(messageFor(result.error), 'warning')
     else this.failure = result.error.details?.reason ?? messageFor(result.error)
@@ -61,11 +56,9 @@ class PluginsStore {
   handleProgress(event: PluginProgress): void {
     if (event.state === 'running') {
       if (!this.op) this.op = { kind: event.kind, target: event.target }
-      this.opId = event.opId
       return
     }
     this.op = null
-    this.opId = null
     if (event.state === 'done') {
       this.done = { seq: this.done.seq + 1, kind: event.kind }
     } else {
@@ -90,7 +83,6 @@ class PluginsStore {
     this.rows = []
     this.reason = null
     this.op = null
-    this.opId = null
     this.failure = null
   }
 }

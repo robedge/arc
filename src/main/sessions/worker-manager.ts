@@ -42,7 +42,7 @@ import type {
 } from '../bridge/types'
 import type { BridgeRegistry } from '../bridge/bridge-server'
 import { modelToolsForRole } from '../bridge/tools/registry'
-import { assertNever } from '@shared/assert-never'
+import { assertNever, ignoreUnhandled } from '@shared/assert-never'
 import { planRefusedText, providerName, runningOnLabel } from '@shared/provider-label'
 import { PROVIDER_IDS } from '@shared/types/provider'
 import type { ModelRef, ProviderId, ProviderStatusMap } from '@shared/types/provider'
@@ -1759,8 +1759,7 @@ export class WorkerManager {
       case 'unknown':
         return
       default: {
-        const exhaustive: never = event
-        void exhaustive
+        ignoreUnhandled(event)
       }
     }
   }

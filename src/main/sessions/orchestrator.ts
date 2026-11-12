@@ -110,7 +110,7 @@ import type { BridgeToolNamer } from '../agents/tool-namer'
 import type { ModelRef, ProviderId, ProviderState } from '@shared/types/provider'
 import { PROVIDER_IDS } from '@shared/types/provider'
 import { PROVIDER_TRAITS } from '@shared/provider-traits'
-import { assertNever } from '@shared/assert-never'
+import { assertNever, ignoreUnhandled } from '@shared/assert-never'
 
 /** `propose_plan` blocks for as long as the user takes; the CLI must not time the call out. */
 export const BRAIN_MCP_TOOL_TIMEOUT_MS = '43200000'
@@ -2116,8 +2116,7 @@ export class Orchestrator {
       case 'unknown':
         return
       default: {
-        const exhaustive: never = event
-        void exhaustive
+        ignoreUnhandled(event)
       }
     }
   }

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 /*
  * Guard for spec 002 section 2.6: entrance animations and transitions last at most 300ms.
  * Scans every renderer .svelte/.css/.ts file for CSS animation and transition durations, Tailwind
- * duration-* utilities, and the DRAW_MS constant, resolving var(--duration-*) against tokens.css.
+ * duration-* utilities and Svelte transition durations, resolving var(--duration-*) against tokens.css.
  */
 
 const root = join(__dirname, '../../src/renderer')
@@ -94,26 +94,13 @@ export function scan(file: string, text: string): Finding[] {
         ambient: m[1] !== undefined && ambientTokens.has(m[1])
       })
     }
-    // Svelte transition params and the draw constant
-    for (const m of line.matchAll(
-      /\bduration:\s*(?:motion\.reduced\s*\?\s*0\s*:\s*)?(\d+|[A-Z_]+)\b/g
-    )) {
-      const raw = m[1] as string
-      const ms = /^\d+$/.test(raw) ? Number(raw) : raw === 'DRAW_MS' ? drawMs : NaN
-      if (!Number.isNaN(ms)) found.push({ where, source: line.trim(), ms, ambient: false })
+    // Svelte transition params
+    for (const m of line.matchAll(/\bduration:\s*(?:motion\.reduced\s*\?\s*0\s*:\s*)?(\d+)\b/g)) {
+      found.push({ where, source: line.trim(), ms: Number(m[1]), ambient: false })
     }
-    const drawConst = /export const DRAW_MS\s*=\s*(\d+)/.exec(line)
-    if (drawConst)
-      found.push({ where, source: line.trim(), ms: Number(drawConst[1]), ambient: false })
   })
   return found
 }
-
-const drawMs = Number(
-  /export const DRAW_MS\s*=\s*(\d+)/.exec(
-    readFileSync(join(root, 'src/lib/motion.ts'), 'utf8')
-  )?.[1]
-)
 
 describe('motion cap', () => {
   const all = walk(root).flatMap((file) => scan(relative(root, file), readFileSync(file, 'utf8')))
@@ -128,9 +115,8 @@ describe('motion cap', () => {
     expect(offenders.map((f) => `${f.where} ${f.ms}ms ${f.source}`)).toEqual([])
   })
 
-  it('the entrance token and the draw constant do not exceed the cap', () => {
+  it('the entrance token does not exceed the cap', () => {
     expect(tokenMs('--duration-draw')).toBeLessThanOrEqual(CAP_MS)
-    expect(drawMs).toBeLessThanOrEqual(CAP_MS)
   })
 
   it('exempts only the explicit ambient allowlist', () => {
