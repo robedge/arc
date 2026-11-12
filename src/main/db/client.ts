@@ -49,8 +49,17 @@ export function resolveMigrationsFolder(opts: {
 }
 
 function readJournal(migrationsFolder: string): JournalEntry[] {
-  const raw = readFileSync(join(migrationsFolder, 'meta', '_journal.json'), 'utf8')
-  const parsed = JSON.parse(raw) as { entries: JournalEntry[] }
+  const journalPath = join(migrationsFolder, 'meta', '_journal.json')
+  const raw = readFileSync(journalPath, 'utf8')
+  let parsed: { entries?: JournalEntry[] }
+  try {
+    parsed = JSON.parse(raw) as { entries?: JournalEntry[] }
+  } catch (cause: unknown) {
+    throw new Error(`The migration journal is not valid JSON: ${journalPath}`, { cause })
+  }
+  if (!Array.isArray(parsed.entries)) {
+    throw new Error(`The migration journal has no entries list: ${journalPath}`)
+  }
   return parsed.entries
 }
 

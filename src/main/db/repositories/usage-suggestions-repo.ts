@@ -52,6 +52,18 @@ type SelectedRow = {
   createdAt: number
 }
 
+/** The stored params, or none when the row's JSON is damaged (the text and advice still render). */
+function parseParams(raw: string): Record<string, unknown> {
+  try {
+    const value: unknown = JSON.parse(raw)
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {}
+  } catch {
+    return {}
+  }
+}
+
 function toSuggestion(row: SelectedRow): Suggestion {
   return {
     id: row.id,
@@ -62,7 +74,7 @@ function toSuggestion(row: SelectedRow): Suggestion {
     ...(row.workerId === null ? {} : { workerId: row.workerId }),
     text: row.text,
     advice: row.advice,
-    params: JSON.parse(row.paramsJson) as Record<string, unknown>,
+    params: parseParams(row.paramsJson),
     createdAt: row.createdAt
   }
 }

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { cpSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { openDatabase } from '../../../src/main/db/client'
@@ -96,5 +96,17 @@ describe('openDatabase', () => {
     ).toBeTruthy()
     upgraded.sqlite.close()
     expect(existsSync(join(dir(), backupName))).toBe(true)
+  })
+
+  it.each([
+    ['is not valid JSON', '{ not json', 'not valid JSON'],
+    ['has no entries list', '{"version":"7"}', 'no entries list']
+  ])('names the journal when it %s', (_case, content, message) => {
+    const migrations = join(dir(), 'm-bad')
+    cpSync(realMigrations, migrations, { recursive: true })
+    writeFileSync(join(migrations, 'meta', '_journal.json'), content)
+    expect(() =>
+      openDatabase({ dbPath: join(dir(), 'arc.db'), migrationsFolder: migrations })
+    ).toThrow(message)
   })
 })

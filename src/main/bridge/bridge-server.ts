@@ -81,6 +81,7 @@ function sendStatus(res: ServerResponse, status: number, message: string, allow?
   res.end(JSON.stringify({ error: message }))
 }
 
+/** Reads a request body as JSON. Rejects when it is too large or not valid JSON; callers answer 400. */
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
   let size = 0
@@ -90,7 +91,11 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
     if (size > MAX_BODY_BYTES) throw new Error('body too large')
     chunks.push(buf)
   }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+  } catch {
+    throw new Error('body is not valid JSON')
+  }
 }
 
 /**
