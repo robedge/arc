@@ -148,6 +148,24 @@ describe('WorkersRepo', () => {
     expect(workers.countActive('s2')).toBe(1)
   })
 
+  it('countUnfinished counts the active statuses and queued, and nothing that has ended', () => {
+    const statuses: WorkerStatus[] = [
+      'queued',
+      'starting',
+      'working',
+      'needs_approval',
+      'has_question',
+      'done',
+      'merged',
+      'failed',
+      'stopped'
+    ]
+    statuses.forEach((s, i) => addWorker(`w${i}`, 's1', s))
+    addWorker('other', 's2', 'done')
+    expect(workers.countUnfinished('s1')).toBe(5)
+    expect(workers.countUnfinished('s2')).toBe(0)
+  })
+
   it('recoverInterrupted stops starting/working as crash and keeps waiting workers', () => {
     addWorker('a', 's1', 'starting')
     addWorker('b', 's1', 'working')

@@ -64,6 +64,7 @@ function load(w: WorkerView): void {
     plan: null,
     workers: [w],
     attention: [],
+    knowledgeSuggestions: [],
     seq: 0
   }
   activeSession.setSnapshot(snapshot)
@@ -242,6 +243,7 @@ it('a controlled card shows the control label, stays default-toned and opens its
         action: 'git push'
       }
     ],
+    knowledgeSuggestions: [],
     seq: 0
   })
   render(SessionScreen)
@@ -281,6 +283,7 @@ function loadControlled(attention: AttentionView[]): void {
     plan: null,
     workers: [worker('needs_approval', { userControl: 'active' })],
     attention,
+    knowledgeSuggestions: [],
     seq: 0
   })
 }

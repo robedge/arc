@@ -73,7 +73,102 @@
   import PluginsSettings from '../components/settings/PluginsSettings.svelte'
   import ProvidersSettings from '../components/settings/ProvidersSettings.svelte'
   import type { PluginRow } from '@shared/types/plugins'
+  import KnowledgeSuggestionsChip from '../components/ui/KnowledgeSuggestionsChip.svelte'
+  import DiffSnippet from '../components/ui/DiffSnippet.svelte'
+  import KnowledgeSuggestionCard from '../components/knowledge-suggestions/KnowledgeSuggestionCard.svelte'
+  import KnowledgeSuggestionEditor from '../components/knowledge-suggestions/KnowledgeSuggestionEditor.svelte'
+  import KnowledgeSettings from '../components/settings/KnowledgeSettings.svelte'
+  import type { KnowledgeSuggestionView } from '@shared/types/knowledge-suggestion'
+  import type { KnowledgeSuggestionProblem } from '../knowledge-suggestions/problem'
+  import type { DiffHunk } from '@shared/types/review'
   import StorageProgress from '../components/settings/StorageProgress.svelte'
+
+  // Knowledge suggestions: fixed samples, no store and no IPC.
+  let ksChipClicks = $state(0)
+  const ksLongLine =
+    'SELECT order_id, customer_id, placed_at, total_cents, currency, status FROM orders WHERE placed_at >= now() - interval 30 day AND status IN (paid, shipped, delivered) ORDER BY placed_at DESC'
+  const ksHunks: DiffHunk[] = [
+    {
+      oldStart: 3,
+      oldLines: 3,
+      newStart: 3,
+      newLines: 4,
+      header: '@@ -3,3 +3,4 @@ Orders',
+      lines: [
+        { kind: 'ctx', oldNo: 3, newNo: 3, text: 'Orders table is partitioned by month.' },
+        { kind: 'del', oldNo: 4, text: 'Old partitions are dropped after 12 months.' },
+        { kind: 'add', newNo: 4, text: 'Old partitions are archived after 12 months.' },
+        { kind: 'add', newNo: 5, text: ksLongLine }
+      ]
+    },
+    {
+      oldStart: 20,
+      oldLines: 2,
+      newStart: 21,
+      newLines: 2,
+      header: '@@ -20,2 +21,2 @@ Indexes',
+      lines: [
+        { kind: 'ctx', oldNo: 20, newNo: 21, text: 'Index orders_by_customer covers customer_id.' },
+        { kind: 'del', oldNo: 21, text: 'No index on status.' },
+        { kind: 'add', newNo: 22, text: 'Index orders_by_status covers status.' }
+      ]
+    }
+  ]
+  const ksBase = {
+    sessionId: 'sample-session',
+    sectionId: 'sec-docs',
+    sectionName: 'Docs',
+    createdAt: 0
+  }
+  const ksNew: KnowledgeSuggestionView = {
+    ...ksBase,
+    id: 'ks-new',
+    kind: 'new',
+    title: 'Service map',
+    reason: 'The request touched three services and no note describes how they connect.',
+    sectionId: 'sec-notes',
+    sectionName: 'Notes',
+    target: { itemId: null, name: 'service-map.md', relPath: null },
+    text: '# Service map\n\nOrders calls Billing and Inventory.\nBilling owns refunds.'
+  }
+  const ksUpdate: KnowledgeSuggestionView = {
+    ...ksBase,
+    id: 'ks-update',
+    kind: 'update',
+    title: 'Database schema',
+    reason: 'The orders table is partitioned by month now.',
+    target: { itemId: 'item-1', name: 'database-schema.md', relPath: 'Docs/database-schema.md' },
+    hunks: ksHunks
+  }
+  const ksTooLarge: KnowledgeSuggestionView = { ...ksUpdate, id: 'ks-too-large', hunks: [] }
+  const ksProblems: {
+    state: string
+    problem: KnowledgeSuggestionProblem
+    kind: 'new' | 'update'
+  }[] = [
+    { state: 'changed', problem: { kind: 'changed' }, kind: 'update' },
+    { state: 'missing', problem: { kind: 'missing' }, kind: 'update' },
+    { state: 'name-taken', problem: { kind: 'name-taken' }, kind: 'new' },
+    {
+      state: 'save-failed',
+      problem: { kind: 'save-failed', location: '/Users/sample/notes' },
+      kind: 'new'
+    },
+    { state: 'storage-busy', problem: { kind: 'storage-busy' }, kind: 'new' },
+    { state: 'unsaved-edits', problem: { kind: 'unsaved-edits' }, kind: 'update' },
+    {
+      state: 'failed',
+      problem: { kind: 'failed', message: 'Something went wrong. Try again.' },
+      kind: 'new'
+    }
+  ]
+  function ksView(state: string, kind: 'new' | 'update'): KnowledgeSuggestionView {
+    return { ...(kind === 'new' ? ksNew : ksUpdate), id: `ks-${state}` }
+  }
+  const ksSections = [
+    { id: 'sec-notes', name: 'Notes' },
+    { id: 'sec-docs', name: 'Docs' }
+  ]
 
   onMount(() => motion.start())
 
@@ -260,6 +355,7 @@
       'providers.brain': { provider: 'claude', model: 'sonnet' },
       'providers.workers': { mode: 'provider', provider: 'codex' },
       'usage.checkClaudePlanOnLaunch': true,
+      'knowledge.suggestOnFinish': true,
       'agents.loadOff': { brain: [], workers: [] }
     },
     models: sampleModels
@@ -1584,6 +1680,78 @@
       </div>
     {/snippet}
     {@render block('Attention', attention)}
+
+    {#snippet knowledgeSuggestions()}
+      <div data-preview-knowledge-suggestions class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-center gap-4">
+          {#each [1, 3, 12] as n (n)}
+            <KnowledgeSuggestionsChip count={n} onclick={() => (ksChipClicks += 1)} />
+          {/each}
+          <p class="font-mono text-xs text-text-muted">Sample chip clicks: {ksChipClicks}</p>
+        </div>
+        <DiffSnippet hunks={ksHunks} label="Changes to Database schema (sample)" />
+        <div data-preview-card="new">
+          <KnowledgeSuggestionCard suggestion={ksNew} onaccept={() => {}} ondiscard={() => {}} />
+        </div>
+        <div data-preview-card="update">
+          <KnowledgeSuggestionCard suggestion={ksUpdate} onaccept={() => {}} ondiscard={() => {}} />
+        </div>
+        <div data-preview-card="too-large">
+          <KnowledgeSuggestionCard
+            suggestion={ksTooLarge}
+            onaccept={() => {}}
+            ondiscard={() => {}}
+          />
+        </div>
+        {#each ksProblems as p (p.state)}
+          <div data-preview-card={p.state}>
+            <KnowledgeSuggestionCard
+              suggestion={ksView(p.state, p.kind)}
+              problem={p.problem}
+              currentText={p.state === 'changed'
+                ? '# Database schema\n\nOrders table is partitioned by month.\nIndex orders_by_status covers status.'
+                : undefined}
+              onaccept={() => {}}
+              ondiscard={() => {}}
+              onshowcurrent={() => {}}
+              onaddasnew={() => {}}
+              onedit={() => {}}
+            />
+          </div>
+        {/each}
+        <div data-preview-card="busy">
+          <KnowledgeSuggestionCard
+            suggestion={{ ...ksNew, id: 'ks-busy' }}
+            busy
+            onaccept={() => {}}
+            ondiscard={() => {}}
+          />
+        </div>
+        <div data-preview-card="editing">
+          <KnowledgeSuggestionCard
+            suggestion={{ ...ksNew, id: 'ks-editing' }}
+            editing
+            onaccept={() => {}}
+            ondiscard={() => {}}
+          >
+            {#snippet editor()}
+              <KnowledgeSuggestionEditor
+                suggestion={{ ...ksNew, id: 'ks-editing' }}
+                asNew
+                seedText={ksNew.text ?? ''}
+                sections={ksSections}
+                focus={{ field: 'text', n: 0 }}
+                autofocus={false}
+                onaccept={() => {}}
+                oncancel={() => {}}
+              />
+            {/snippet}
+          </KnowledgeSuggestionCard>
+        </div>
+        <KnowledgeSettings preview />
+      </div>
+    {/snippet}
+    {@render block('Knowledge suggestions', knowledgeSuggestions)}
   </main>
 </div>
 

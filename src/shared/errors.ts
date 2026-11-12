@@ -11,6 +11,8 @@ export const ERROR_CODES = [
   'PROJECT_NOT_DIRECTORY',
   'TITLE_REQUIRED',
   'ITEM_NOT_FOUND',
+  'ITEM_NAME_TAKEN',
+  'SUGGESTION_NOT_FOUND',
   'LINK_URL_INVALID',
   'FILE_TOO_LARGE',
   'FILE_UNSUPPORTED',
@@ -56,6 +58,8 @@ export interface ErrorDetails {
    * trimmed stderr for `PUSH_FAILED`, the CLI's own message for `PLUGIN_FAILED`.
    */
   reason?: string
+  /** Where a failed write was aimed (a folder path), for `IO_FAILED` and `KNOWLEDGE_ROOT_MISSING` on Accept. */
+  location?: string
 }
 
 export interface AppError {

@@ -470,7 +470,7 @@ describe('brain prompt version', () => {
   })
 
   it('tells a session from the web-tools version everything newer, once (version 1 is older)', async () => {
-    expect(BRAIN_PROMPT_VERSION).toBe(6)
+    expect(BRAIN_PROMPT_VERSION).toBe(7)
     expect(PROMPT_UPDATE_NOTE_V2).toContain('read-only shell commands')
     expect(PROMPT_UPDATE_NOTE_V2).toContain('git -C <path> diff')
     expect(PROMPT_UPDATE_NOTE_V2).toContain('goes to the user for approval through Arc')

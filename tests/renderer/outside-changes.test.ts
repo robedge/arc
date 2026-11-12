@@ -155,6 +155,39 @@ it('knowledge:changed bursts coalesce into one list refresh after 150 ms', async
   expect(calls(invoke, 'items:list')).toHaveLength(1)
 })
 
+it("a 'suggestion' change refreshes the list like an external one", async () => {
+  vi.useFakeTimers()
+  const invoke = setup({ content: '', revision: 'r0', missing: false })
+  knowledge.sectionId = 's1'
+  knowledge.handleChanged({
+    groupId: 'g1',
+    sectionIds: ['s1'],
+    items: [{ id: 'i9', sectionId: 's1', revision: 'r9' }],
+    reason: 'suggestion'
+  })
+  await vi.advanceTimersByTimeAsync(KNOWLEDGE_REFRESH_DEBOUNCE_MS + 10)
+  expect(calls(invoke, 'items:list')).toHaveLength(1)
+})
+
+it("a 'suggestion' change reloads an open clean note", async () => {
+  vi.useFakeTimers()
+  const disk: Disk = { content: 'v1', revision: 'r0', missing: false }
+  const invoke = setup(disk)
+  await itemDraft.open('i1')
+  knowledge.sectionId = 's1'
+  disk.content = 'v2'
+  disk.revision = 'r1'
+  knowledge.handleChanged({
+    groupId: 'g1',
+    sectionIds: ['s1'],
+    items: [{ id: 'i1', sectionId: 's1', revision: 'r1' }],
+    reason: 'suggestion'
+  })
+  await vi.advanceTimersByTimeAsync(KNOWLEDGE_REFRESH_DEBOUNCE_MS + 10)
+  expect(itemDraft.text).toBe('v2')
+  expect(calls(invoke, 'items:read').length).toBeGreaterThan(1)
+})
+
 it('events for another group or another section do not refresh the list', async () => {
   vi.useFakeTimers()
   const invoke = setup({ content: '', revision: 'r0', missing: false })

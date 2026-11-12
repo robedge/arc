@@ -83,6 +83,13 @@ function nameKey(name: string): string {
   return name.normalize('NFC').toLowerCase()
 }
 
+/** True when `desired` matches one of `existingNames` (NFC-normalized, case-insensitive). */
+export function isNameTaken(existingNames: Iterable<string>, desired: string): boolean {
+  const key = nameKey(desired)
+  for (const n of existingNames) if (nameKey(n) === key) return true
+  return false
+}
+
 /**
  * Returns `desired`, or `name (2).ext`, `name (3).ext`, ... when it collides with an
  * existing name (compared NFC-normalized and case-insensitively).

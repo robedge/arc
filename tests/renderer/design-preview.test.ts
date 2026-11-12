@@ -37,3 +37,40 @@ it('opens the attention dialog with one permission and one question; Escape keep
       ?.textContent
   ).toBe('2')
 })
+
+it('shows the knowledge suggestions block: chip counts, diff snippet and one card per state', async () => {
+  const { container } = render(DesignPreview)
+  const chips = ['1', '3', '12'].map((n) =>
+    screen.getByRole('button', { name: `Knowledge suggestions, ${n} waiting` })
+  )
+  expect(chips.map((c) => c.querySelector('[data-count]')?.textContent)).toEqual(['1', '3', '12'])
+  await fireEvent.click(chips[1]!)
+
+  const block = container.querySelector('[data-preview-knowledge-suggestions]') as HTMLElement
+  expect(block).toBeTruthy()
+  const snippets = block.querySelectorAll('[data-diff-snippet]')
+  expect(snippets.length).toBeGreaterThanOrEqual(2)
+  expect(block.querySelector('[data-diff-snippet] [data-diff-separator]')).toBeTruthy()
+
+  const cards = block.querySelectorAll('[data-knowledge-suggestion]')
+  expect(cards.length).toBeGreaterThanOrEqual(11)
+  for (const state of [
+    'new',
+    'update',
+    'too-large',
+    'changed',
+    'missing',
+    'name-taken',
+    'save-failed',
+    'storage-busy',
+    'unsaved-edits',
+    'failed',
+    'busy',
+    'editing'
+  ]) {
+    expect(block.querySelector(`[data-preview-card="${state}"]`), state).toBeTruthy()
+  }
+  expect(block.querySelector('[data-current-note]')).toBeTruthy()
+  expect(block.querySelector('[data-knowledge-suggestion-editor]')).toBeTruthy()
+  expect(block.querySelector('[data-too-large]')).toBeTruthy()
+})

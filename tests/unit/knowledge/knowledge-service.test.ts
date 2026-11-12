@@ -167,3 +167,60 @@ describe('sections and traversal', () => {
     )
   })
 })
+
+describe('createWithContent', () => {
+  it('writes the content as one file and indexes it', async () => {
+    const item = await env.service.createWithContent(
+      env.notesId,
+      'Service map.md',
+      'line one\nline two'
+    )
+    expect(await readFile(notePath('Service map.md'), 'utf8')).toBe('line one\nline two')
+    expect(item).toMatchObject({ fileName: 'Service map.md', kind: 'note', editable: true })
+    expect(env.itemsRepo.getById(item.id)?.relPath).toBe('Notes/Service map.md')
+    expect(await env.service.read(item.id)).toMatchObject({
+      type: 'text',
+      content: 'line one\nline two'
+    })
+  })
+
+  it('defaults to .md and honours another text extension', async () => {
+    await env.service.createWithContent(env.notesId, 'plain', 'a')
+    await env.service.createWithContent(env.notesId, 'schema.sql', 'select 1;')
+    expect((await readdir(join(env.root, 'Notes'))).sort()).toEqual(['plain.md', 'schema.sql'])
+  })
+
+  it('refuses a non-text extension', async () => {
+    expect(await codeOf(env.service.createWithContent(env.notesId, 'a.pdf', 'x'))).toBe(
+      'VALIDATION_FAILED'
+    )
+  })
+
+  it('refuses Links and Projects', async () => {
+    for (const kind of ['links', 'projects']) {
+      const section = env.sectionsRepo.listByGroup(env.groupId).find((s) => s.kind === kind)
+      expect(await codeOf(env.service.createWithContent(section?.id ?? 'x', 'a.md', 'x'))).toBe(
+        'VALIDATION_FAILED'
+      )
+    }
+  })
+
+  it('numbers a taken name unless failOnExisting', async () => {
+    await env.service.createWithContent(env.notesId, 'Plan.md', 'one')
+    await env.service.createWithContent(env.notesId, 'Plan.md', 'two')
+    expect(await readdir(join(env.root, 'Notes'))).toContain('Plan (2).md')
+  })
+
+  it('throws ITEM_NAME_TAKEN for a same-name file, case-insensitively, and writes nothing', async () => {
+    await writeFile(notePath('Plan.md'), 'mine')
+    for (const name of ['Plan.md', 'plan.MD', 'PLAN.md']) {
+      expect(
+        await codeOf(
+          env.service.createWithContent(env.notesId, name, 'x', { failOnExisting: true })
+        )
+      ).toBe('ITEM_NAME_TAKEN')
+    }
+    expect(await readdir(join(env.root, 'Notes'))).toEqual(['Plan.md'])
+    expect(await readFile(notePath('Plan.md'), 'utf8')).toBe('mine')
+  })
+})

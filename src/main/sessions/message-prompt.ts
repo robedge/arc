@@ -9,8 +9,17 @@ export function parsePrompt(json: string | null): MessagePrompt | undefined {
       kind?: unknown
       workerIds?: unknown
       status?: unknown
+      count?: unknown
     } | null
     if (parsed?.kind === 'review-link') return { kind: 'review-link' }
+    if (
+      parsed?.kind === 'knowledge-suggestions' &&
+      typeof parsed.count === 'number' &&
+      Number.isInteger(parsed.count) &&
+      parsed.count > 0
+    ) {
+      return { kind: 'knowledge-suggestions', count: parsed.count }
+    }
     if (
       parsed?.kind === 'continue-workers' &&
       Array.isArray(parsed.workerIds) &&
@@ -33,6 +42,11 @@ export function continuePromptText(count: number): string {
   return count === 1
     ? '1 worker was stopped when Arc closed. Continue it?'
     : `${count} workers were stopped when Arc closed. Continue them?`
+}
+
+/** "I have 2 suggestions for this group's knowledge." */
+export function suggestionsPromptText(count: number): string {
+  return `I have ${count} suggestion${count === 1 ? '' : 's'} for this group's knowledge.`
 }
 
 export function messageRowDto(row: MessageRow): SessionMessage {

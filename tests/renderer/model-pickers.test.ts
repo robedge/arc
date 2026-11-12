@@ -67,6 +67,7 @@ beforeEach(() => {
     'providers.brain': { provider: 'claude', model: 'sonnet' },
     'providers.workers': { mode: 'auto' },
     'usage.checkClaudePlanOnLaunch': true,
+    'knowledge.suggestOnFinish': true,
     'agents.loadOff': { brain: [], workers: [] }
   }
   invoke = mockArc((channel, request) => {
@@ -240,6 +241,7 @@ it('Settings Providers: a saved Codex default stays, flagged unavailable, when C
     'providers.brain': { provider: 'codex', model: 'gpt-5.5' },
     'providers.workers': { mode: 'provider', provider: 'codex' },
     'usage.checkClaudePlanOnLaunch': true,
+    'knowledge.suggestOnFinish': true,
     'agents.loadOff': { brain: [], workers: [] }
   }
   modelsReply = noCodex

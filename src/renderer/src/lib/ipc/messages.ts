@@ -18,6 +18,8 @@ const MESSAGES: Record<ErrorCode, MessageEntry> = {
   PROJECT_NOT_DIRECTORY: 'Only folders can be added as projects.',
   TITLE_REQUIRED: 'Title is required.',
   ITEM_NOT_FOUND: 'That item no longer exists.',
+  ITEM_NAME_TAKEN: 'A note with this name already exists.',
+  SUGGESTION_NOT_FOUND: 'That suggestion is no longer waiting.',
   LINK_URL_INVALID: 'Enter a full web address starting with http:// or https://.',
   FILE_TOO_LARGE: (e) =>
     `'${e.details?.name ?? 'This file'}' is larger than 20 MB and was not added.`,

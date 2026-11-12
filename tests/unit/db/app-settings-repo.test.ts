@@ -30,6 +30,7 @@ describe('AppSettingsRepo', () => {
       'providers.brain',
       'providers.workers',
       'usage.checkClaudePlanOnLaunch',
+      'knowledge.suggestOnFinish',
       'agents.loadOff'
     ])
   })
@@ -65,6 +66,25 @@ describe('AppSettingsRepo', () => {
     settings.setMany({ 'usage.checkClaudePlanOnLaunch': false }, 1)
     expect(settings.getAll()['usage.checkClaudePlanOnLaunch']).toBe(false)
     expect(() => settings.setMany({ 'usage.checkClaudePlanOnLaunch': 'no' as never }, 2)).toThrow()
+  })
+
+  it('suggests knowledge on finish by default and keeps the choice', () => {
+    expect(settings.get('knowledge.suggestOnFinish')).toBe(true)
+    expect(settings.getAll()['knowledge.suggestOnFinish']).toBe(true)
+    settings.setMany({ 'knowledge.suggestOnFinish': false }, 1)
+    expect(settings.get('knowledge.suggestOnFinish')).toBe(false)
+    expect(settings.getAll()['knowledge.suggestOnFinish']).toBe(false)
+    expect(() => settings.setMany({ 'knowledge.suggestOnFinish': 'no' as never }, 2)).toThrow()
+    expect(settings.get('knowledge.suggestOnFinish')).toBe(false)
+  })
+
+  it('falls back to true when the stored knowledge.suggestOnFinish is not a boolean', () => {
+    opened.sqlite
+      .prepare(
+        "INSERT INTO app_settings (key,value_json,updated_at) VALUES ('knowledge.suggestOnFinish','\"no\"',1)"
+      )
+      .run()
+    expect(settings.get('knowledge.suggestOnFinish')).toBe(true)
   })
 
   it('returns the defaults on an empty table', () => {
@@ -104,6 +124,7 @@ describe('AppSettingsRepo', () => {
       'providers.brain': { provider: 'claude', model: 'sonnet' },
       'providers.workers': { mode: 'auto' },
       'usage.checkClaudePlanOnLaunch': true,
+      'knowledge.suggestOnFinish': true,
       'agents.loadOff': { brain: [], workers: [] }
     })
     settings.set('providers.workers', { mode: 'provider', provider: 'codex' }, 1)

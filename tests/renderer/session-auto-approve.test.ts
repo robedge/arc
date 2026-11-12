@@ -49,6 +49,7 @@ it('Always allow in the attention dialog sends approve with always:true', async 
         action: 'mkdir x'
       }
     ],
+    knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 0,
     seq: 0

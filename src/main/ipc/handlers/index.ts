@@ -3,6 +3,7 @@ import { registerAgentLoadHandlers } from './agent-load'
 import { registerAppHandlers, type AppHost } from './app'
 import { registerGroupHandlers, registerProjectHandlers } from './groups'
 import { registerKnowledgeHandlers } from './knowledge'
+import { registerKnowledgeSuggestionHandlers } from './knowledge-suggestions'
 import { registerPluginHandlers } from './plugins'
 import { registerProviderHandlers } from './providers'
 import { registerReviewHandlers } from './review'
@@ -20,6 +21,7 @@ export function registerAllHandlers(services: AppServices, host: AppHost): void 
   registerProjectHandlers(services)
   registerStorageHandlers(services)
   registerKnowledgeHandlers(services)
+  registerKnowledgeSuggestionHandlers(services)
   registerSettingsHandlers(services)
   registerAgentLoadHandlers(services)
   registerPluginHandlers(services)

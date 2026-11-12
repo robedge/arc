@@ -20,6 +20,9 @@
   import { sessionsList } from '../../stores/sessions-list.svelte'
   import AttentionBadge from '../ui/AttentionBadge.svelte'
   import AttentionDialog from '../ui/attention/AttentionDialog.svelte'
+  import KnowledgeSuggestionsChip from '../ui/KnowledgeSuggestionsChip.svelte'
+  import KnowledgeSuggestionsDialog from '../knowledge-suggestions/KnowledgeSuggestionsDialog.svelte'
+  import { knowledgeSuggestions } from '../../stores/knowledge-suggestions.svelte'
   import Button from '../ui/Button.svelte'
   import ErrorText from '../ui/ErrorText.svelte'
   import ApprovalsMenu from './ApprovalsMenu.svelte'
@@ -252,6 +255,10 @@
     {#if requests.length > 0}
       <AttentionBadge count={requests.length} onclick={() => activeSession.openAttention()} />
     {/if}
+    <KnowledgeSuggestionsChip
+      count={knowledgeSuggestions.count}
+      onclick={() => knowledgeSuggestions.open()}
+    />
   </div>
   <div class="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2" data-header-controls>
     <HeaderMenu
@@ -360,3 +367,5 @@
   onDecline={(id) => answer(id, { decline: true })}
   onClose={() => activeSession.closeAttention()}
 />
+
+<KnowledgeSuggestionsDialog />

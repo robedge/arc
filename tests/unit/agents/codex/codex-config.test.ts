@@ -11,6 +11,7 @@ import {
   gitRootsFor,
   writableRootsFor
 } from '../../../../src/main/agents/codex/codex-config'
+import { modelToolsForRole } from '../../../../src/main/bridge/tools/registry'
 import { buildAgentEnv } from '../../../../src/main/agents/process-supervisor'
 
 let dir: string
@@ -145,6 +146,21 @@ describe('thread params', () => {
       }
     })
     expect(JSON.stringify(params)).not.toContain('secret-token')
+  })
+
+  it('enables suggest_knowledge_update on the arc server for the brain role and not for a worker', () => {
+    const enabled = (role: 'brain' | 'worker'): string[] => {
+      const params = buildThreadStartParams(
+        request({ bridge, bridgeTools: modelToolsForRole(role).map((t) => t.name) })
+      )
+      const config = params['config'] as {
+        mcp_servers: { arc: { enabled_tools: string[]; default_tools_approval_mode: string } }
+      }
+      expect(config.mcp_servers.arc.default_tools_approval_mode).toBe('approve')
+      return config.mcp_servers.arc.enabled_tools
+    }
+    expect(enabled('brain')).toContain('suggest_knowledge_update')
+    expect(enabled('worker')).not.toContain('suggest_knowledge_update')
   })
 
   it("gives each personal MCP server only the prompt approval mode, next to arc's own entry", () => {

@@ -12,6 +12,7 @@ import type {
   WorkerView
 } from '@shared/types/session'
 import { createStreamBuffer } from './stream-buffer'
+import { knowledgeSuggestions } from './knowledge-suggestions.svelte'
 
 /** Snapshot window and page size for messages. */
 const PAGE_SIZE = 100
@@ -90,6 +91,7 @@ class ActiveSessionStore {
     this.workers = []
     this.attention = []
     this.attentionDialog = null
+    knowledgeSuggestions.reset()
     this.changedFileCount = 0
     this.loading = true
     this.loadError = null
@@ -137,6 +139,7 @@ class ActiveSessionStore {
     this.workers = snapshot.workers
     this.attention = snapshot.attention
     this.changedFileCount = snapshot.changedFileCount
+    knowledgeSuggestions.setSnapshot(snapshot.header.id, snapshot.knowledgeSuggestions)
     this.baseSeq = snapshot.seq
     this.hasEarlier = snapshot.messages.length >= PAGE_SIZE
     this.loadingEarlier = false

@@ -1,0 +1,6 @@
+# A Codex brain (spec 011): answers, then suggests one new note for the Notes section through the bridge. Nothing is written to knowledge.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"The orders table is partitioned by month."}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"new","title":"Orders table is partitioned by month","reason":"The schema dump in the orders migration shows one partition per month.","section":"Notes","name":"Orders partitioning","content":"The orders table is partitioned by month.\nQueries should filter on created_at to hit one partition."}},"id":"suggest-1","saveAs":"suggest"}
+{"turnCompleted":"completed"}

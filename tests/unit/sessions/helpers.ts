@@ -27,6 +27,7 @@ import { SessionProjectsRepo } from '../../../src/main/db/repositories/session-p
 import { createGit } from '../../../src/main/git/git'
 import { AllowRulesRepo } from '../../../src/main/db/repositories/allow-rules-repo'
 import { AttentionRepo } from '../../../src/main/db/repositories/attention-repo'
+import { KnowledgeSuggestionsRepo } from '../../../src/main/db/repositories/knowledge-suggestions-repo'
 import { CommitsRepo } from '../../../src/main/db/repositories/commits-repo'
 import { PlansRepo } from '../../../src/main/db/repositories/plans-repo'
 import { WorkersRepo } from '../../../src/main/db/repositories/workers-repo'
@@ -343,6 +344,7 @@ export async function makeRig(
     heldMessagesRepo: new HeldMessagesRepo(opened.db),
     commitsRepo: new CommitsRepo(opened.db),
     attentionRepo: new AttentionRepo(opened.db),
+    knowledgeSuggestionsRepo: new KnowledgeSuggestionsRepo(opened.db),
     allowRulesRepo: new AllowRulesRepo(opened.db),
     worktreeGit: createWorktreeGit(git),
     mergesRepo: new MergesRepo(opened.db),

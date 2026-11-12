@@ -4,6 +4,8 @@
   import Button from '../ui/Button.svelte'
   import { activeSession } from '../../stores/active-session.svelte'
   import { review } from '../../stores/review.svelte'
+  import { knowledgeSuggestions } from '../../stores/knowledge-suggestions.svelte'
+  import { suggestionsLine } from '../../knowledge-suggestions/line'
 
   let { message }: { message: SessionMessage } = $props()
 
@@ -13,6 +15,11 @@
   const leadingCommand = $derived(
     message.role === 'user' ? (/^\/\S+/.exec(message.content)?.[0] ?? null) : null
   )
+  const suggestions = $derived(
+    message.prompt?.kind === 'knowledge-suggestions' ? message.prompt : null
+  )
+  // A system message stores this same sentence, so the line replaces its text.
+  const showBody = $derived(!(suggestions && message.role === 'system'))
   const LAYOUT = {
     user: 'self-end border-border-strong bg-accent/10',
     brain: 'self-start border-border bg-surface-raised',
@@ -27,7 +34,9 @@
     message.role
   ]}"
 >
-  {#if asMarkdown}
+  {#if !showBody}
+    <!-- the line below carries the sentence -->
+  {:else if asMarkdown}
     <MarkdownPreview source={message.content} copyCode />
   {:else}
     <!-- prettier-ignore -->
@@ -40,6 +49,19 @@
         >Review changes</Button
       >
     </span>
+  {/if}
+  {#if suggestions}
+    {#if knowledgeSuggestions.count > 0}
+      <button
+        type="button"
+        data-knowledge-suggestions-line
+        onclick={() => knowledgeSuggestions.open()}
+        class="min-h-[var(--size-hit)] cursor-pointer self-start rounded-control border-0 bg-transparent p-0 text-left text-sm text-accent underline hover:text-text-bright focus:outline-none focus-visible:shadow-focus"
+        >{suggestionsLine(suggestions.count)}</button
+      >
+    {:else}
+      <p data-knowledge-suggestions-line class="text-sm">{suggestionsLine(suggestions.count)}</p>
+    {/if}
   {/if}
   {#if message.state === 'stopped'}
     <span class="self-start text-xs tracking-label text-attention uppercase">Stopped</span>

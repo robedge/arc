@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import SessionHeader from '../../src/renderer/src/lib/components/sessions/SessionHeader.svelte'
 import RingLogo from '../../src/renderer/src/lib/components/ui/RingLogo.svelte'
+import { knowledgeSuggestions } from '../../src/renderer/src/lib/stores/knowledge-suggestions.svelte'
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
 import type { SessionHeader as Header } from '../../src/shared/types/session'
 import { mockArc } from './helpers'
@@ -102,6 +103,7 @@ it('Enter saves a rename; Escape cancels', async () => {
     workers: [],
     plan: null,
     attention: [],
+    knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 0,
     seq: 0
@@ -130,4 +132,48 @@ it('RingLogo spins by default and not when spinning is false', () => {
   cleanup()
   const b = render(RingLogo, { spinning: false })
   expect(b.container.querySelector('svg')?.hasAttribute('data-spin')).toBe(false)
+})
+
+const suggestion = (id: string) => ({
+  id,
+  sessionId: 's1',
+  kind: 'new' as const,
+  title: `Title ${id}`,
+  reason: 'Why.',
+  sectionId: 'sec',
+  sectionName: 'Notes',
+  target: { itemId: null, name: 'Service map.md', relPath: null },
+  text: 'body',
+  createdAt: 1
+})
+
+it('shows the Suggestions chip with waiting suggestions and opens the dialog', async () => {
+  knowledgeSuggestions.reset()
+  knowledgeSuggestions.setSnapshot('s1', [suggestion('a'), suggestion('b'), suggestion('c')])
+  render(SessionHeader, { header, groupName: 'Team', onback: vi.fn() })
+  const chip = screen.getByRole('button', { name: 'Knowledge suggestions, 3 waiting' })
+  expect(chip.textContent?.replace(/\s+/g, ' ').trim()).toBe('Suggestions 3')
+  expect(screen.queryByRole('button', { name: /Needs attention/ })).toBeNull()
+  await fireEvent.click(chip)
+  expect(screen.getByRole('dialog', { name: 'Knowledge suggestions' })).toBeTruthy()
+  knowledgeSuggestions.reset()
+})
+
+it('shows no Suggestions chip at zero and leaves Needs attention alone', () => {
+  knowledgeSuggestions.reset()
+  activeSession.attention = [
+    {
+      id: 'p1',
+      kind: 'permission',
+      route: 'queue',
+      from: 'W1',
+      action: 'x',
+      reason: 'y',
+      tool: 't'
+    }
+  ] as never
+  render(SessionHeader, { header, groupName: 'Team', onback: vi.fn() })
+  expect(document.querySelector('[data-knowledge-suggestions-chip]')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Needs attention, 1 waiting' })).toBeTruthy()
+  activeSession.attention = []
 })

@@ -1,0 +1,12 @@
+# Two plain suggestions in the first request; in the second request (after the switch went off) one plain call, which is refused (spec 011).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Orders question\n\nThe orders table is partitioned by month and checkout calls pricing twice."}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"new","title":"Orders table is partitioned by month","reason":"The schema dump in the orders migration shows one partition per month.","section":"Notes","name":"Orders partitioning","content":"The orders table is partitioned by month.\nQueries should filter on created_at to hit one partition."}}}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"new","title":"Checkout calls pricing twice","reason":"The checkout handler requests a price once for the cart and again at payment.","section":"Notes","name":"Checkout pricing calls","content":"Checkout calls the pricing service twice: once for the cart total and once at payment."}}}
+{"result":true}
+{"waitForStdin":"SECOND-ASK"}
+{"say":"Anything else about checkout?"}
+{"mcp":{"tool":"suggest_knowledge_update","args":{"kind":"new","title":"Pricing results are cached","reason":"The pricing client keeps results for one minute.","section":"Notes","name":"Pricing cache","content":"Pricing results are cached for one minute."}}}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

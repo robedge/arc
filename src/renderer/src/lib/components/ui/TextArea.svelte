@@ -11,6 +11,8 @@
     disabled?: boolean
     readonly?: boolean
     hideLabel?: boolean
+    /** Monospace text, for notes and code. */
+    mono?: boolean
   }
 
   let {
@@ -23,7 +25,8 @@
     maxlength,
     disabled = false,
     readonly = false,
-    hideLabel = false
+    hideLabel = false,
+    mono = false
   }: Props = $props()
 </script>
 
@@ -39,7 +42,9 @@
     {readonly}
     aria-invalid={error ? 'true' : 'false'}
     aria-describedby={error ? `${id}-error` : undefined}
-    class="min-h-[var(--size-hit)] w-full resize-y rounded-control border bg-surface-panel px-3 py-2 font-sans text-sm text-text transition-shadow duration-(--duration-fast) placeholder:text-text-faint focus:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 {error
+    class="min-h-[var(--size-hit)] w-full resize-y rounded-control border bg-surface-panel px-3 py-2 {mono
+      ? 'font-mono'
+      : 'font-sans'} text-sm text-text transition-shadow duration-(--duration-fast) placeholder:text-text-faint focus:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 {error
       ? 'border-danger'
       : 'border-border-strong'}"></textarea>
   {#if error}

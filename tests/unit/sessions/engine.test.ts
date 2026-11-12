@@ -600,7 +600,8 @@ describe('brain launch', () => {
       'sync_worker',
       'resolve_request',
       'escalate_to_user',
-      'ask_user'
+      'ask_user',
+      'suggest_knowledge_update'
     ])
     expect(start?.extraEnv?.['MCP_TOOL_TIMEOUT']).toBe('43200000')
     expect(start?.instructions).toContain('propose_plan')

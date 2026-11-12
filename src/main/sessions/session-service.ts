@@ -29,6 +29,10 @@ import type { ProviderRegistry } from '../agents/provider-registry'
 import type { BridgeRegistry } from '../bridge/bridge-server'
 import type { AllowRulesRepo, SessionAllowRuleRow } from '../db/repositories/allow-rules-repo'
 import type { AttentionRepo } from '../db/repositories/attention-repo'
+import type { KnowledgeItemsRepo } from '../db/repositories/knowledge-items-repo'
+import type { KnowledgeSuggestionsRepo } from '../db/repositories/knowledge-suggestions-repo'
+import type { KnowledgeSuggestionPort } from './knowledge-suggestion-bridge'
+import { toKnowledgeSuggestionView } from '../knowledge/knowledge-suggestion-view'
 import type { CommitsRepo } from '../db/repositories/commits-repo'
 import type { PlansRepo } from '../db/repositories/plans-repo'
 import type { WorkersRepo } from '../db/repositories/workers-repo'
@@ -148,6 +152,13 @@ export interface SessionServiceDeps {
   commitsRepo: CommitsRepo
   worktreeGit: WorktreeGit
   attentionRepo: AttentionRepo
+  knowledgeSuggestionsRepo: Pick<KnowledgeSuggestionsRepo, 'listWaiting'>
+  /** Gives an update suggestion's target its item id in the snapshot; left out (tests), it stays null. */
+  knowledgeItemsRepo?: Pick<KnowledgeItemsRepo, 'getByRelPath'> | undefined
+  /** Where the brain's `suggest_knowledge_update` calls go; left out (tests), the tool is unavailable. */
+  knowledgeSuggestions?: KnowledgeSuggestionPort | undefined
+  /** The Settings switch "Suggest knowledge updates", read when needed; left out (tests), it is on. */
+  suggestKnowledge?: (() => boolean) | undefined
   allowRulesRepo: AllowRulesRepo
   mergesRepo: MergesRepo
   mergeGit: MergeGit
@@ -926,6 +937,27 @@ export class SessionService {
     this.orchestratorFor(sessionId, null).groupChanged(note)
   }
 
+  /** Writes a session event for a service outside the session engine; no orchestrator is needed. */
+  logEvent(sessionId: string, kind: string, text: string, data?: unknown): void {
+    this.logSessionEvent(sessionId, kind, text, data)
+  }
+
+  /**
+   * The user discarded knowledge suggestions of the session: a running session's brain is told with its next
+   * message. Nothing happens, and nothing is kept, for a session that has no orchestrator.
+   */
+  knowledgeDiscarded(sessionId: string, titles: readonly string[]): void {
+    this.orchestrators.get(sessionId)?.recordSuggestionsDiscarded(titles)
+  }
+
+  /**
+   * The user saved a new value for "Suggest knowledge updates" (`settings:set`): every open session whose brain is
+   * running hears about it with its next message. Brains started later read the switch into their prompt.
+   */
+  knowledgeSuggestSettingChanged(): void {
+    for (const orchestrator of this.orchestrators.values()) orchestrator.suggestSettingChanged()
+  }
+
   private logSessionEvent(sessionId: string, kind: string, text: string, data?: unknown): void {
     const orchestrator = this.orchestrators.get(sessionId)
     if (orchestrator) {
@@ -1422,6 +1454,14 @@ export class SessionService {
       attention: attentionViews(this.deps.attentionRepo.listPendingEscalated(sessionId), (id) =>
         this.deps.workersRepo.get(id)
       ),
+      knowledgeSuggestions: this.deps.knowledgeSuggestionsRepo
+        .listWaiting(sessionId)
+        .map((row) =>
+          toKnowledgeSuggestionView(
+            row,
+            (relPath) => this.deps.knowledgeItemsRepo?.getByRelPath(row.groupId, relPath)?.id
+          )
+        ),
       brainState: prepared.brainState,
       changedFileCount: 0,
       seq: prepared.seq
@@ -1964,6 +2004,8 @@ export class SessionService {
       onHeaderChanged: () => this.pushHeader(sessionId),
       usage: this.deps.usage,
       planUsage: this.deps.planUsage,
+      knowledgeSuggestions: this.deps.knowledgeSuggestions,
+      suggestKnowledge: this.deps.suggestKnowledge,
       ...(this.deps.codexCommands ? { codexCommands: this.deps.codexCommands } : {}),
       ...(this.deps.cursorCommands ? { cursorCommands: this.deps.cursorCommands } : {}),
       ...(this.deps.commands
@@ -2038,6 +2080,7 @@ export class SessionService {
         workerLimit: session.workerLimit,
         brainProvider: brain.provider,
         providers,
+        suggestOnOwn: this.deps.suggestKnowledge?.() ?? true,
         ...(commands !== undefined ? { commands } : {})
       }),
       provider: brain.provider,
