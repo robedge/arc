@@ -1,5 +1,6 @@
 import type { NormalizedAction } from '../../policy/normalized-action'
 import type { CodexApprovalRequest } from './codex-types'
+import { nonEmptyString, recordOrUndefined, stringArray } from '../../util/json'
 
 /**
  * Codex reports a command as the shell wrapper it runs: `/bin/zsh -lc 'cat hello.txt'`. Everything
@@ -32,26 +33,12 @@ export function unwrapShell(command: string): string {
   return unquote(rest)
 }
 
-function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined
-}
-
-function strings(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
-}
-
-function record(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined
-}
-
 /** The files a `fileChange` item changes; empty when the item is unknown. */
 function changedPaths(item: Record<string, unknown> | undefined): string[] {
   const changes = item?.['changes']
   if (!Array.isArray(changes)) return []
   return changes.flatMap((c) => {
-    const path = str(record(c)?.['path'])
+    const path = nonEmptyString(recordOrUndefined(c)?.['path'])
     return path === undefined ? [] : [path]
   })
 }
@@ -69,8 +56,8 @@ export function normalizeCodexApproval(request: CodexApprovalRequest): Normalize
   const params = request.raw
   switch (request.kind) {
     case 'command': {
-      const command = str(params['command'])
-      const cwd = str(params['cwd'])
+      const command = nonEmptyString(params['command'])
+      const cwd = nonEmptyString(params['cwd'])
       return {
         kind: 'bash',
         command: command === undefined ? null : unwrapShell(command),
@@ -80,7 +67,7 @@ export function normalizeCodexApproval(request: CodexApprovalRequest): Normalize
     case 'file-change': {
       const paths = changedPaths(request.item)
       if (paths.length > 0) return { kind: 'edit', tool: 'Edit', paths }
-      const grantRoot = str(params['grantRoot'])
+      const grantRoot = nonEmptyString(params['grantRoot'])
       return {
         kind: 'edit',
         tool: 'Edit',
@@ -89,14 +76,14 @@ export function normalizeCodexApproval(request: CodexApprovalRequest): Normalize
       }
     }
     case 'permissions': {
-      const permissions = record(params['permissions'])
-      const fileSystem = record(permissions?.['fileSystem'])
-      const read = strings(fileSystem?.['read'])
-      const write = strings(fileSystem?.['write'])
-      const network = record(permissions?.['network'])?.['enabled']
+      const permissions = recordOrUndefined(params['permissions'])
+      const fileSystem = recordOrUndefined(permissions?.['fileSystem'])
+      const read = stringArray(fileSystem?.['read'])
+      const write = stringArray(fileSystem?.['write'])
+      const network = recordOrUndefined(permissions?.['network'])?.['enabled']
       return {
         kind: 'permission',
-        reason: str(params['reason']) ?? '',
+        reason: nonEmptyString(params['reason']) ?? '',
         ...(read.length > 0 || write.length > 0
           ? {
               fileSystem: {
@@ -110,10 +97,14 @@ export function normalizeCodexApproval(request: CodexApprovalRequest): Normalize
     }
     case 'mcp-elicitation': {
       const item = request.item
-      const server = str(item?.['server']) ?? str(params['serverName']) ?? 'unknown'
-      const tool = str(item?.['tool']) ?? toolFromMessage(str(params['message'])) ?? 'unknown'
+      const server =
+        nonEmptyString(item?.['server']) ?? nonEmptyString(params['serverName']) ?? 'unknown'
+      const tool =
+        nonEmptyString(item?.['tool']) ??
+        toolFromMessage(nonEmptyString(params['message'])) ??
+        'unknown'
       const hint = item?.['readOnlyHint']
-      const args = record(item?.['arguments'])
+      const args = recordOrUndefined(item?.['arguments'])
       return {
         kind: 'mcp',
         server,

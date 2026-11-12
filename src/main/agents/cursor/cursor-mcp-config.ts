@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
+import { isRecord } from '../../util/json'
 
 /**
  * Read-only look at the user's Cursor MCP server files (tech spec 2.5): `~/.cursor/mcp.json` and a
@@ -23,10 +24,6 @@ export interface CursorMcpRead {
   servers: CursorMcpServer[]
   /** True when a file exists but is not valid JSON of the expected shape. */
   unreadable: boolean
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function stringMap(value: unknown): Record<string, string> {

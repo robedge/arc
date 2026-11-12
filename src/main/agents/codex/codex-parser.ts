@@ -1,5 +1,7 @@
 import { READ_PATH_MAX } from '../agent-events'
 import type { AgentErrorKind, AgentEvent, UsageBuckets } from '../agent-events'
+import { argsSummary, capResultText, summaryLine } from '../parser-text'
+import { asRecord } from '../../util/json'
 import {
   agentDeltaSchema,
   codexRateLimitWindows,
@@ -26,9 +28,7 @@ import { unwrapShell } from './codex-normalize'
  * becomes an `unknown` event.
  */
 
-const SUMMARY_MAX = 120
 /** A tool result's text is kept up to this many characters (the terminal shows the first lines). */
-const RESULT_TEXT_MAX = 16_384
 
 /** Notifications that carry nothing Arc needs, so they produce no event at all. */
 const SILENT = new Set([
@@ -57,30 +57,6 @@ const NOT_TOOLS = new Set([
 ])
 
 const FAILED_STATUSES = new Set(['failed', 'declined'])
-
-function truncate(text: string): string {
-  const oneLine = text.replace(/\s+/g, ' ').trim()
-  return oneLine.length > SUMMARY_MAX ? `${oneLine.slice(0, SUMMARY_MAX - 1)}…` : oneLine
-}
-
-function cap(text: string): string {
-  return text.length > RESULT_TEXT_MAX ? text.slice(0, RESULT_TEXT_MAX) : text
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
-}
-
-/** The first short string argument of an MCP call, for the one-line summary. */
-function argsSummary(args: unknown): string {
-  const record = asRecord(args)
-  for (const value of Object.values(record)) {
-    if (typeof value === 'string' && value.trim() !== '') return truncate(value)
-  }
-  return ''
-}
 
 /** Maps Codex's `codexErrorInfo` to the error kinds the consumers know. */
 export function errorKindOf(info: unknown): AgentErrorKind {
@@ -159,7 +135,7 @@ export function createCodexParser(options: CodexParserOptions): CodexParser {
     const parsed = commandItemSchema.safeParse(item)
     const command = parsed.success ? (parsed.data.command ?? '') : ''
     const script = unwrapShell(command)
-    return script === '' ? 'Bash' : `Bash: ${truncate(script)}`
+    return script === '' ? 'Bash' : `Bash: ${summaryLine(script)}`
   }
 
   function fileSummary(item: CodexItem): string {
@@ -167,7 +143,7 @@ export function createCodexParser(options: CodexParserOptions): CodexParser {
     const paths = parsed.success ? (parsed.data.changes ?? []).map((c) => c.path) : []
     if (paths.length === 0) return 'Edit'
     const noun = paths.length === 1 ? 'file' : 'files'
-    return `Edit: ${truncate(`${paths.length} ${noun}: ${paths.join(', ')}`)}`
+    return `Edit: ${summaryLine(`${paths.length} ${noun}: ${paths.join(', ')}`)}`
   }
 
   /** The tool name and one-line summary an item shows as, or undefined when it is not a tool call. */
@@ -186,7 +162,7 @@ export function createCodexParser(options: CodexParserOptions): CodexParser {
     const detail = [record['query'], record['tool'], record['path']].find(
       (v): v is string => typeof v === 'string' && v !== ''
     )
-    return { name: item.type, summary: detail ? `${item.type}: ${truncate(detail)}` : item.type }
+    return { name: item.type, summary: detail ? `${item.type}: ${summaryLine(detail)}` : item.type }
   }
 
   function resultFor(item: CodexItem): { isError: boolean; content: string } {
@@ -195,7 +171,7 @@ export function createCodexParser(options: CodexParserOptions): CodexParser {
       if (!parsed.success) return { isError: false, content: '' }
       const { status, exitCode, aggregatedOutput } = parsed.data
       const failed = FAILED_STATUSES.has(status ?? '') || (exitCode != null && exitCode !== 0)
-      return { isError: failed, content: cap(aggregatedOutput ?? '') }
+      return { isError: failed, content: capResultText(aggregatedOutput ?? '') }
     }
     if (item.type === 'fileChange') {
       const parsed = fileChangeItemSchema.safeParse(item)
@@ -203,7 +179,7 @@ export function createCodexParser(options: CodexParserOptions): CodexParser {
       const lines = (parsed.data.changes ?? []).map((c) => `${c.kind?.type ?? 'change'} ${c.path}`)
       return {
         isError: FAILED_STATUSES.has(parsed.data.status ?? ''),
-        content: cap(lines.join('\n'))
+        content: capResultText(lines.join('\n'))
       }
     }
     if (item.type === 'mcpToolCall') {
@@ -213,7 +189,10 @@ export function createCodexParser(options: CodexParserOptions): CodexParser {
       const errorText = typeof error === 'string' ? error : (error?.message ?? '')
       const text = (result?.content ?? []).map((c) => c.text ?? '').join('')
       const failed = FAILED_STATUSES.has(status ?? '') || (error != null && error !== '')
-      return { isError: failed, content: cap(failed && errorText !== '' ? errorText : text) }
+      return {
+        isError: failed,
+        content: capResultText(failed && errorText !== '' ? errorText : text)
+      }
     }
     const record = asRecord(item)
     return {

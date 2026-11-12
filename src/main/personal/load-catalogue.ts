@@ -9,9 +9,9 @@ import {
   readPluginMcpServers,
   readRepoMcpServers,
   readUserHooks,
-  readUserMcpServers,
-  type ConfigLog
+  readUserMcpServers
 } from '../agents/claude/claude-user-config'
+import type { ConfigLog } from '../util/json'
 import {
   describeMarkdown,
   listingEntry,
@@ -137,14 +137,17 @@ export class LoadCatalogue {
     const add = (names: Iterable<string>, detail: string): void => {
       for (const name of names) if (!found.has(name)) found.set(name, detail)
     }
-    const user = await readUserMcpServers(home, projects)
+    const user = await readUserMcpServers(home, projects, this.deps.log)
     add(Object.keys(user.user), 'Your servers')
     for (const repo of projects) {
       add(Object.keys(user.local.get(repo) ?? {}), `Your servers in ${basename(repo)}`)
-      add(Object.keys(await readRepoMcpServers(repo)), `.mcp.json in ${basename(repo)}`)
+      add(
+        Object.keys(await readRepoMcpServers(repo, this.deps.log)),
+        `.mcp.json in ${basename(repo)}`
+      )
     }
     for (const plugin of plugins) {
-      add(Object.keys(await readPluginMcpServers(plugin)), `Plugin ${plugin.folder}`)
+      add(Object.keys(await readPluginMcpServers(plugin, this.deps.log)), `Plugin ${plugin.folder}`)
     }
     return [...found.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
@@ -218,7 +221,7 @@ export class LoadCatalogue {
   }
 
   private async hookItems(home: string): Promise<LoadItem[]> {
-    const events = hookEventsOf(await readUserHooks(home)).sort()
+    const events = hookEventsOf(await readUserHooks(home, this.deps.log)).sort()
     return events.map((event): LoadItem => ({
       key: loadKey.hook(event),
       kind: 'hook',

@@ -1,12 +1,13 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { readdir, readFile, stat } from 'node:fs/promises'
+import { readdir, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { AppErrorException } from '../../shared/errors'
 import type { PluginKind, PluginProgress, PluginRow } from '../../shared/types/plugins'
 import type { CliResolver } from '../agents/cli-resolver'
 import { parsePluginList, repoSettingsWarnings, type InstalledPlugin } from './plugin-view'
+import { isRecord, nonEmptyString, readJsonFile } from '../util/json'
 
 /**
  * Plugin management through the `claude plugin` subcommands (spec 005, tech spec 2.7). This file
@@ -61,7 +62,7 @@ export function errorText(stdout: string, stderr: string): string {
     try {
       const parsed: unknown = JSON.parse(out)
       if (isRecord(parsed)) {
-        const message = str(parsed['error']) ?? str(parsed['message'])
+        const message = nonEmptyString(parsed['error']) ?? nonEmptyString(parsed['message'])
         if (message) return cap(message)
       }
     } catch {
@@ -105,29 +106,12 @@ function failureReason(error: unknown): string {
   return error instanceof Error ? cap(error.message) : 'The plugin change failed.'
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined
-}
-
 async function exists(path: string): Promise<boolean> {
   try {
     await stat(path)
     return true
   } catch {
     return false
-  }
-}
-
-async function readJson(path: string): Promise<Record<string, unknown> | undefined> {
-  try {
-    const parsed: unknown = JSON.parse(await readFile(path, 'utf8'))
-    return isRecord(parsed) ? parsed : undefined
-  } catch {
-    return undefined
   }
 }
 
@@ -166,8 +150,8 @@ async function countSkills(dir: string): Promise<number> {
 }
 
 function authorName(value: unknown): string | undefined {
-  if (typeof value === 'string') return str(value)
-  return isRecord(value) ? str(value['name']) : undefined
+  if (typeof value === 'string') return nonEmptyString(value)
+  return isRecord(value) ? nonEmptyString(value['name']) : undefined
 }
 
 function isSha(version: string): boolean {
@@ -209,9 +193,9 @@ export function updateFor(
   recordedSha: string | undefined
 ): string | undefined {
   if (!entry) return undefined
-  const version = str(entry['version'])
+  const version = nonEmptyString(entry['version'])
   const source = entry['source']
-  const sourceSha = isRecord(source) ? str(source['sha']) : undefined
+  const sourceSha = isRecord(source) ? nonEmptyString(source['sha']) : undefined
   if (version && !isSha(installed) && !isSha(version)) {
     return isNewer(version, installed) ? version : undefined
   }
@@ -223,9 +207,14 @@ export function updateFor(
 }
 
 function sourceText(value: unknown): string | undefined {
-  if (typeof value === 'string') return str(value)
+  if (typeof value === 'string') return nonEmptyString(value)
   if (!isRecord(value)) return undefined
-  return str(value['repo']) ?? str(value['url']) ?? str(value['path']) ?? str(value['source'])
+  return (
+    nonEmptyString(value['repo']) ??
+    nonEmptyString(value['url']) ??
+    nonEmptyString(value['path']) ??
+    nonEmptyString(value['source'])
+  )
 }
 
 interface Catalogue {
@@ -372,8 +361,8 @@ export class PluginService {
       if (!prior || entry.lastUpdated > prior.lastUpdated) byId.set(entry.id, entry)
     }
     const pluginsDir = join(this.home(), '.claude', 'plugins')
-    const known = (await readJson(join(pluginsDir, 'known_marketplaces.json'))) ?? {}
-    const recorded = await readJson(join(pluginsDir, 'installed_plugins.json'))
+    const known = (await this.readJson(join(pluginsDir, 'known_marketplaces.json'))) ?? {}
+    const recorded = await this.readJson(join(pluginsDir, 'installed_plugins.json'))
     const catalogues = new Map<string, Catalogue>()
     const rows: PluginRow[] = []
     for (const plugin of byId.values()) {
@@ -461,6 +450,12 @@ export class PluginService {
     return { opId }
   }
 
+  /** A JSON file of the plugin folders as an object; a missing or malformed one is `undefined`, the latter logged. */
+  private async readJson(path: string): Promise<Record<string, unknown> | undefined> {
+    const parsed = await readJsonFile(path, this.log)
+    return isRecord(parsed) ? parsed : undefined
+  }
+
   private async catalogue(
     pluginsDir: string,
     marketplace: string,
@@ -468,7 +463,7 @@ export class PluginService {
   ): Promise<Catalogue> {
     const cached = cache.get(marketplace)
     if (cached) return cached
-    const manifest = await readJson(
+    const manifest = await this.readJson(
       join(pluginsDir, 'marketplaces', marketplace, '.claude-plugin', 'marketplace.json')
     )
     const entries = new Map<string, Record<string, unknown>>()
@@ -494,7 +489,7 @@ export class PluginService {
     const name = at === -1 ? plugin.id : plugin.id.slice(0, at)
     const marketplace = at === -1 ? '' : plugin.id.slice(at + 1)
     const dir = plugin.installPath
-    const manifest = (await readJson(join(dir, '.claude-plugin', 'plugin.json'))) ?? {}
+    const manifest = (await this.readJson(join(dir, '.claude-plugin', 'plugin.json'))) ?? {}
     const entry = marketplace
       ? (await this.catalogue(pluginsDir, marketplace, catalogues)).entries.get(name)
       : undefined
@@ -517,9 +512,9 @@ export class PluginService {
           (r) => isRecord(r) && r['scope'] === 'user' && r['installPath'] === dir
         )
       : undefined
-    const recordedSha = isRecord(record) ? str(record['gitCommitSha']) : undefined
+    const recordedSha = isRecord(record) ? nonEmptyString(record['gitCommitSha']) : undefined
 
-    const version = str(manifest['version']) ?? plugin.version
+    const version = nonEmptyString(manifest['version']) ?? plugin.version
     const update = updateFor(plugin.version || version, entry, recordedSha)
     const author = authorName(manifest['author']) ?? authorName(entry?.['author'])
     const marketplaceInfo = marketplace ? known[marketplace] : undefined
@@ -529,7 +524,8 @@ export class PluginService {
       name,
       marketplace,
       version: plugin.version || version,
-      description: str(manifest['description']) ?? str(entry?.['description']) ?? '',
+      description:
+        nonEmptyString(manifest['description']) ?? nonEmptyString(entry?.['description']) ?? '',
       ...(author ? { author } : {}),
       enabled: plugin.enabled,
       ...(source ? { source } : {}),

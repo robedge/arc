@@ -4,6 +4,7 @@ import { basename, join } from 'node:path'
 import { AppErrorException } from '../../shared/errors'
 import { commandId, type CommandInfo } from '../../shared/types/commands'
 import { buildAgentEnv, type ProcessSupervisor } from './process-supervisor'
+import { isRecord } from '../util/json'
 
 /**
  * The command catalogue (spec 005, tech spec 2.3). Claude Code answers a `control_request`
@@ -30,10 +31,6 @@ export interface RawModel {
   value: string
   displayName: string
   description: string
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /** The CLI's answer to `initialize`: `commands` with `builtin` set on the CLI's own commands. */

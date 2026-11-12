@@ -1,5 +1,6 @@
 import type { NormalizedAction } from '../../policy/normalized-action'
 import type { CursorApprovalRequest, JsonObject } from './cursor-types'
+import { nonBlankString, recordOrUndefined } from '../../util/json'
 
 /**
  * What a Cursor permission request asks for, as the action Arc classifies (tech spec 2.4). The
@@ -7,25 +8,15 @@ import type { CursorApprovalRequest, JsonObject } from './cursor-types'
  * `tool_call` the adapter attaches as `request.tool`. Whatever cannot be read fails closed.
  */
 
-function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() !== '' ? value : undefined
-}
-
-function record(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined
-}
-
 /** "`git status`" -> "git status". */
 function backticked(title: string): string | undefined {
-  return str(/^`([\s\S]+)`$/.exec(title.trim())?.[1])
+  return nonBlankString(/^`([\s\S]+)`$/.exec(title.trim())?.[1])
 }
 
 function commandOf(request: CursorApprovalRequest): string | null {
   const input: JsonObject = request.tool?.rawInput ?? {}
   return (
-    str(input['command']) ??
+    nonBlankString(input['command']) ??
     backticked(request.tool?.title ?? '') ??
     backticked(request.title) ??
     null
@@ -38,7 +29,7 @@ function pathsOf(request: CursorApprovalRequest): string[] {
     ? input['paths'].filter((p): p is string => typeof p === 'string' && p !== '')
     : []
   const single = [input['path'], input['filePath'], input['file_path']].flatMap((p) =>
-    str(p) === undefined ? [] : [p as string]
+    nonBlankString(p) === undefined ? [] : [p as string]
   )
   const located = (request.tool?.locations ?? []).filter((p) => p !== '')
   return [...new Set([...listed, ...single.slice(0, 1), ...located])]
@@ -49,10 +40,10 @@ function mcpIdentity(
   request: CursorApprovalRequest
 ): { server: string; tool: string; args?: Record<string, unknown> } | undefined {
   const input = request.tool?.rawInput
-  const server = str(input?.['providerIdentifier'])
-  const tool = str(input?.['toolName'])
+  const server = nonBlankString(input?.['providerIdentifier'])
+  const tool = nonBlankString(input?.['toolName'])
   if (server !== undefined && tool !== undefined) {
-    const args = record(input?.['args'])
+    const args = recordOrUndefined(input?.['args'])
     return { server, tool, ...(args ? { args } : {}) }
   }
   // The tool call's updated title reads "arc: echo".
@@ -77,8 +68,10 @@ function mcpIdentity(
  * server itself; the rule is the same: read-only and not destructive runs unasked.
  */
 function annotatedReadOnly(request: CursorApprovalRequest): 'yes' | 'no' | 'unknown' {
-  const call = record(request.raw['toolCall'])
-  const found = record(call?.['annotations']) ?? record(request.tool?.rawInput['annotations'])
+  const call = recordOrUndefined(request.raw['toolCall'])
+  const found =
+    recordOrUndefined(call?.['annotations']) ??
+    recordOrUndefined(request.tool?.rawInput['annotations'])
   if (!found) return 'unknown'
   if (found['destructiveHint'] === true) return 'no'
   return found['readOnlyHint'] === true ? 'yes' : 'unknown'
@@ -88,7 +81,8 @@ export function normalizeCursorApproval(request: CursorApprovalRequest): Normali
   switch (request.kind) {
     case 'execute': {
       const cwd =
-        str(request.tool?.rawInput['cwd']) ?? str(request.tool?.rawInput['workingDirectory'])
+        nonBlankString(request.tool?.rawInput['cwd']) ??
+        nonBlankString(request.tool?.rawInput['workingDirectory'])
       return { kind: 'bash', command: commandOf(request), ...(cwd === undefined ? {} : { cwd }) }
     }
     case 'edit':
