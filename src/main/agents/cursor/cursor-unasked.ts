@@ -1,3 +1,4 @@
+import type { CursorBlockedOutcome } from '@shared/types/session'
 import { PolicyCategory, classifyAction, type ClassifyContext } from '../../policy/classify'
 import type { CursorToolCall } from './cursor-types'
 import { nonBlankString } from '../../util/json'
@@ -9,8 +10,6 @@ import { nonBlankString } from '../../util/json'
  * M1). Each such call is classified with the same classifier the approvals use, so the session can
  * say what was stopped and what got through.
  */
-
-export type CursorBlockedOutcome = 'blocked' | 'ran-unasked' | 'outside-edit'
 
 export interface CursorBlockedNote {
   outcome: CursorBlockedOutcome

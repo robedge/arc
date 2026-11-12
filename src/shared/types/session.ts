@@ -15,6 +15,10 @@ export type BrainState = 'idle' | 'thinking' | 'waiting'
 /** Name every session has until the brain's title (or the fallback) renames it. */
 export const PLACEHOLDER_SESSION_NAME = 'New session'
 
+/** What a `cursor-blocked` event reports about a call Cursor made without asking Arc. */
+export const CURSOR_BLOCKED_OUTCOMES = ['blocked', 'ran-unasked', 'outside-edit'] as const
+export type CursorBlockedOutcome = (typeof CURSOR_BLOCKED_OUTCOMES)[number]
+
 /**
  * The badge in the session list. Derived, never stored (see `deriveListStatus` in main):
  * stopped session -> 'stopped'; else pending attention -> 'needs-attention'; else brain thinking
