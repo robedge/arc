@@ -8,7 +8,7 @@
 
 ## 1. Overview and Rationale (The "Why")
 
-Arc is meant to feel like talking to a capable assistant in a sci-fi heads-up display: a dark command surface where the important things glow and anything waiting on the user is impossible to miss. Today the groups and knowledge screens use a plain default look, so the app feels like a generic utility. The coming session screens (the brain, its workers, and their approval and question alerts) also need a consistent visual language from the start, so they aren't restyled later.
+Arc is meant to look like a sci-fi heads-up display: a dark surface where important items glow and anything waiting on the user is clearly marked. Today the groups and knowledge screens use a plain default look, so the app looks like a generic utility. The coming session screens (the brain, its workers, and their approval and question alerts) also need a consistent visual language from the start, so they aren't restyled later.
 
 This change gives Arc that look, based on the mockup the user approved ("Arc HUD Mockup"). It applies it to every screen that exists today, and adds the shared building blocks the session screens will use, including the agreed "needs attention" alert pattern.
 
@@ -38,7 +38,7 @@ This change gives Arc that look, based on the mockup the user approved ("Arc HUD
   - Heading font: Orbitron for the Arc wordmark and screen titles, Rajdhani for labels and body text, as in the approved mockup.
 - The Arc wordmark and its ring logo appear at the top of the sidebar.
 - The app keeps its dark HUD look whether macOS is set to Light or Dark appearance.
-- The app shows no Marvel names, characters, or branding anywhere. The look is inspired by a HUD style, not a copy of any film's interface.
+- The app shows no Marvel names, characters, or branding anywhere. The look is inspired by a HUD style and does not copy any film's interface.
   - **Acceptance Criteria:**
     - [x] When the user opens Arc, then the window shows the dark navy background with a faint grid and the Arc wordmark with its ring logo at the top of the sidebar. _(Verified: see docs/screenshots/002-arc-hud-design-system-launch.png)_
     - [x] Given macOS is set to Light appearance, when the user opens Arc, then Arc still shows its dark HUD look. _(Verified: simulated via nativeTheme light, see docs/screenshots/002-arc-hud-design-system-light-appearance.png; user confirmed on real Light setting)_

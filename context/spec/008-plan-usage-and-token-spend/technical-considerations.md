@@ -118,7 +118,7 @@ Everything is new code under `src/main/usage/` and `src/renderer/src/lib/compone
   - `not-reported`: the provider answered with no windows;
   - `stale`: shown when a window's `resetsAt` has passed. That window shows "Reset" until a new observation arrives, and Arc never shows an old high percentage as current.
 - **Severity** comes from `usedPercent` alone: amber at 80% or more, red at 95% or more.
-- **Notices.** The key is `provider|windowId|resetsAt rounded to the minute|threshold`. Rounding to the minute absorbs jitter in reset times. The flow:
+- **Notices.** The key is `provider|windowId|resetsAt rounded to the minute|threshold`. Rounding to the minute maps jittery reset times to one key. The flow:
   1. On each ingest, find the highest threshold crossed: 95, otherwise 80.
   2. `INSERT OR IGNORE` into `plan_notices`.
   3. If the row was new, push the notice.

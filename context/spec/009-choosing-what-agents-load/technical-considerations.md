@@ -70,7 +70,7 @@ Roles: `brain` (the brain) and `workers` (workers and conflict resolvers, which 
 
 - Skill: `tokens(name + ': ' + description)` from the `SKILL.md` front matter (folded `>` and `|` values handled).
 - Plugin: the same rule over its `skills/*/SKILL.md`, `commands/**/*.md` and `agents/*.md`. A plugin that ships hooks gets a note that their output is not counted. Its MCP servers are their own rows.
-- MCP server: `tokens(names)` where names are `mcp__<server>__<tool>` for the tools `McpToolCatalogue` has seen in this Arc run (F4), labelled as names only; otherwise `null`. Because Claude defers MCP tools, the list per request is names, so this is an honest lower bound.
+- MCP server: `tokens(names)` where names are `mcp__<server>__<tool>` for the tools `McpToolCatalogue` has seen in this Arc run (F4), labelled as names only; otherwise `null`. Because Claude defers MCP tools, the list per request is names, so this is a lower bound.
 - Hook, Codex server: `null`.
 - `tokens(text) = ceil(text.length / 4)`, the rule of spec 008's `setup-estimator.ts`.
 - The page sums each column over items that are on and counts those with `null`.
@@ -101,7 +101,7 @@ Reads are read-only (`~/.claude`, `~/.claude.json`, plugin install folders, proj
 |---|---|
 | A repository's `enabledPlugins` loads a plugin the user switched off | Stub folder of the same name (2.3); unit test; stated as an assumption since the shadowing was verified for full copies only |
 | Pruning removes the other role's plugin view while an agent uses it | both current views are protected from pruning; views are named by hash, so equal selections share one |
-| Estimates mislead (names only for MCP, hooks unknown) | Labelled "about", "size unknown" and "tool names only"; the measured fixed setup (spec 008) remains the truth |
+| Estimates mislead (names only for MCP, hooks unknown) | Labelled "about", "size unknown" and "tool names only"; the measured fixed setup (spec 008) stays the actual figure |
 | The user switches off something an agent needs (a hook that guards pushes) | Defaults are on; hook rows say a hook may protect; the bypass warning follows the selection |
 | `settings:set` with a huge list | zod caps on array and string length |
 | A project's `.mcp.json` server shown for a project the user later removes | Listed only for projects Arc knows now; the stored key stays harmless |
@@ -134,7 +134,7 @@ Tests come first in every slice. During slices only the touched test files run; 
 - `role` on `ClaudePersonalRequest` is optional; left out, nothing is filtered (listings). The three launch paths pass it (orchestrator `brain`, worker manager and command catalogue `workers`), checked by unit tests and e2e.
 - `PersonalLaunchConfig.codexMcp(cwd, role?)` splits the servers into running and `disabled`.
 - The fake CLI got `FAKE_CLAUDE_SETUP_PER_ITEM`, so the measured fixed setup (spec 008) can be seen to fall.
-- The `commands:changed` push after a Workers change is belt and braces: the catalogue's cache key already contains the view hash, so the `/` list refreshes anyway; no e2e test depends on the push.
+- The `commands:changed` push after a Workers change is redundant: the catalogue's cache key already contains the view hash, so the `/` list refreshes without it; no e2e test depends on the push.
 
 ## 5. Decisions
 

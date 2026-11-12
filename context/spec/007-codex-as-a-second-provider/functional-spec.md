@@ -8,7 +8,7 @@
 
 ## 1. Overview and Rationale (The "Why")
 
-The user pays for both a Claude and a Codex subscription, but Arc only uses Claude today. Every worker and the brain run on Claude models, so the Codex subscription sits idle, and the user can't get a second opinion from a different model family without leaving Arc.
+The user pays for both a Claude and a Codex subscription, but Arc only uses Claude today. Every worker and the brain run on Claude models, so the Codex subscription goes unused, and the user can't get a second opinion from a different model family without leaving Arc.
 
 This spec makes Codex a full second provider. The brain can run on Codex, workers can run on Codex, and the brain can choose Codex for a worker when it suits the task, for example a review or a second opinion. A setting lets the user pin a provider instead: always Claude, always Codex, or let the brain choose. Codex workers behave like Claude workers: they work in their own working copy, follow Arc's approval rules, ask questions, run the user's saved Codex prompts, and can be stepped in on.
 
@@ -125,7 +125,7 @@ This spec makes Codex a full second provider. The brain can run on Codex, worker
 - The brain choosing Codex for a worker when Workers is "Auto", and the plan card showing and changing the provider.
 - Codex workers with working copies, merging, Review changes, approvals, questions, step in and hand back, and resuming.
 - The user's Codex skills and saved Codex prompts in the / list.
-- The user's own and their plugins' MCP servers and hooks loading in Claude and Codex agents, with Arc's approvals still in charge.
+- The user's own and their plugins' MCP servers and hooks loading in Claude and Codex agents, with Arc's approvals still applying.
 - Falling back to Claude when Codex isn't available, with a visible note.
 - Checking for new models and provider updates when Arc opens, showing the update command, and picking up both without restarting where possible.
 

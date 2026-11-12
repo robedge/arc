@@ -8,7 +8,7 @@
 
 ## 1. Overview and Rationale (The "Why")
 
-Today the user can watch any worker's terminal in Arc, but can't touch it. When a worker heads the wrong way, gets stuck on something the user could explain in one sentence, or needs a quick hands-on correction, the user's only options are to tell the brain and hope the message gets passed on correctly, or to stop the worker and lose its progress.
+Today the user can watch any worker's terminal in Arc, but can't touch it. When a worker goes in the wrong direction, gets stuck on something the user could explain in one sentence, or needs a quick hands-on correction, the user's only options are to tell the brain and hope the message gets passed on correctly, or to stop the worker and lose its progress.
 
 This spec lets the user step in. From a worker's terminal tab they click **Step in**: the worker stops what it's doing and the tab becomes a live conversation with that worker, in its own working copy, with everything it has done so far. The user types directly to it, the same way they would in Claude Code in a terminal. When they're done they click **Hand back**, and the worker carries on with its task by itself, aware of what the user did. The brain is kept informed throughout and waits instead of interfering.
 
@@ -18,7 +18,7 @@ This spec lets the user step in. From a worker's terminal tab they click **Step 
 - Taking over and handing back each take one click.
 - The worker keeps all its progress and conversation across the takeover.
 - Arc's protections still apply while the user is in control: risky actions still ask first.
-- The brain never talks over the user or acts on a worker the user is controlling.
+- The brain does not message or act on a worker the user is controlling.
 
 ---
 

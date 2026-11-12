@@ -8,7 +8,7 @@
 
 ## 1. Overview and Rationale (The "Why")
 
-Workers edit files and run commands freely once a plan is approved. The promise that makes this safe is that the user reviews the combined result at the end. Today that review happens outside Arc. The user has to switch to a terminal or editor, work out which commits came from the session, and compare the session branch with where it started, one repository at a time.
+Workers edit files and run commands freely once a plan is approved. This is safe because the user reviews the combined result at the end. Today that review happens outside Arc. The user has to switch to a terminal or editor, work out which commits came from the session, and compare the session branch with where it started, one repository at a time.
 
 Change review brings that into the session. One screen shows every file the session changed, in every repository, compared with where the session branch started. For each change it shows which worker made it. From there the user can undo a change they don't want, or send a note to the brain asking for a fix, and see the result land in the same screen.
 

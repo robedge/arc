@@ -23,7 +23,7 @@ The work is mostly in the renderer.
 - **Packaging:** an SVG icon master is rendered to `.icns` by a committed generation script. The installer gets the icon, and the OFL font licenses are bundled.
 - **Behavior:** no IPC contracts, stores or behavior from spec 001 change.
 
-Existing components and test locators are reused deliberately:
+Existing components and test locators are reused:
 - **Names and props:** `Button`, `Modal`, `TextField`, `Toaster`, `SaveIndicator` and `DropZone` keep their names and remain backward compatible.
 - **Native elements:** they stay in the DOM (custom radios and checkboxes wrap a visually hidden native input).
 - **Accessible names, roles and visible text:** unchanged, so the roughly 620 `getByRole`, `getByLabel` and `getByText` locators and the `.cm-content` selector keep working.
@@ -132,7 +132,7 @@ Text that tests match with `getByText` stays in a single text node.
 - Remove `max-h-[70vh]` and wrapper `h-screen` classes. CodeMirror's `.cm-scroller` is the editor's only scroller.
 - The renderer is laid out and checked at 1100×720, which main enforces as the minimum size (§2.8).
 - **Title bar (confirmed):** the main window uses `hiddenInset`.
-  - A full-width title bar (`ui/TitleBar`, 40px, `--size-titlebar`) runs across the top of the window, above the sidebar and main column. The traffic lights sit vertically centered inside it on the left, and nothing else is placed in their area. The bar has a faint surface fill and a hairline bottom border so it reads as the place to grab. It is `-webkit-app-region: drag` end to end, double-click zooms the window (native behavior), and any interactive child is `no-drag`. The panel grid starts below it, so no panel or bracket sits under the traffic lights.
+  - A full-width title bar (`ui/TitleBar`, 40px, `--size-titlebar`) runs across the top of the window, above the sidebar and main column. The traffic lights sit vertically centered inside it on the left, and nothing else is placed in their area. The bar has a faint surface fill and a hairline bottom border so it is visible as the drag area. It is `-webkit-app-region: drag` end to end, double-click zooms the window (native behavior), and any interactive child is `no-drag`. The panel grid starts below it, so no panel or bracket sits under the traffic lights.
   - Dialog overlays never sit under a drag region.
   - In fullscreen there are no traffic lights, and the reserved gap is accepted.
 
