@@ -28,7 +28,7 @@ describe('create', () => {
     const names = await readdir(join(env.root, 'Notes'))
     expect(names).toContain('ab c.md')
     expect(await readFile(notePath('ab c.md'), 'utf8')).toBe('---\ntitle: "a/b: c"\n---\n')
-    const listed = await env.service.list(env.notesId)
+    const listed = await env.service.reconcileAndList(env.notesId)
     expect(listed.map((i) => i.title)).toEqual(['a/b: c'])
   })
 
@@ -36,7 +36,7 @@ describe('create', () => {
     await env.service.create(env.notesId, 'Service map')
     await env.service.create(env.notesId, 'service map')
     expect(await readdir(join(env.root, 'Notes'))).toContain('service map (2).md')
-    expect(await env.service.list(env.notesId)).toHaveLength(2)
+    expect(await env.service.reconcileAndList(env.notesId)).toHaveLength(2)
   })
 
   it('rejects an empty title and an over-long one', async () => {
@@ -109,13 +109,15 @@ describe('setDescription', () => {
     expect((await env.metaStore.read(env.root)).items['Notes/Plan.md']).toEqual({
       description: 'how things talk'
     })
-    expect((await env.service.list(env.notesId))[0]?.description).toBe('how things talk')
+    expect((await env.service.reconcileAndList(env.notesId))[0]?.description).toBe(
+      'how things talk'
+    )
     expect(await codeOf(env.service.setDescription(item.id, 'x'.repeat(201)))).toBe(
       'VALIDATION_FAILED'
     )
     await env.service.setDescription(item.id, '')
     expect((await env.metaStore.read(env.root)).items['Notes/Plan.md']).toBeUndefined()
-    expect((await env.service.list(env.notesId))[0]?.description).toBe('')
+    expect((await env.service.reconcileAndList(env.notesId))[0]?.description).toBe('')
   })
 })
 
@@ -135,7 +137,9 @@ describe('delete', () => {
 
 describe('unknown section', () => {
   it('reports an unknown section id as SECTION_NOT_FOUND', async () => {
-    expect(await codeOf(env.service.list('01ARZ3NDEKTSV4RRFFQ69G5FAV'))).toBe('SECTION_NOT_FOUND')
+    expect(await codeOf(env.service.reconcileAndList('01ARZ3NDEKTSV4RRFFQ69G5FAV'))).toBe(
+      'SECTION_NOT_FOUND'
+    )
   })
 })
 
@@ -157,7 +161,7 @@ describe('sections and traversal', () => {
     await writeFile(outside, 'secret')
     await mkdir(join(env.root, 'Notes'), { recursive: true })
     await symlink(outside, notePath('leak.md'))
-    expect(await env.service.list(env.notesId)).toEqual([])
+    expect(await env.service.reconcileAndList(env.notesId)).toEqual([])
     expect((await env.sections.list(env.groupId)).find((s) => s.kind === 'notes')?.itemCount).toBe(
       0
     )

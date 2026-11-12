@@ -66,7 +66,11 @@ export class KnowledgeService {
     this.log = deps.log ?? { warn: () => undefined }
   }
 
-  async list(sectionId: string): Promise<ItemSummary[]> {
+  /**
+   * Re-indexes the section from disk first (item rows are written for files added, changed or
+   * removed outside Arc), then lists it. Not a pure read.
+   */
+  async reconcileAndList(sectionId: string): Promise<ItemSummary[]> {
     const section = this.requireSection(sectionId)
     await this.deps.index.reconcileSection(section.groupId, sectionId)
     return this.deps.itemsRepo.listBySection(sectionId).map((row) => this.toSummary(row))

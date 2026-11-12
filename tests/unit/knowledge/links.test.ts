@@ -34,7 +34,7 @@ describe('links:upsert create', () => {
       url: 'https://wiki.example.com/orders',
       kind: 'link'
     })
-    const listed = await env.service.list(linksId)
+    const listed = await env.service.reconcileAndList(linksId)
     expect(listed.map((i) => [i.title, i.url])).toEqual([
       ['Orders wiki', 'https://wiki.example.com/orders']
     ])
@@ -47,7 +47,7 @@ describe('links:upsert create', () => {
     const names = await readdir(join(env.root, 'Links'))
     expect(names).toHaveLength(1)
     expect(names[0]).toMatch(/^[^/:\\]+\.md$/)
-    expect((await env.service.list(linksId))[0]?.title).toBe(url)
+    expect((await env.service.reconcileAndList(linksId))[0]?.title).toBe(url)
   })
 
   it.each(['wiki.example.com', 'ftp://x', 'javascript:alert(1)', 'file:///etc/passwd'])(
@@ -95,7 +95,7 @@ describe('links:upsert description and update', () => {
     expect(await readFile(linkPath('A.md'), 'utf8')).toBe(
       '---\nurl: "https://a.example.com"\ntitle: "A"\n---\nThe A site'
     )
-    expect((await env.service.list(linksId))[0]?.description).toBe('The A site')
+    expect((await env.service.reconcileAndList(linksId))[0]?.description).toBe('The A site')
   })
 
   it('updates url/title/description, renames the file and keeps the id', async () => {
@@ -118,7 +118,7 @@ describe('links:upsert description and update', () => {
       description: 'now B'
     })
     expect(await readdir(join(env.root, 'Links'))).toEqual(['B.md'])
-    expect(await env.service.list(linksId)).toHaveLength(1)
+    expect(await env.service.reconcileAndList(linksId)).toHaveLength(1)
   })
 
   it('lists a link whose url was broken on disk, and items:delete removes it', async () => {
@@ -128,11 +128,11 @@ describe('links:upsert description and update', () => {
       title: 'A'
     })
     await writeFile(linkPath('A.md'), '---\nurl: "nope"\ntitle: "A"\n---\n')
-    const listed = await env.service.list(linksId)
+    const listed = await env.service.reconcileAndList(linksId)
     expect(listed.map((i) => i.url)).toEqual(['nope'])
     await env.service.delete(item.id)
     expect(await readdir(join(env.root, 'Links'))).toEqual([])
-    expect(await env.service.list(linksId)).toEqual([])
+    expect(await env.service.reconcileAndList(linksId)).toEqual([])
   })
 
   it('refuses generic items:create in the Links section', async () => {

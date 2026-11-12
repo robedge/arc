@@ -46,7 +46,7 @@ describe('importFiles', () => {
       editable: true
     })
 
-    const listed = await env.service.list(docsId)
+    const listed = await env.service.reconcileAndList(docsId)
     expect(listed.map((i) => i.title)).toEqual(['orders_schema.sql'])
     const read = await env.service.read(report.added[0]?.id ?? '')
     expect(read).toMatchObject({ type: 'text', content: 'CREATE TABLE orders (id int);\n' })
@@ -160,7 +160,7 @@ describe('name conflicts', () => {
     })
     expect(report.added[0]?.id).toBe(originalId)
     expect(await readFile(docsFile('orders_schema.sql'), 'utf8')).toBe('v2')
-    expect(await env.service.list(docsId)).toHaveLength(1)
+    expect(await env.service.reconcileAndList(docsId)).toHaveLength(1)
     expect(await readFile(path, 'utf8')).toBe('v2')
   })
 
@@ -238,7 +238,7 @@ describe('binary import', () => {
     const report = await env.service.importFiles(docsId, [await source(name, content)])
     expect(report.failed).toEqual([])
     expect(report.added[0]).toMatchObject({ kind: 'doc_binary', editable: false })
-    expect(await env.service.list(docsId)).toHaveLength(1)
+    expect(await env.service.reconcileAndList(docsId)).toHaveLength(1)
   })
 
   it.each([

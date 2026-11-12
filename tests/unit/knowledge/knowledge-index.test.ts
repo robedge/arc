@@ -45,10 +45,10 @@ describe('reconcileSection', () => {
   it('updates the revision on an external edit and keeps ids stable', async () => {
     const item = await env.service.create(env.notesId, 'Plan')
     await writeFile(notePath('Plan.md'), 'changed outside')
-    const [after] = await env.service.list(env.notesId)
+    const [after] = await env.service.reconcileAndList(env.notesId)
     expect(after?.id).toBe(item.id)
     expect(after?.revision).not.toBe(item.revision)
-    const again = await env.service.list(env.notesId)
+    const again = await env.service.reconcileAndList(env.notesId)
     expect(again[0]).toEqual(after)
   })
 

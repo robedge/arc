@@ -51,7 +51,7 @@ describe('nested section items', () => {
   it('reports the subfolder on the summary', async () => {
     await put('Notes/top.md')
     await put('Notes/001-x/deep/b.md')
-    const items = await env.service.list(env.notesId)
+    const items = await env.service.reconcileAndList(env.notesId)
     expect(items.map((i) => [i.fileName, i.folder])).toEqual(
       expect.arrayContaining([
         ['top.md', ''],
@@ -62,7 +62,7 @@ describe('nested section items', () => {
 
   it('renames a nested item inside its own folder, keeping id and meta', async () => {
     await put('Notes/sub/a.md', 'hello')
-    const [item] = await env.service.list(env.notesId)
+    const [item] = await env.service.reconcileAndList(env.notesId)
     if (!item) throw new Error('no item')
     await env.service.setDescription(item.id, 'desc')
     const renamed = await env.service.rename(item.id, 'Renamed')
@@ -75,7 +75,7 @@ describe('nested section items', () => {
 
   it('reads, saves and deletes a nested item', async () => {
     await put('Notes/sub/a.md', 'hello')
-    const [item] = await env.service.list(env.notesId)
+    const [item] = await env.service.reconcileAndList(env.notesId)
     if (!item) throw new Error('no item')
     const read = await env.service.read(item.id)
     if (read.type !== 'text') throw new Error('expected text')
