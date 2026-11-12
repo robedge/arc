@@ -10,7 +10,7 @@
 
 Today, Arc can hold a group's projects and knowledge, but the user can't do anything with an agent yet. To ask a question or fix a bug across several repositories, the user still opens one terminal per repository and re-explains the context in each.
 
-Sessions fix that. The user opens a session on a group and writes one request. A "brain" agent reads the group's projects and knowledge, splits the work into tasks, and starts worker agents for them. Each worker gets its own separate working copy of the code, so workers never step on each other or on the user's own work. The brain watches the workers and answers their questions when it can. It brings their finished work together on one session branch per project, and only interrupts the user when it has to.
+Sessions fix that. The user opens a session on a group and writes one request. A "brain" agent reads the group's projects and knowledge, splits the work into tasks, and starts worker agents for them. Each worker gets its own separate working copy of the code, so workers do not change each other's files or the user's own work. The brain watches the workers and answers their questions when it can. It brings their finished work together on one session branch per project, and only interrupts the user when it has to.
 
 **Success looks like this:**
 
@@ -279,7 +279,7 @@ Each of these comes later in a spec of its own:
   - **A project removed from the group** shows as "Removed" in the session header. The brain is told, and no new workers can start in it. Work already merged and its review history stay.
   - **A project moved to a new folder** is used at its new location by the brain and by workers started afterwards.
   - **Linking, unlinking or moving the group's knowledge folder** is used by the brain from its next reply, and by workers started afterwards.
-- The brain picks up the change at its next pause between replies, keeping the conversation, and its next message reflects the new projects and knowledge folder. Workers already running keep the folders they started with.
+- The brain picks up the change at its next pause between replies and keeps the conversation. Its next message reflects the new projects and knowledge folder. Workers already running keep the folders they started with.
 - Notes, docs and links added or edited in the knowledge folder are readable by the brain and new workers straight away.
 - **Acceptance Criteria:**
   - [ ] Given an open session in the "Storefront" group, when the user adds the "infra" repository to the group, then the session header lists infra with the session branch, without restarting Arc.

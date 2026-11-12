@@ -75,7 +75,7 @@ Conventions for every Verify task below, the same as specs 008 and 009:
 - [x] **Slice 9: Feature Testing & Regression**
 
   > Verifies the whole feature end-to-end against functional-spec.md, run after all implementation slices are complete.
-  - [x] Read functional-spec.md acceptance criteria in full. Generate acceptance-level tests that verify the entire feature as a whole — not individual slices. Cover applicable layers (unit for pure logic, integration for service interactions, e2e for user flows) based on the project's testing stack. Write tests with RED validation (must fail before implementation is confirmed done). Annotate each test with `@spec: 010-cursor-as-a-third-provider` and `@regression` if suitable for long-term regression. **[Agent: testing-expert]**
+  - [x] Read functional-spec.md acceptance criteria in full. Generate acceptance-level tests that verify the entire feature as a whole, not individual slices. Cover applicable layers (unit for pure logic, integration for service interactions, e2e for user flows) based on the project's testing stack. Write tests with RED validation (must fail before implementation is confirmed done). Annotate each test with `@spec: 010-cursor-as-a-third-provider` and `@regression` if suitable for long-term regression. **[Agent: testing-expert]**
   - [x] Run all generated tests. All must pass. Fix any failures before proceeding. Then run the full unit suite, then the full e2e suite once, fix stale tests the change broke, and take the screenshots listed in technical-considerations §4 to `docs/screenshots/010-cursor-as-a-third-provider-<state>.png` (1280x800, 1.5 s settle), checked with Read. **[Agent: testing-expert]**
 
 ## Open Questions

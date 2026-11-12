@@ -8,7 +8,7 @@
 
 ## 1. High-Level Technical Approach
 
-The user talks to the **same long-lived headless worker process** Arc already runs (`claude -p` stream-json). There is no node-pty, no xterm.js and no `claude --resume` TUI; this was the user's decision. Stepping in changes who drives the worker, not how it runs:
+The user talks to the **same long-lived headless worker process** Arc already runs (`claude -p` stream-json). There is no node-pty, no xterm.js and no `claude --resume` TUI; this was the user's decision. Stepping in changes who sends the worker its input. The process runs as before:
 
 - **Step in:** Arc interrupts the current turn (the adapter's existing `interrupt()`, a stream-json `control_request` interrupt) and marks the worker as under user control. While it is under control, Arc stops nudging or settling it, holds the brain's messages for it, and refuses merges.
 - **Typing:** the terminal tab gets an input line, and each line is sent verbatim as a stream-json user message. Slash commands pass through untouched because the CLI expands them (spec 005, spike S1). Escape sends an interrupt.
@@ -27,11 +27,11 @@ Affected areas:
 
 ### 2.1. State model
 
-- **The overlay:** `workers.user_control` is `null`, `'active'` or `'paused'`, and the worker's `status` stays as it is. Control cuts across statuses (a controlled worker can be working or have a pending question). The status enum is also duplicated in `db/schema/workers.ts` and `shared/types/session.ts` and switched on across shutdown, relaunch and attention, so a new status would ripple through all of those.
+- **The overlay:** `workers.user_control` is `null`, `'active'` or `'paused'`, and the worker's `status` stays as it is. Control applies on top of any status (a controlled worker can be working or have a pending question). The status enum is also duplicated in `db/schema/workers.ts` and `shared/types/session.ts` and switched on across shutdown, relaunch and attention, so a new status would need changes in all of those.
   - **`active`:** the user is in control and the process is alive. "Keep it paused" in the close dialog only closes the tab, so the worker stays `active` with an idle process. The card keeps showing "You're in control", as functional criterion 2.5 requires.
   - **`paused`:** the user is in control but there is no process, because Arc quit or crashed, or the session closed. The card shows "You're in control (paused)".
 - **In memory:** the worker manager's `Running` struct gains `controlActive` (set before the interrupt is sent), `controlReplying` (a turn is running while controlled) and `controlUserMessages`.
-- **Renderer view:** `WorkerView` and `WorkerDetails` in `shared/types/session.ts` gain `userControl: 'active' | 'paused' | null` and `controlReplying: boolean`. Both ride the existing `session:worker` push and the session snapshot.
+- **Renderer view:** `WorkerView` and `WorkerDetails` in `shared/types/session.ts` gain `userControl: 'active' | 'paused' | null` and `controlReplying: boolean`. Both are carried by the existing `session:worker` push and the session snapshot.
 
 ### 2.2. Data model (migration `0022_worker_user_control.sql`)
 

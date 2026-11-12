@@ -127,5 +127,5 @@ Arc keeps the user's real Codex home, so their Codex MCP servers load as in the 
 
 ## Change Log
 
-- 2026-10-20 — decisions made by the user before drafting — a checklist per item in Settings; everything on by default with only the off items stored; separate Brain and Workers columns; the spec is written in one pass.
+- 2026-10-20 — decisions made by the user before drafting: a checklist per item in Settings; everything on by default with only the off items stored; separate Brain and Workers columns; the spec is written in one pass.
 - 2026-10-21 — verified — all 26 criteria. Evidence: `tests/e2e/agent-load.spec.ts` (18 passed) and the screenshots `docs/screenshots/009-choosing-what-agents-load-*.png` (look-and-feel confirmed by the user). The "Arc-heavy advice has no button" criterion is verified by `tests/renderer/suggestions-list.test.ts`, accepted by the user.

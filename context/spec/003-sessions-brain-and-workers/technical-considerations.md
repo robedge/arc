@@ -22,7 +22,7 @@ Sessions add an **engine** in the main process and a **session screen** in the r
   - Agents talk to Arc through a local **MCP bridge**: a streamable-HTTP MCP server on `127.0.0.1` with a random port and per-agent bearer tokens.
   - Brain tools spawn and steer workers; worker tools report progress and ask questions.
   - Worker permission prompts are routed through the bridge as `request_permission`.
-- **Rules live in the orchestrator, not in prompts:**
+- **The orchestrator enforces these rules in code:**
   - the plan-first gate;
   - the worker limit;
   - model overrides;

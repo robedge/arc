@@ -10,7 +10,7 @@
 
 The user already works with a set of Claude Code commands and skills: AWOS for writing specs and task lists, superpowers for brainstorming and planning, compound engineering for review and learning. In a terminal they type `/awos:spec` or `/awos:implement` and the workflow runs.
 
-Inside Arc none of this works. Arc keeps the user's personal Claude Code setup away from its agents, so Arc's own approvals stay in charge, and typing `/awos:spec` in a session just sends the text to the brain as an ordinary message. The user has to leave Arc to plan, then come back to Arc to build.
+Inside Arc none of this works. Arc does not load the user's personal Claude Code setup into its agents, so Arc's own approvals apply, and typing `/awos:spec` in a session just sends the text to the brain as an ordinary message. The user has to leave Arc to plan, then come back to Arc to build.
 
 This spec lets the user run those commands from a session. Typing `/` in the message box lists what is available; picking one runs it in a worker inside the right repository, so it follows the same working-copy, merge and approval rules as any other worker. The brain can also start a command itself when the user asks for something in plain words that a command does well. Questions a command asks come to the user in Arc. A Plugins page in Settings shows, installs, updates and removes the plugins that provide these commands.
 
@@ -75,7 +75,7 @@ This spec lets the user run those commands from a session. Typing `/` in the mes
 
 ### 2.5. Keeping Arc in charge
 
-- The user's own commands, skills and plugins are available, but their personal hooks and personal permission rules are not loaded. Arc's approvals stay in charge: pushing, opening merge requests, destructive commands, global installs and writing outside the working copy still go to the user in Needs attention, whichever command asked for them.
+- The user's own commands, skills and plugins are available, but their personal hooks and personal permission rules are not loaded. Arc's approvals still apply: pushing, opening merge requests, destructive commands, global installs and writing outside the working copy still go to the user in Needs attention, whichever command asked for them.
 - The brain still can't edit files; commands always run in workers.
 - **Acceptance Criteria:**
   - [x] Given a command tries to push a branch, when it runs, then Needs attention asks the user to approve the exact push command, as for any worker.

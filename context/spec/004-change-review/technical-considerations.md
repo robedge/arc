@@ -118,7 +118,7 @@ After `sendSummary`, the merge coordinator sets a one-shot flag; when that brain
 
 ### 2.8. Data Model / Database Changes (migration `0015_change_review`)
 
-All new rows hang off `session_projects.id` (its integer PK) with `ON DELETE CASCADE`, so deleting a session removes them; removing a project from the group leaves them (as with spec 003 history).
+All new rows reference `session_projects.id` (its integer PK) with `ON DELETE CASCADE`, so deleting a session removes them; removing a project from the group leaves them (as with spec 003 history).
 
 **`session_projects` — new nullable columns**
 

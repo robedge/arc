@@ -15,7 +15,7 @@ The work splits into six parts:
 - **A provider-neutral agent layer:**
   - `StartOptions` splits into common options plus a `claude` or `codex` block.
   - A `ProviderRegistry` selects the adapter.
-  - A new `CodexAdapter` sits next to `ClaudeAdapter`, and both feed the same normalized event union.
+  - A new `CodexAdapter` is added alongside `ClaudeAdapter`, and both emit the same normalized event union.
 - **Provider-neutral approvals:**
   - Every risky action becomes a `NormalizedAction` (`bash | edit | mcp | permission | other`) that one classifier and one `AttentionCoordinator.requestAction` decide.
   - For Claude the action arrives through the existing `request_permission` tool.
@@ -409,7 +409,7 @@ Run on 2026-10-19 with codex-cli 0.162.1 and Claude Code 2.1.302. The scripts ar
 | Spike | Result                                     |
 | ----- | ------------------------------------------ |
 | S1    | Answered                                   |
-| S2    | Answered, with a major consequence         |
+| S2    | Answered: user allow rules bypass Arc      |
 | S3    | Answered: the sandbox works, with roots    |
 | S4    | Answered                                   |
 | S5    | Answered: not usable in Default mode       |
