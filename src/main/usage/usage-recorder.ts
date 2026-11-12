@@ -286,12 +286,9 @@ export class UsageRecorder {
       else byAgent.set(row.agentKey, [row])
     }
     const setupRows = this.deps.setupRepo.forSession(sessionId)
-    const build = (
-      identity: Pick<AgentUsage, 'agentKey' | 'role' | 'label' | 'provider' | 'model'>,
-      createdAt: number | null
-    ): AgentUsage => {
+    type Identity = Pick<AgentUsage, 'agentKey' | 'role' | 'label' | 'provider' | 'model'>
+    const build = (identity: Identity, createdAt: number | null): AgentUsage => {
       const rows = byAgent.get(identity.agentKey) ?? []
-      byAgent.delete(identity.agentKey)
       const inFlight = live.get(identity.agentKey)?.tokens
       const rowTotals = sumTotals(rows.map((r) => r.tokens))
       // Turns were taken on a provider that carries no token counts and nothing was ever counted.
@@ -339,55 +336,52 @@ export class UsageRecorder {
         }
       }
     }
-    const agents: AgentUsage[] = []
+    const listed: Array<{ identity: Identity; createdAt: number | null }> = []
     if (session) {
-      agents.push(
-        build(
-          {
-            agentKey: 'brain',
-            role: 'brain',
-            label: 'Brain',
-            provider: session.brainProvider,
-            model: session.brainModel
-          },
-          session.createdAt
-        )
-      )
+      listed.push({
+        identity: {
+          agentKey: 'brain',
+          role: 'brain',
+          label: 'Brain',
+          provider: session.brainProvider,
+          model: session.brainModel
+        },
+        createdAt: session.createdAt
+      })
     }
     for (const row of this.deps.workersRepo.listBySession(sessionId)) {
       const resolver = isResolverRow(row)
-      agents.push(
-        build(
-          {
-            agentKey: usageAgentKey(row),
-            role: resolver ? 'resolver' : 'worker',
-            label: resolver ? 'Conflict resolver' : `W${row.number} · ${row.slug}`,
-            provider: row.provider,
-            model: row.model
-          },
-          row.createdAt
-        )
-      )
+      listed.push({
+        identity: {
+          agentKey: usageAgentKey(row),
+          role: resolver ? 'resolver' : 'worker',
+          label: resolver ? 'Conflict resolver' : `W${row.number} · ${row.slug}`,
+          provider: row.provider,
+          model: row.model
+        },
+        createdAt: row.createdAt
+      })
     }
     // Agents that only exist in usage rows: removed workers, and a brain row of a vanished session.
+    const known = new Set(listed.map((l) => l.identity.agentKey))
     const labels = this.deps.repo.agentLabels(sessionId)
-    for (const [agentKey, rows] of [...byAgent]) {
+    for (const [agentKey, rows] of byAgent) {
+      if (known.has(agentKey)) continue
       const last = rows[rows.length - 1]
       const info = labels.get(agentKey)
       const role = info?.role === 'resolver' || info?.role === 'brain' ? info.role : 'worker'
-      agents.push(
-        build(
-          {
-            agentKey,
-            role,
-            label: role === 'resolver' ? 'Conflict resolver' : (info?.label ?? agentKey),
-            provider: isProviderId(last?.provider) ? last.provider : 'claude',
-            model: last?.model ?? ''
-          },
-          null
-        )
-      )
+      listed.push({
+        identity: {
+          agentKey,
+          role,
+          label: role === 'resolver' ? 'Conflict resolver' : (info?.label ?? agentKey),
+          provider: isProviderId(last?.provider) ? last.provider : 'claude',
+          model: last?.model ?? ''
+        },
+        createdAt: null
+      })
     }
+    const agents = listed.map((l) => build(l.identity, l.createdAt))
     const byProvider: SessionUsage['byProvider'] = {}
     const notReported = new Set<ProviderId>()
     for (const row of panel.rows) {
