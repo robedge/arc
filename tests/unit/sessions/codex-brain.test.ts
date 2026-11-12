@@ -122,7 +122,7 @@ describe('a brain on Codex', () => {
       model: 'gpt-deep'
     })
     expect(s.claude.starts).toHaveLength(0)
-    expect(start?.approvals).toBeDefined()
+    expect(start?.codex.approvals).toBeDefined()
 
     // Not the knowledge folder: that may be a linked folder the user owns.
     const knowledge = join(dir(), 'userData', 'groups', r().groupId, 'knowledge')

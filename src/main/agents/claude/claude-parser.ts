@@ -6,8 +6,9 @@ import type {
   RateLimitWindow,
   UsageBuckets,
   UsageCall
-} from './agent-events'
-import { READ_PATH_MAX } from './agent-events'
+} from '../agent-events'
+import { READ_PATH_MAX } from '../agent-events'
+import { capResultText, summaryLine } from '../parser-text'
 
 /**
  * Turns one stream-json line from `claude` 2.1.x into normalized events. Schemas are permissive
@@ -17,7 +18,6 @@ import { READ_PATH_MAX } from './agent-events'
  * that is also an auth failure), so `parse` returns an array; an empty array means "ignore".
  */
 
-const SUMMARY_MAX = 120
 const SUMMARY_KEYS = [
   'command',
   'file_path',
@@ -31,7 +31,6 @@ const SUMMARY_KEYS = [
   'question'
 ] as const
 /** A tool result's text is kept up to this many characters (the terminal shows the first lines). */
-const RESULT_TEXT_MAX = 16_384
 /** Deferred-tool lookup the model does before its first MCP call. It is plumbing, not progress. */
 const NOISE_TOOLS = new Set(['ToolSearch'])
 
@@ -185,7 +184,7 @@ const controlResponseSchema = z.looseObject({
 
 /** The text of a tool_result `content`: a string, or the text blocks of an array. */
 function resultText(content: unknown): string {
-  if (typeof content === 'string') return content.slice(0, RESULT_TEXT_MAX)
+  if (typeof content === 'string') return capResultText(content)
   if (!Array.isArray(content)) return ''
   const parts: string[] = []
   for (const block of content as unknown[]) {
@@ -193,7 +192,7 @@ function resultText(content: unknown): string {
     const { type, text } = block as { type?: unknown; text?: unknown }
     if (type === 'text' && typeof text === 'string') parts.push(text)
   }
-  return parts.join('\n').slice(0, RESULT_TEXT_MAX)
+  return capResultText(parts.join('\n'))
 }
 
 type TokenCounts = z.infer<typeof tokenCountsSchema>
@@ -227,18 +226,13 @@ interface CallRecord {
   model?: string
 }
 
-function truncate(text: string): string {
-  const oneLine = text.replace(/\s+/g, ' ').trim()
-  return oneLine.length > SUMMARY_MAX ? `${oneLine.slice(0, SUMMARY_MAX - 1)}…` : oneLine
-}
-
 /** `Bash: echo hi`, `Read: /a/b.ts`, or just the tool name when no argument is worth showing. */
 export function summarizeToolUse(name: string, input: unknown): string {
   if (typeof input === 'object' && input !== null) {
     const record = input as Record<string, unknown>
     for (const key of SUMMARY_KEYS) {
       const value = record[key]
-      if (typeof value === 'string' && value.trim() !== '') return `${name}: ${truncate(value)}`
+      if (typeof value === 'string' && value.trim() !== '') return `${name}: ${summaryLine(value)}`
     }
   }
   return name

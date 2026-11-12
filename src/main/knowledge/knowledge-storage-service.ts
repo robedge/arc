@@ -2,15 +2,11 @@ import { randomUUID } from 'node:crypto'
 import {
   access,
   constants as fsConstants,
-  copyFile,
   lstat,
   mkdir,
   readdir,
   readFile,
   realpath,
-  rename,
-  rm,
-  rmdir,
   stat
 } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
@@ -42,6 +38,8 @@ import type { SectionsRepo } from '../db/repositories/sections-repo'
 import { isAvailable } from '../groups/project-service'
 import type { Dialogs } from '../platform/dialogs'
 import { atomicWriteFile } from './atomic-write'
+import { defaultFs } from './fs-ops'
+import type { FsOps } from './fs-ops'
 import { copyAndVerify, exportFolderName } from './knowledge-export'
 import { resolveInRoot, uniqueName } from './knowledge-paths'
 import type { MetaStore } from './meta-store'
@@ -57,27 +55,6 @@ export const TMP_DIR = 'knowledge.tmp'
 export const DISCARDED_DIR = 'knowledge.discarded'
 export const MANIFEST_FILE = MANIFEST_NAME
 const META_DIR = '.arc'
-
-/** The fs calls whose failure matters to the operation; injectable so tests can fail them. */
-export interface FsOps {
-  copyFile(src: string, dest: string, mode?: number): Promise<void>
-  rename(from: string, to: string): Promise<void>
-  rm(path: string, options: { recursive?: boolean; force?: boolean }): Promise<void>
-  rmdir(path: string): Promise<void>
-  mkdir(path: string, options?: { recursive?: boolean }): Promise<void>
-  stat(path: string): Promise<{ size: number; mtimeMs: number }>
-}
-
-export const defaultFs: FsOps = {
-  copyFile: (src, dest, mode) => copyFile(src, dest, mode),
-  rename,
-  rm,
-  rmdir,
-  mkdir: async (path, options) => {
-    await mkdir(path, options)
-  },
-  stat
-}
 
 export interface StorageWatcher {
   readonly watchedGroupId: string | null

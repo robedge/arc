@@ -5,7 +5,7 @@
  * Dev additionally allows the Vite dev server and its HMR websocket.
  */
 export function buildCsp(options: { dev: boolean }): string {
-  const knowledgeProtocolSources = ['harness-knowledge:']
+  const knowledgeProtocolSources = ['arc-knowledge:']
   const connect = [
     "'self'",
     ...knowledgeProtocolSources,

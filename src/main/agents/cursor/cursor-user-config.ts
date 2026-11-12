@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { isRecord, readJsonFile, stringArray, type ConfigLog } from '../../util/json'
 
 /**
  * Read-only look at the user's own Cursor permission and hook files, to tell Settings which of them
@@ -36,40 +36,25 @@ export interface CursorUserConfig {
   hookEvents: string[]
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-async function readJson(path: string): Promise<unknown> {
-  try {
-    return JSON.parse(await readFile(path, 'utf8')) as unknown
-  } catch {
-    return undefined
-  }
-}
-
-function strings(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
-}
-
 /** `permissions.allow`, `permissions.deny` and `approvalMode` of a `cli-config.json` / `cli.json`. */
 export async function readCursorPermissionFile(
-  path: string
+  path: string,
+  log?: ConfigLog
 ): Promise<CursorPermissionFile | undefined> {
-  const file = await readJson(path)
+  const file = await readJsonFile(path, log)
   if (!isRecord(file)) return undefined
   const permissions = isRecord(file['permissions']) ? file['permissions'] : {}
   const mode = file['approvalMode']
   return {
-    allow: strings(permissions['allow']),
-    deny: strings(permissions['deny']),
+    allow: stringArray(permissions['allow']),
+    deny: stringArray(permissions['deny']),
     ...(typeof mode === 'string' && mode !== '' ? { approvalMode: mode } : {})
   }
 }
 
 /** The events of a `hooks.json` that have at least one hook (`{ hooks: { event: [ ... ] } }`). */
-export async function readCursorHookEvents(path: string): Promise<string[]> {
-  const file = await readJson(path)
+export async function readCursorHookEvents(path: string, log?: ConfigLog): Promise<string[]> {
+  const file = await readJsonFile(path, log)
   const hooks = isRecord(file) && isRecord(file['hooks']) ? file['hooks'] : {}
   return Object.entries(hooks)
     .filter(([, list]) => Array.isArray(list) && list.length > 0)
@@ -82,11 +67,12 @@ function skipsPrompts(entry: string): boolean {
 
 /**
  * What in the user's Cursor setup can answer "allow" without Arc: the home files, plus the project
- * files of the given repositories. A file that is missing or unreadable adds nothing.
+ * files of the given repositories. A file that is missing or unreadable adds nothing (the unreadable ones are logged).
  */
 export async function readCursorUserConfig(
   home: string,
-  repoPaths: readonly string[] = []
+  repoPaths: readonly string[] = [],
+  log?: ConfigLog
 ): Promise<CursorUserConfig> {
   const dirs = [join(home, '.cursor')]
   const cli = [join(home, '.cursor', 'cli-config.json')]
@@ -97,8 +83,8 @@ export async function readCursorUserConfig(
     dirs.push(join(repo, '.cursor'))
   }
   const [permissionFiles, hookLists] = await Promise.all([
-    Promise.all(cli.map(readCursorPermissionFile)),
-    Promise.all(hooks.map(readCursorHookEvents))
+    Promise.all(cli.map((path) => readCursorPermissionFile(path, log))),
+    Promise.all(hooks.map((path) => readCursorHookEvents(path, log)))
   ])
   const allowEntries = new Set<string>()
   let approvalMode: string | undefined

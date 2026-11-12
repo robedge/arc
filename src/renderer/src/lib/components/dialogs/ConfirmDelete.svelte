@@ -38,10 +38,10 @@
     const id = groupId
     if (id === null) return
     let stale = false
-    void window.harness.invoke('storage:get', { groupId: id }).then((res) => {
-      if (!stale && res.ok && res.data) storageMode = res.data.mode
+    void window.arc.invoke('storage:get', { groupId: id }).then((res) => {
+      if (!stale && res.ok) storageMode = res.data.mode
     })
-    const off = window.harness.on('storage:progress', (e) => {
+    const off = window.arc.on('storage:progress', (e) => {
       if (e.groupId === id) exportProgress = { phase: e.phase, done: e.done, total: e.total }
     })
     return () => {
@@ -58,7 +58,7 @@
     exporting = true
     exportProgress = null
     try {
-      const pick = await window.harness.invoke('storage:pickExportFolder', { groupId: id })
+      const pick = await window.arc.invoke('storage:pick-export-folder', { groupId: id })
       if (!pick.ok) {
         error = messageFor(pick.error)
         return
@@ -68,7 +68,7 @@
         error = blockedMessageFor(pick.data.blocked ?? 'not-a-folder')
         return
       }
-      const res = await window.harness.invoke('storage:export', {
+      const res = await window.arc.invoke('storage:export', {
         groupId: id,
         token: pick.data.token
       })

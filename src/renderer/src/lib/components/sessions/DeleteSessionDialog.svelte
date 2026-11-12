@@ -22,7 +22,7 @@
     busy = true
     error = null
     try {
-      const res = await window.harness.invoke('sessions:delete', { sessionId: session.id })
+      const res = await window.arc.invoke('sessions:delete', { sessionId: session.id })
       if (!res.ok) {
         error = messageFor(res.error)
         return

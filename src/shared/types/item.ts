@@ -12,7 +12,7 @@ export interface ItemSummary {
   folder?: string
   description: string
   kind: ItemKind
-  /** Links only: the address as stored on disk (not yet validated; `shell:openLink` revalidates). */
+  /** Links only: the address as stored on disk (not yet validated; `shell:open-link` revalidates). */
   url?: string
   editable: boolean
   /** `${mtimeMs}:${size}:${sha1(content).slice(0, 12)}`, computed from disk. */
@@ -28,7 +28,7 @@ export interface TextItemContent {
 
 export interface BinaryItemContent {
   type: 'binary'
-  /** `harness-knowledge://<groupId>/<itemId>?rev=<revision>`; the renderer fetches the bytes. */
+  /** `arc-knowledge://<groupId>/<itemId>?rev=<revision>`; the renderer fetches the bytes. */
   url: string
   mime: string
 }

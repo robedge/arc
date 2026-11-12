@@ -5,7 +5,7 @@ import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import { plugins } from '../../src/renderer/src/lib/stores/plugins.svelte'
 import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import type { PluginRow as Row } from '../../src/shared/types/plugins'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const row = (over: Partial<Row> = {}): Row => ({
   id: 'superpowers@market',
@@ -22,7 +22,7 @@ const row = (over: Partial<Row> = {}): Row => ({
 
 let rows: Row[]
 let reply: (channel: string) => unknown
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 const calls = (channel: string): unknown[] =>
   invoke.mock.calls.filter((c) => c[0] === channel).map((c) => c[1])
@@ -30,7 +30,7 @@ const calls = (channel: string): unknown[] =>
 beforeEach(() => {
   rows = [row()]
   reply = () => ({ ok: true, data: { opId: 'op1' } })
-  invoke = mockHarness((channel) =>
+  invoke = mockArc((channel) =>
     channel === 'plugins:list' ? ({ ok: true, data: rows } as never) : (reply(channel) as never)
   )
   plugins.reset()

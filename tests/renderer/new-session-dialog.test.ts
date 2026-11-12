@@ -2,12 +2,12 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import NewSessionDialog from '../../src/renderer/src/lib/components/sessions/NewSessionDialog.svelte'
 import { settings } from '../../src/renderer/src/lib/stores/settings.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 afterEach(cleanup)
 
 it('shows the required message and creates nothing when the request is empty', async () => {
-  const invoke = mockHarness(() => ({ ok: true, data: { sessionId: 's1' } }))
+  const invoke = mockArc(() => ({ ok: true, data: { sessionId: 's1' } }))
   render(NewSessionDialog, { groupId: 'g1', onclose: vi.fn(), oncreated: vi.fn() })
   await fireEvent.click(screen.getByRole('button', { name: 'Start' }))
   expect(screen.getByText('Enter a request for the brain.')).toBeTruthy()
@@ -15,7 +15,7 @@ it('shows the required message and creates nothing when the request is empty', a
 })
 
 it('defaults to Plan-first and a limit of 3, and sends the payload', async () => {
-  const invoke = mockHarness(() => ({ ok: true, data: { sessionId: 's1' } }))
+  const invoke = mockArc(() => ({ ok: true, data: { sessionId: 's1' } }))
   const oncreated = vi.fn()
   render(NewSessionDialog, { groupId: 'g1', onclose: vi.fn(), oncreated })
   expect((screen.getByLabelText(/Plan-first/) as HTMLInputElement).checked).toBe(true)
@@ -32,7 +32,7 @@ it('defaults to Plan-first and a limit of 3, and sends the payload', async () =>
 })
 
 it('asks about unsaved changes before creating, and Cancel returns to the form with nothing started', async () => {
-  const invoke = mockHarness((channel) =>
+  const invoke = mockArc((channel) =>
     channel === 'sessions:create'
       ? {
           ok: true,
@@ -67,7 +67,7 @@ it('shows the Settings brain default and sends a changed brain with the create c
     'usage.checkClaudePlanOnLaunch': false,
     'agents.loadOff': { brain: [], workers: [] }
   } as never)
-  const invoke = mockHarness(() => ({ ok: true, data: { sessionId: 's1' } }))
+  const invoke = mockArc(() => ({ ok: true, data: { sessionId: 's1' } }))
   const oncreated = vi.fn()
   render(NewSessionDialog, { groupId: 'g1', onclose: vi.fn(), oncreated })
   const brain = screen.getByLabelText('Brain') as HTMLSelectElement

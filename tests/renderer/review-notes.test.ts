@@ -6,7 +6,7 @@ import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import type { AppError } from '../../src/shared/errors'
 import type { ReviewFileDiff, ReviewNote } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const diff: ReviewFileDiff = {
   kind: 'text',
@@ -44,7 +44,7 @@ const note = (over: Partial<ReviewNote> = {}): ReviewNote => ({
 
 let notes: ReviewNote[]
 let failWith: AppError | null
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 const sessionFile = {
   path: 'a.ts',
@@ -59,7 +59,7 @@ const sessionFile = {
 }
 
 function setup(): void {
-  invoke = mockHarness((channel, request) => {
+  invoke = mockArc((channel, request) => {
     if (channel === 'review:get') {
       return {
         ok: true,
@@ -117,7 +117,7 @@ function setup(): void {
       notes = notes.filter((n) => n.id !== req.noteId)
       return { ok: true, data: undefined }
     }
-    if (channel === 'sessions:page') {
+    if (channel === 'sessions:page-messages') {
       return {
         ok: true,
         data: [
@@ -342,9 +342,8 @@ describe('Send notes to brain', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Send 2 notes to brain' }))
     await waitFor(() => expect(activeSession.messages.map((m) => m.id)).toEqual([7]))
     expect(activeSession.messages[0]?.content).toContain('Review notes (2):')
-    expect(invoke).toHaveBeenCalledWith('sessions:page', {
+    expect(invoke).toHaveBeenCalledWith('sessions:page-messages', {
       sessionId: 's1',
-      kind: 'messages',
       beforeId: 8,
       limit: 1
     })

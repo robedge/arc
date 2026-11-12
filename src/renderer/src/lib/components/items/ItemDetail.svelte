@@ -41,7 +41,7 @@
     readFailed = false
     tooLarge = false
     if (item.editable) return
-    void window.harness.invoke('items:read', { itemId: id }).then((res) => {
+    void window.arc.invoke('items:read', { itemId: id }).then((res) => {
       if (item.id !== id || item.revision !== rev) return
       if (res.ok && res.data.type === 'binary') binary = res.data
       else if (!res.ok && res.error.code === 'FILE_TOO_LARGE') tooLarge = true

@@ -4,7 +4,7 @@ import SetupSplit from '../../src/renderer/src/lib/components/sessions/SetupSpli
 import UsageChip from '../../src/renderer/src/lib/components/sessions/UsageChip.svelte'
 import { usage } from '../../src/renderer/src/lib/stores/usage.svelte'
 import type { AgentSetup, SessionUsage } from '../../src/shared/types/usage'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const setup = (over: Partial<AgentSetup> = {}): AgentSetup => ({
   arcAdditionsPerRequest: 6200,
@@ -20,7 +20,7 @@ const num = (sel: string): number =>
 
 beforeEach(() => {
   usage.reset()
-  mockHarness(() => ({ ok: true, data: null }))
+  mockArc(() => ({ ok: true, data: null }))
 })
 afterEach(cleanup)
 

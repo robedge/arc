@@ -5,7 +5,7 @@ import ItemList from '../../src/renderer/src/lib/components/items/ItemList.svelt
 import MarkdownPreview from '../../src/renderer/src/lib/components/items/MarkdownPreview.svelte'
 import { itemDraft } from '../../src/renderer/src/lib/stores/item-draft.svelte'
 import type { ItemSummary } from '../../src/shared/types/item'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function item(over: Partial<ItemSummary> = {}): ItemSummary {
   return {
@@ -39,7 +39,7 @@ it('ItemList shows the description under the title', () => {
 })
 
 it('ItemDetail with an empty title shows the error and does not rename', async () => {
-  const invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  const invoke = mockArc(() => ({ ok: true, data: undefined }))
   render(ItemDetail, { item: item() })
   const input = screen.getByLabelText('Title')
   await fireEvent.input(input, { target: { value: '   ' } })

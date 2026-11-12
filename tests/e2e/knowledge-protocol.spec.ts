@@ -8,7 +8,7 @@ const PNG = Buffer.concat([
   Buffer.alloc(32, 7)
 ])
 
-test('an imported png is served by harness-knowledge and foreign ids are refused', async ({
+test('an imported png is served by arc-knowledge and foreign ids are refused', async ({
   app,
   window: page
 }) => {
@@ -36,9 +36,9 @@ test('an imported png is served by harness-knowledge and foreign ids are refused
     const result = await page.evaluate(async () => {
       const h = (
         window as unknown as {
-          harness: { invoke(c: string, a: unknown): Promise<{ ok: boolean; data: unknown }> }
+          arc: { invoke(c: string, a: unknown): Promise<{ ok: boolean; data: unknown }> }
         }
-      ).harness
+      ).arc
       const groups = (await h.invoke('groups:list', {})).data as { id: string }[]
       const sections = (await h.invoke('sections:list', { groupId: groups[0]?.id })).data as {
         id: string
@@ -60,7 +60,7 @@ test('an imported png is served by harness-knowledge and foreign ids are refused
         otherGroup: (await fetch(wrongGroup)).status
       }
     })
-    expect(result.url).toMatch(/^harness-knowledge:\/\/[0-9A-Z]{26}\/[0-9A-Z]{26}\?rev=/)
+    expect(result.url).toMatch(/^arc-knowledge:\/\/[0-9A-Z]{26}\/[0-9A-Z]{26}\?rev=/)
     expect(result.status).toBe(200)
     expect(result.type).toBe('image/png')
     expect(result.bytes).toBe(PNG.length)

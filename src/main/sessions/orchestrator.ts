@@ -11,7 +11,7 @@ import type {
 } from '../agents/agent-adapter'
 import type { ProviderRegistry } from '../agents/provider-registry'
 import type { AgentEvent } from '../agents/agent-events'
-import { PERMISSION_PROMPT_TOOL } from '../agents/claude-adapter'
+import { PERMISSION_PROMPT_TOOL } from '../agents/claude/claude-adapter'
 import type { BridgeRegistry } from '../bridge/bridge-server'
 import {
   applyCodexMcp,
@@ -24,7 +24,7 @@ import {
   DEGRADED_MCP_NOTE,
   reportHasBypass
 } from '../personal/personal-notes'
-import { toolsForRole } from '../bridge/tools/registry'
+import { modelToolsForRole } from '../bridge/tools/registry'
 import { BridgeToolError, MCP_SERVER_NAME } from '../bridge/types'
 import type {
   BridgeAgent,
@@ -110,7 +110,7 @@ import type { BridgeToolNamer } from '../agents/tool-namer'
 import type { ModelRef, ProviderId, ProviderState } from '@shared/types/provider'
 import { PROVIDER_IDS } from '@shared/types/provider'
 import { PROVIDER_TRAITS } from '@shared/provider-traits'
-import { assertNever } from '@shared/assert-never'
+import { assertNever, ignoreUnhandled } from '@shared/assert-never'
 
 /** `propose_plan` blocks for as long as the user takes; the CLI must not time the call out. */
 export const BRAIN_MCP_TOOL_TIMEOUT_MS = '43200000'
@@ -191,8 +191,8 @@ export interface BrainPromptInput {
    * "Commands available" block, null says it was unavailable, undefined leaves commands out.
    */
   commands?: readonly CommandInfo[] | null
-  /** What runs the brain; default Claude. Decides the tool wording (Claude's tools, or shell reads in a read-only sandbox). */
-  brainProvider?: ProviderId
+  /** What runs the brain. Decides the tool wording (Claude's tools, or shell reads in a read-only sandbox). */
+  brainProvider: ProviderId
   /** With workers: the models, availability and Workers choice behind the "Providers and models" block. */
   providers?: ProvidersPromptInput
 }
@@ -378,7 +378,7 @@ function workerInstructions(provider: ProviderId, namer: BridgeToolNamer): strin
 
 /** The group-context prompt appended to the brain's system prompt. `[arc-role:brain]` is read by the fake CLI. */
 export function buildBrainPrompt(input: BrainPromptInput): string {
-  const provider = input.brainProvider ?? 'claude'
+  const provider = input.brainProvider
   const namer = bridgeToolNamer(provider)
   const projects =
     input.projects.length === 0
@@ -476,7 +476,7 @@ export interface OrchestratorTimings {
 }
 
 /** What plans and workers need besides the brain's own dependencies. */
-export interface EngineDeps {
+export interface OrchestratorResources {
   plansRepo: PlansRepo
   workersRepo: WorkersRepo
   worktreesRepo: WorktreesRepo
@@ -524,7 +524,7 @@ export interface OrchestratorDeps {
   brainThreadsRepo: BrainThreadsRepo
   messagesRepo: MessagesRepo
   eventsRepo: EventsRepo
-  engine: EngineDeps
+  resources: OrchestratorResources
   newId?: (() => string) | undefined
   /** Read when the brain is spawned. */
   /**
@@ -676,8 +676,8 @@ export class Orchestrator {
   constructor(private readonly deps: OrchestratorDeps) {
     this.brainAgentId = `brain-${deps.sessionId}`
     const newId = deps.newId ?? (() => ulid(deps.now()))
-    const engine = deps.engine
-    this.plans = new PlanCoordinator(engine.plansRepo, deps.messagesRepo, {
+    const resources = deps.resources
+    this.plans = new PlanCoordinator(resources.plansRepo, deps.messagesRepo, {
       sessionId: deps.sessionId,
       now: deps.now,
       newId,
@@ -706,24 +706,24 @@ export class Orchestrator {
         models: deps.models,
         providers: deps.providers,
         sessionsRepo: deps.sessionsRepo,
-        workersRepo: engine.workersRepo,
-        worktreesRepo: engine.worktreesRepo,
-        heldMessagesRepo: engine.heldMessagesRepo,
-        commitsRepo: engine.commitsRepo,
-        sessionProjectsRepo: engine.sessionProjectsRepo,
-        worktreeGit: engine.worktreeGit,
-        bridge: engine.bridge,
+        workersRepo: resources.workersRepo,
+        worktreesRepo: resources.worktreesRepo,
+        heldMessagesRepo: resources.heldMessagesRepo,
+        commitsRepo: resources.commitsRepo,
+        sessionProjectsRepo: resources.sessionProjectsRepo,
+        worktreeGit: resources.worktreeGit,
+        bridge: resources.bridge,
         services: this.bridgeServices(),
         helperCapMs: deps.timings?.helperCapMs,
         helperSettleMs: deps.timings?.helperSettleMs,
-        getWorktreesRoot: engine.getWorktreesRoot,
-        getKnowledgeDir: engine.getKnowledgeDir,
-        getTerminalDir: engine.getTerminalDir,
-        getPluginViewDir: engine.getPluginViewDir,
-        personal: engine.personal,
+        getWorktreesRoot: resources.getWorktreesRoot,
+        getKnowledgeDir: resources.getKnowledgeDir,
+        getTerminalDir: resources.getTerminalDir,
+        getPluginViewDir: resources.getPluginViewDir,
+        personal: resources.personal,
         ...(deps.codexCommands ? { codexCommands: deps.codexCommands } : {}),
         ...(deps.cursorCommands ? { cursorCommands: deps.cursorCommands } : {}),
-        groupName: engine.groupName,
+        groupName: resources.groupName,
         usage: deps.usage,
         planUsage: deps.planUsage,
         now: deps.now,
@@ -748,7 +748,7 @@ export class Orchestrator {
           this.merges.checkFinished()
         },
         onWorkerDone: (workerId) => {
-          if (this.closed || engine.autoMerge === false) return false
+          if (this.closed || resources.autoMerge === false) return false
           void this.merges.autoMerge(workerId).catch((error: unknown) => {
             deps.log.error('automatic merge failed', error)
           })
@@ -761,14 +761,14 @@ export class Orchestrator {
         sessionId: deps.sessionId,
         now: deps.now,
         newId,
-        workersRepo: engine.workersRepo,
-        worktreesRepo: engine.worktreesRepo,
-        mergesRepo: engine.mergesRepo,
-        sessionProjectsRepo: engine.sessionProjectsRepo,
-        mergeGit: engine.mergeGit,
-        worktreeGit: engine.worktreeGit,
-        queue: engine.mergeQueue,
-        getWorktreesRoot: engine.getWorktreesRoot,
+        workersRepo: resources.workersRepo,
+        worktreesRepo: resources.worktreesRepo,
+        mergesRepo: resources.mergesRepo,
+        sessionProjectsRepo: resources.sessionProjectsRepo,
+        mergeGit: resources.mergeGit,
+        worktreeGit: resources.worktreeGit,
+        queue: resources.mergeQueue,
+        getWorktreesRoot: resources.getWorktreesRoot,
         log: deps.log
       },
       {
@@ -785,25 +785,26 @@ export class Orchestrator {
         message: (ref, text) => this.workers.message(ref, text),
         hasUserRequest: (workerId) =>
           this.attention.state().requests.some((r) => r.workerId === workerId),
-        branchesReady: () => engine.branchesReady(),
+        branchesReady: () => resources.branchesReady(),
         reviewChanged: (projectId, changedPaths) => this.emitReviewChanged(projectId, changedPaths)
       }
     )
     this.attention = new AttentionCoordinator(
-      engine.attentionRepo,
+      resources.attentionRepo,
       {
         sessionId: deps.sessionId,
         now: deps.now,
         newId,
         logEvent: (kind, text, data, workerId) => this.logEvent(kind, text, data, workerId ?? null),
+        log: deps.log,
         notifyBrain: (text) => this.notifyBrain(text),
         workerOf: (agent) => this.workers.workerOf(agent),
         isHelperToolUse: (workerId, toolUseId) => this.workers.isHelperToolUse(workerId, toolUseId),
         workerLabel: (workerId) => this.workers.workerLabel(workerId),
-        ...(engine.personal?.mcp
+        ...(resources.personal?.mcp
           ? {
               mcpAction: (agent, tool, input) =>
-                engine.personal?.mcp?.claudeAction(agent.agentId, tool, input) ??
+                resources.personal?.mcp?.claudeAction(agent.agentId, tool, input) ??
                 Promise.resolve(null)
             }
           : {}),
@@ -812,7 +813,7 @@ export class Orchestrator {
         setWorkerStatus: (workerId, status) => this.workers.setAttentionStatus(workerId, status),
         isControlled: (workerId) => this.workers.isControlled(workerId),
         autoApprove: () => deps.sessionsRepo.getById(deps.sessionId)?.autoApprove ?? false,
-        allowRules: () => engine.allowRulesRepo.listBySession(deps.sessionId),
+        allowRules: () => resources.allowRulesRepo.listBySession(deps.sessionId),
         addAllowRule: (rule) => {
           const row = {
             id: newId(),
@@ -824,7 +825,7 @@ export class Orchestrator {
             text: rule.text,
             createdAt: deps.now()
           }
-          engine.allowRulesRepo.create(row)
+          resources.allowRulesRepo.create(row)
           deps.onHeaderChanged?.()
           return row
         },
@@ -917,7 +918,7 @@ export class Orchestrator {
     if (entries === null) return text
     const match = matchCommand(text, entries)
     if (!match.ok && match.reason === 'unknown') return text
-    const repos = this.deps.engine.sessionProjectsRepo
+    const repos = this.deps.resources.sessionProjectsRepo
       .listBySession(this.deps.sessionId)
       .filter((r) => r.membership === 'active')
     if (repos.length === 0) {
@@ -1026,7 +1027,7 @@ export class Orchestrator {
     this.workers.dispose()
     const handle = this.handle
     this.handle = undefined
-    this.deps.engine.bridge?.revokeAgent(this.brainAgentId)
+    this.deps.resources.bridge?.revokeAgent(this.brainAgentId)
     await handle?.stop()
     this.deltas.dispose()
     this.eventBatch.flush()
@@ -1169,7 +1170,7 @@ export class Orchestrator {
 
   /** The user's Stop on a worker (`workers:stop`). */
   async stopWorker(workerId: string): Promise<void> {
-    const row = this.deps.engine.workersRepo.get(workerId)
+    const row = this.deps.resources.workersRepo.get(workerId)
     if (row?.sessionId !== this.deps.sessionId) throw new AppErrorException('VALIDATION_FAILED')
     await this.workers.stop(workerId, 'user')
   }
@@ -1203,7 +1204,7 @@ export class Orchestrator {
   }
 
   private requireWorkerOfSession(workerId: string): void {
-    const row = this.deps.engine.workersRepo.get(workerId)
+    const row = this.deps.resources.workersRepo.get(workerId)
     if (row?.sessionId !== this.deps.sessionId) throw new AppErrorException('VALIDATION_FAILED')
   }
 
@@ -1293,7 +1294,7 @@ export class Orchestrator {
 
   /** `workers:remove`: hides a finished worker; one that is running, queued or being merged is refused. */
   async removeWorker(workerId: string): Promise<void> {
-    const row = this.deps.engine.workersRepo.get(workerId)
+    const row = this.deps.resources.workersRepo.get(workerId)
     if (row?.sessionId !== this.deps.sessionId || this.merges.isMerging(workerId)) {
       throw new AppErrorException('VALIDATION_FAILED')
     }
@@ -1412,7 +1413,7 @@ export class Orchestrator {
     if (!this.nameResolved && this.deps.titleRequest !== null) {
       this.applyName(deriveName(this.deps.titleRequest))
     }
-    await this.deps.engine.branchesReady()
+    await this.deps.resources.branchesReady()
   }
 
   private bridgeServices(): BridgeServices {
@@ -1541,7 +1542,7 @@ export class Orchestrator {
    */
   private emitReviewChanged(projectId: string, changedPaths: string[]): void {
     const { sessionId } = this.deps
-    void this.deps.engine.reviewService
+    void this.deps.resources.reviewService
       .changedFileCount(sessionId)
       .then((fileCount) => {
         if (this.closed) return
@@ -1591,7 +1592,7 @@ export class Orchestrator {
     }
     if (drift === 'none' && !launchStale) return Promise.resolve()
     this.handle = undefined
-    this.deps.engine.bridge?.revokeAgent(this.brainAgentId)
+    this.deps.resources.bridge?.revokeAgent(this.brainAgentId)
     this.recycling = handle
       .stop()
       .catch((error: unknown) =>
@@ -1669,7 +1670,7 @@ export class Orchestrator {
   /** Only awaited when the dependency exists, so launches without it keep their timing. */
   private async pluginViewDir(repoPaths: readonly string[]): Promise<string | undefined> {
     try {
-      return await this.deps.engine.getPluginViewDir?.(repoPaths, 'brain')
+      return await this.deps.resources.getPluginViewDir?.(repoPaths, 'brain')
     } catch (error: unknown) {
       this.deps.log.warn('plugin view unavailable; starting the brain without it', error)
       return undefined
@@ -1686,7 +1687,7 @@ export class Orchestrator {
     repoPaths: readonly string[],
     arcConfigPath: string
   ): Promise<void> {
-    const personal = this.deps.engine.personal
+    const personal = this.deps.resources.personal
     if (!personal) return
     try {
       const files = await personal.claude({ repoPaths, arcConfigPath, role: 'brain' })
@@ -1705,7 +1706,7 @@ export class Orchestrator {
     cwd: string,
     cover: McpCoverage
   ): Promise<void> {
-    const mcp = await this.deps.engine.personal?.codexMcp(cwd, 'brain')
+    const mcp = await this.deps.resources.personal?.codexMcp(cwd, 'brain')
     if (!mcp) return
     cover.servers = applyCodexMcp(codex, mcp)
     if (mcp.degraded) this.noteDegradedMcp()
@@ -1713,10 +1714,10 @@ export class Orchestrator {
 
   /** Once per session: the event log says that the user's hooks or Codex rules can skip Arc's approvals. */
   private noteBypassOnce(): void {
-    const personal = this.deps.engine.personal
+    const personal = this.deps.resources.personal
     if (!personal?.bypass || this.bypassChecked) return
     this.bypassChecked = true
-    const repoPaths = this.deps.engine.sessionProjectsRepo
+    const repoPaths = this.deps.resources.sessionProjectsRepo
       .listBySession(this.deps.sessionId)
       .filter((r) => r.membership === 'active')
       .map((r) => r.projectPath)
@@ -1765,7 +1766,7 @@ export class Orchestrator {
           throw error
         }
         // The status said ok but the handshake found the provider unusable: this reply comes from the next one.
-        this.deps.engine.bridge?.revokeAgent(this.brainAgentId)
+        this.deps.resources.bridge?.revokeAgent(this.brainAgentId)
         if (error.reason === 'signed_out') this.deps.providers?.markSignedOut?.(launch.provider)
         return await this.startWith(this.deps.getLaunch(commands, error.reason, limited), commands)
       }
@@ -1788,7 +1789,7 @@ export class Orchestrator {
       return await this.startWith(launch, commands)
     } catch (error: unknown) {
       if (!(error instanceof ProviderHistoryMissingError)) throw error
-      this.deps.engine.bridge?.revokeAgent(this.brainAgentId)
+      this.deps.resources.bridge?.revokeAgent(this.brainAgentId)
       const name = providerName(error.provider)
       this.deps.log.warn(`the ${name} thread ${error.threadId} of the brain is gone`)
       this.logEvent(
@@ -1821,27 +1822,28 @@ export class Orchestrator {
       model: resolveBrainModel(launch.brainModel),
       addDirs: launch.addDirs,
       instructions: launch.instructions,
-      access: 'brain-readonly' as const,
-      // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
+      access: 'brain-readonly' as const
+    }
+    const claude: ClaudeStartOptions = {}
+    // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
+    const codex: CodexStartOptions = {
       approvals: createCodexApprovalHandler({
         agent: brainAgent,
         requestAction: (a, action, meta, call) =>
           this.bridgeServices().requestAction(a, action, meta, call),
-        mcp: this.deps.engine.personal?.mcp,
+        mcp: this.deps.resources.personal?.mcp,
         covered: mcpCover
       })
     }
-    const claude: ClaudeStartOptions = {}
-    const codex: CodexStartOptions = {}
     // The user's Cursor servers the Brain switch turned off: a no-op session entry each, and a deny entry.
     const cursorStart: CursorStartOptions = {}
-    const personalMcp = this.deps.engine.personal?.mcp
+    const personalMcp = this.deps.resources.personal?.mcp
     let cursorOff: string[] = []
-    if (launch.provider === 'cursor' && this.deps.engine.personal?.cursorMcp) {
+    if (launch.provider === 'cursor' && this.deps.resources.personal?.cursorMcp) {
       try {
         cursorOff = applyCursorMcp(
           cursorStart,
-          await this.deps.engine.personal.cursorMcp(launch.cwd, 'brain')
+          await this.deps.resources.personal.cursorMcp(launch.cwd, 'brain')
         )
       } catch (error: unknown) {
         this.deps.log.warn('could not read the Cursor MCP servers; none is switched off', error)
@@ -1901,30 +1903,27 @@ export class Orchestrator {
       this.deps.onHeaderChanged?.()
     }
     if (launch.provider === 'claude') {
-      const pluginViewDir = this.deps.engine.getPluginViewDir
+      const pluginViewDir = this.deps.resources.getPluginViewDir
         ? await this.pluginViewDir(launch.addDirs)
         : undefined
       if (pluginViewDir) claude.pluginViewDir = pluginViewDir
     }
-    const bridge = this.deps.engine.bridge
+    const bridge = this.deps.resources.bridge
     if (bridge) {
       const registration = bridge.registerAgent(brainAgent, this.bridgeServices())
       options.bridge = { url: registration.url, token: registration.token }
-      // The CLI calls request_permission itself; the model is not given it as a tool to call.
-      options.bridgeTools = toolsForRole('brain')
-        .filter((t) => t.name !== 'request_permission')
-        .map((t) => t.name)
+      options.bridgeTools = modelToolsForRole('brain').map((t) => t.name)
       if (options.provider === 'claude') {
         claude.mcpConfigPath = registration.configPath
         // Only awaited when the dependency exists, so launches without it keep their timing.
-        if (this.deps.engine.personal) {
+        if (this.deps.resources.personal) {
           await this.applyPersonalClaude(claude, launch.addDirs, registration.configPath)
         }
         claude.permissionPromptTool = PERMISSION_PROMPT_TOOL
         options.extraEnv = { MCP_TOOL_TIMEOUT: BRAIN_MCP_TOOL_TIMEOUT_MS }
       }
     }
-    if (launch.provider === 'codex' && this.deps.engine.personal) {
+    if (launch.provider === 'codex' && this.deps.resources.personal) {
       await this.applyPersonalCodex(codex, launch.cwd, mcpCover)
     }
     const adapter = this.deps.registry.adapter(launch.provider)
@@ -1933,7 +1932,7 @@ export class Orchestrator {
       : await adapter.start(options)
     this.handle = handle
     this.detachMcp?.()
-    this.detachMcp = this.deps.engine.personal?.mcp?.attachHandle(this.brainAgentId, handle)
+    this.detachMcp = this.deps.resources.personal?.mcp?.attachHandle(this.brainAgentId, handle)
     this.noteBypassOnce()
     this.pendingHandoff = launch.resumeThreadId
       ? undefined
@@ -2008,8 +2007,8 @@ export class Orchestrator {
    * workers or the session has no repositories (or no catalogue exists), null when it could not be read.
    */
   private wantsCommands(): boolean {
-    if (!this.deps.engine.bridge || !this.deps.listCommands) return false
-    return this.deps.engine.sessionProjectsRepo
+    if (!this.deps.resources.bridge || !this.deps.listCommands) return false
+    return this.deps.resources.sessionProjectsRepo
       .listBySession(this.deps.sessionId)
       .some((r) => r.membership === 'active')
   }
@@ -2041,7 +2040,7 @@ export class Orchestrator {
         model: () => this.runningModel ?? '',
         readContext: () => ({
           cwd: this.runningLaunch?.cwd ?? this.deps.getLaunch().cwd,
-          roots: this.deps.engine.sessionProjectsRepo
+          roots: this.deps.resources.sessionProjectsRepo
             .listBySession(this.deps.sessionId)
             .map((p) => ({ path: p.projectPath, name: safeDirName(p.projectName) }))
         })
@@ -2117,8 +2116,7 @@ export class Orchestrator {
       case 'unknown':
         return
       default: {
-        const exhaustive: never = event
-        void exhaustive
+        ignoreUnhandled(event)
       }
     }
   }
@@ -2197,7 +2195,7 @@ export class Orchestrator {
   private onExit(handle: AgentHandle, event: Extract<AgentEvent, { type: 'exit' }>): void {
     if (this.handle === handle) {
       this.handle = undefined
-      this.deps.engine.bridge?.revokeAgent(this.brainAgentId)
+      this.deps.resources.bridge?.revokeAgent(this.brainAgentId)
     }
     this.finalizeSlot('stopped')
     this.settleSummaryReply(false)

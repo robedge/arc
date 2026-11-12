@@ -81,14 +81,14 @@ it('scrolls a newly proposed plan into view, and again when changes are requeste
     resolvedAt: null,
     ...over
   })
-  const { rerender } = render(PlanCard, { plan: mkPlan(), workerModel: 'auto' })
+  const { rerender } = render(PlanCard, { plan: mkPlan(), workers: { mode: 'auto' } })
   await tick()
   expect(scrollIntoView).toHaveBeenCalledTimes(1)
   expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'nearest' }))
-  await rerender({ plan: mkPlan({ changesRequested: true }), workerModel: 'auto' })
+  await rerender({ plan: mkPlan({ changesRequested: true }), workers: { mode: 'auto' } })
   await tick()
   expect(scrollIntoView).toHaveBeenCalledTimes(2)
-  await rerender({ plan: mkPlan({ status: 'approved' }), workerModel: 'auto' })
+  await rerender({ plan: mkPlan({ status: 'approved' }), workers: { mode: 'auto' } })
   await tick()
   expect(scrollIntoView).toHaveBeenCalledTimes(2)
   delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView

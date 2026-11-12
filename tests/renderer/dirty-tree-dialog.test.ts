@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import DirtyTreeDialog from '../../src/renderer/src/lib/components/sessions/DirtyTreeDialog.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 afterEach(cleanup)
 
@@ -11,7 +11,7 @@ const repos = [
 ]
 
 function setup() {
-  const invoke = mockHarness(() => ({ ok: true, data: { status: 'ready', sessionId: 's1' } }))
+  const invoke = mockArc(() => ({ ok: true, data: { status: 'ready', sessionId: 's1' } }))
   const onresolved = vi.fn()
   render(DirtyTreeDialog, { token: 't1', repos, onresolved })
   return { invoke, onresolved }
@@ -50,7 +50,7 @@ it('sends the choices once every repository has one', async () => {
 })
 
 it('Cancel answers cancel for every repository', async () => {
-  const invoke = mockHarness(() => ({ ok: true, data: { status: 'cancelled' } }))
+  const invoke = mockArc(() => ({ ok: true, data: { status: 'cancelled' } }))
   const onresolved = vi.fn()
   render(DirtyTreeDialog, { token: 't1', repos, onresolved })
   await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))

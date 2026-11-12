@@ -47,13 +47,13 @@
   $effect(() => motion.start())
 
   $effect(() =>
-    window.harness.on('availability:changed', (e) => {
+    window.arc.on('availability:changed', (e) => {
       groupDetail.applyAvailability(e)
       storage.applyAvailability(e)
     })
   )
   $effect(() =>
-    window.harness.on('providers:changed', (e) => {
+    window.arc.on('providers:changed', (e) => {
       providers.set(e)
       void models.load()
     })
@@ -62,48 +62,46 @@
     const id = activeSession.sessionId
     if (id) void usage.loadSession(id)
   })
-  $effect(() => window.harness.on('usage:session-changed', (e) => usage.applySession(e)))
-  $effect(() => window.harness.on('usage:changed', () => usage.handleChanged()))
-  $effect(() => window.harness.on('plan:changed', (e) => planUsage.apply(e)))
-  $effect(() => window.harness.on('settings:changed', (e) => settings.apply(e)))
-  $effect(() => window.harness.on('commands:changed', () => commands.handleChanged()))
-  $effect(() => window.harness.on('plugins:progress', (e) => plugins.handleProgress(e)))
-  $effect(() => window.harness.on('plugins:changed', () => void plugins.load(true)))
-  $effect(() => window.harness.on('session:brain-delta', (e) => activeSession.applyDelta(e)))
+  $effect(() => window.arc.on('usage:session-changed', (e) => usage.applySession(e)))
+  $effect(() => window.arc.on('usage:changed', () => usage.handleChanged()))
+  $effect(() => window.arc.on('plan:changed', (e) => planUsage.apply(e)))
+  $effect(() => window.arc.on('settings:changed', (e) => settings.apply(e)))
+  $effect(() => window.arc.on('commands:changed', () => commands.handleChanged()))
+  $effect(() => window.arc.on('plugins:progress', (e) => plugins.handleProgress(e)))
+  $effect(() => window.arc.on('plugins:changed', () => void plugins.load(true)))
+  $effect(() => window.arc.on('session:brain-delta', (e) => activeSession.applyDelta(e)))
   $effect(() =>
-    window.harness.on('session:message', (e) => {
+    window.arc.on('session:message', (e) => {
       sessionsList.touch(e.sessionId, e.message.updatedAt)
       activeSession.applyMessage(e)
     })
   )
   $effect(() =>
-    window.harness.on('session:event-logged', (e) => {
+    window.arc.on('session:event-logged', (e) => {
       activeSession.applyEvents(e)
     })
   )
-  $effect(() => window.harness.on('session:summary', (e) => sessionsList.applySummary(e)))
-  $effect(() => window.harness.on('session:brain-state', (e) => activeSession.applyBrainState(e)))
-  $effect(() => window.harness.on('session:header', (e) => activeSession.applyHeader(e)))
+  $effect(() => window.arc.on('session:summary', (e) => sessionsList.applySummary(e)))
+  $effect(() => window.arc.on('session:brain-state', (e) => activeSession.applyBrainState(e)))
+  $effect(() => window.arc.on('session:header', (e) => activeSession.applyHeader(e)))
+  $effect(() => window.arc.on('session:dirty-question', (e) => activeSession.applyDirtyQuestion(e)))
+  $effect(() => window.arc.on('session:plan', (e) => activeSession.applyPlan(e)))
+  $effect(() => window.arc.on('session:worker-changed', (e) => activeSession.applyWorker(e)))
   $effect(() =>
-    window.harness.on('session:dirty-question', (e) => activeSession.applyDirtyQuestion(e))
-  )
-  $effect(() => window.harness.on('session:plan', (e) => activeSession.applyPlan(e)))
-  $effect(() => window.harness.on('session:worker-changed', (e) => activeSession.applyWorker(e)))
-  $effect(() =>
-    window.harness.on('session:review-changed', (e) => {
+    window.arc.on('session:review-changed', (e) => {
       if (activeSession.applyReviewChanged(e)) review.queueRefresh(e)
     })
   )
-  $effect(() => window.harness.on('worker:terminal', (e) => workerTerminals.apply(e)))
+  $effect(() => window.arc.on('worker:terminal', (e) => workerTerminals.apply(e)))
   $effect(() =>
-    window.harness.on('session:attention', (e) => {
+    window.arc.on('session:attention', (e) => {
       sessionsList.applyAttention(e)
       activeSession.applyAttention(e)
     })
   )
-  $effect(() => window.harness.on('session:open-attention', (e) => void navigateToAttention(e)))
-  $effect(() => window.harness.on('storage:progress', (e) => storage.handleProgress(e)))
-  $effect(() => window.harness.on('knowledge:changed', (e) => knowledge.handleChanged(e)))
+  $effect(() => window.arc.on('session:open-attention', (e) => void navigateToAttention(e)))
+  $effect(() => window.arc.on('storage:progress', (e) => storage.handleProgress(e)))
+  $effect(() => window.arc.on('knowledge:changed', (e) => knowledge.handleChanged(e)))
 </script>
 
 <svelte:window ondragover={guardDrag} ondrop={guardDrag} onfocus={() => void planUsage.refresh()} />

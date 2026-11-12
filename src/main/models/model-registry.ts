@@ -3,6 +3,7 @@ import { dirname } from 'node:path'
 import { z } from 'zod'
 import { assertNever } from '@shared/assert-never'
 import { providerName } from '@shared/provider-label'
+import { PROVIDER_IDS } from '@shared/types/provider'
 import type {
   ModelInfo,
   ModelRef,
@@ -13,7 +14,7 @@ import type {
 } from '@shared/types/provider'
 import type { CodexModelInfo, CodexModelSource } from '../agents/codex/codex-probe'
 import type { CursorModelInfo, CursorModelSource } from '../agents/cursor/cursor-probe'
-import { MODEL_ALIASES, normalizeModel } from '../sessions/worker-model'
+import { MODEL_ALIASES, normalizeModel } from './claude-aliases'
 import { type ClaudeModelInfo, type ClaudeModelSource, claudeTier } from './claude-models'
 import { codexTier } from './codex-tiers'
 import { cursorTier } from './cursor-tiers'
@@ -66,8 +67,6 @@ export interface ModelRegistryDeps {
 }
 
 /** The providers whose model list is probed and cached. */
-type ProbedProvider = 'claude' | 'codex' | 'cursor'
-const PROBED: readonly ProbedProvider[] = ['claude', 'codex', 'cursor']
 
 interface CachedModels<T> {
   fetchedAt: number
@@ -255,11 +254,13 @@ export class ModelRegistry {
   private async doRefresh(force: boolean): Promise<boolean> {
     await this.loadCache()
     // The probes are separate processes, so a slow Cursor never holds up Codex.
-    const changed = await Promise.all(PROBED.map((provider) => this.refreshOne(provider, force)))
+    const changed = await Promise.all(
+      PROVIDER_IDS.map((provider) => this.refreshOne(provider, force))
+    )
     return changed.some(Boolean)
   }
 
-  private async refreshOne(provider: ProbedProvider, force: boolean): Promise<boolean> {
+  private async refreshOne(provider: ProviderId, force: boolean): Promise<boolean> {
     if (this.deps.status()[provider]?.state !== 'ok') return false
     const cached = this.caches[provider]
     if (!force && cached && this.now() - cached.fetchedAt < this.ttlMs) return false

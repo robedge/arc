@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/svelte'
 import ItemDetail from '../../src/renderer/src/lib/components/items/ItemDetail.svelte'
 import { itemDraft } from '../../src/renderer/src/lib/stores/item-draft.svelte'
 import type { ItemSummary } from '../../src/shared/types/item'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const fakePage = {
   getViewport: ({ scale }: { scale: number }) => ({ width: 100 * scale, height: 140 * scale }),
@@ -50,14 +50,14 @@ afterEach(() => {
 })
 
 function mockRead(url: string, mime: string): void {
-  mockHarness(() => ({ ok: true, data: { type: 'binary', url, mime } }))
+  mockArc(() => ({ ok: true, data: { type: 'binary', url, mime } }))
 }
 
 it('renders a png via <img> with no editor controls', async () => {
-  mockRead('harness-knowledge://g/b1?rev=r', 'image/png')
+  mockRead('arc-knowledge://g/b1?rev=r', 'image/png')
   const { container } = render(ItemDetail, { item: binaryItem({}) })
   await waitFor(() => expect(container.querySelector('img')).not.toBeNull())
-  expect(container.querySelector('img')?.getAttribute('src')).toBe('harness-knowledge://g/b1?rev=r')
+  expect(container.querySelector('img')?.getAttribute('src')).toBe('arc-knowledge://g/b1?rev=r')
   expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull()
   expect(screen.queryByText('Saved')).toBeNull()
@@ -67,24 +67,24 @@ it('renders a png via <img> with no editor controls', async () => {
 })
 
 it('renders an svg through <img>, never inline', async () => {
-  mockRead('harness-knowledge://g/b1?rev=r', 'image/svg+xml')
+  mockRead('arc-knowledge://g/b1?rev=r', 'image/svg+xml')
   const { container } = render(ItemDetail, { item: binaryItem({ fileName: 'a.svg' }) })
   await waitFor(() => expect(container.querySelector('img')).not.toBeNull())
   expect(container.querySelector('[data-image-frame] svg')).toBeNull()
 })
 
 it('mounts the PDF viewer and shows the page count', async () => {
-  mockRead('harness-knowledge://g/b1?rev=r', 'application/pdf')
+  mockRead('arc-knowledge://g/b1?rev=r', 'application/pdf')
   const { container } = render(ItemDetail, { item: binaryItem({ fileName: 'a.pdf' }) })
   expect(await screen.findByText('Page 1 of 2')).toBeTruthy()
-  expect(getDocument).toHaveBeenCalledWith({ url: 'harness-knowledge://g/b1?rev=r' })
+  expect(getDocument).toHaveBeenCalledWith({ url: 'arc-knowledge://g/b1?rev=r' })
   expect(container.querySelectorAll('canvas')).toHaveLength(2)
   expect(FakeObserver.calls).toBe(4)
   expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
 })
 
 it('the PDF viewer frames white pages on surface-raised, fills its panel and has IconButton zoom', async () => {
-  mockRead('harness-knowledge://g/b1?rev=r', 'application/pdf')
+  mockRead('arc-knowledge://g/b1?rev=r', 'application/pdf')
   const { container } = render(ItemDetail, { item: binaryItem({ fileName: 'a.pdf' }) })
   await screen.findByText('Page 1 of 2')
   const frame = container.querySelector('[data-pdf-frame]')!
@@ -103,7 +103,7 @@ it('the PDF viewer frames white pages on surface-raised, fills its panel and has
 })
 
 it('the image viewer fills its framed panel with object-contain', async () => {
-  mockRead('harness-knowledge://g/b1?rev=r', 'image/png')
+  mockRead('arc-knowledge://g/b1?rev=r', 'image/png')
   const { container } = render(ItemDetail, { item: binaryItem({}) })
   await waitFor(() => expect(container.querySelector('img')).not.toBeNull())
   const img = container.querySelector('img')!
@@ -119,7 +119,7 @@ it('the PDF error line shows the error icon beside the exact text', async () => 
     promise: Promise.reject(new Error('bad')),
     destroy: vi.fn()
   }))
-  mockRead('harness-knowledge://g/b1?rev=r', 'application/pdf')
+  mockRead('arc-knowledge://g/b1?rev=r', 'application/pdf')
   render(ItemDetail, { item: binaryItem({ fileName: 'a.pdf' }) })
   const alert = await screen.findByRole('alert')
   expect(alert.textContent).toBe("This PDF couldn't be displayed.")

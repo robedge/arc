@@ -61,7 +61,7 @@ describe('create', () => {
       name: 'New session',
       mode: 'plan_first',
       workerLimit: 3,
-      model: 'auto',
+      workers: { mode: 'auto' },
       status: 'active'
     })
     expect(snapshot.messages.map((m) => [m.role, m.content, m.state])).toEqual([
@@ -530,7 +530,12 @@ describe('brain prompt version', () => {
 })
 
 describe('brain prompt capabilities', () => {
-  const base = { groupName: 'G', knowledgePath: '/k', projects: [] }
+  const base = {
+    groupName: 'G',
+    knowledgePath: '/k',
+    projects: [],
+    brainProvider: 'claude' as const
+  }
 
   it('says what the brain can and cannot do, and how approvals work for workers', () => {
     const prompt = buildBrainPrompt({ ...base, workersEnabled: true })
@@ -632,7 +637,7 @@ describe('page', () => {
     for (let i = 0; i < 5; i += 1) await rig.service.sendMessage(sessionId, `m${i}`)
     const all = rig.messagesRepo.latest(sessionId, 50)
     const before = all[4]?.id ?? 0
-    const older = rig.service.page(sessionId, 'messages', before, 2) as { id: number }[]
+    const older = rig.service.page(sessionId, 'messages', before, 2)
     expect(older.map((m) => m.id)).toEqual([all[2]?.id, all[3]?.id])
     for (let i = 0; i < 3; i += 1)
       rig.eventsRepo.append({
@@ -644,7 +649,7 @@ describe('page', () => {
         dataJson: null
       })
     const events = rig.eventsRepo.latest(sessionId, 10)
-    const page = rig.service.page(sessionId, 'events', events[2]?.id ?? 0, 5) as { text: string }[]
+    const page = rig.service.page(sessionId, 'events', events[2]?.id ?? 0, 5)
     expect(page.map((e) => e.text)).toEqual(['e0', 'e1'])
   })
 })
@@ -811,7 +816,6 @@ describe('set-config and the brain model', () => {
     expect(header).toMatchObject({
       mode: 'autonomous',
       workerLimit: 5,
-      model: 'Haiku',
       workers: { mode: 'model', model: { provider: 'claude', model: 'Haiku' } },
       brainModel: 'opus'
     })
@@ -828,10 +832,12 @@ describe('set-config and the brain model', () => {
     expect(rig.eventsRepo.latest(sessionId, 20).map((e) => e.text)).toContain(
       'Brain model set to Claude · Opus'
     )
-    expect(rig.service.setConfig(sessionId, { workers: { mode: 'auto' } }).model).toBe('auto')
+    expect(rig.service.setConfig(sessionId, { workers: { mode: 'auto' } }).workers).toEqual({
+      mode: 'auto'
+    })
     expect(
       rig.service.setConfig(sessionId, { workers: { mode: 'provider', provider: 'codex' } })
-    ).toMatchObject({ model: 'auto', workers: { mode: 'provider', provider: 'codex' } })
+    ).toMatchObject({ workers: { mode: 'provider', provider: 'codex' } })
   })
 
   it('rejects unknown models and an out-of-range limit', async () => {

@@ -1,8 +1,9 @@
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { statSync } from 'node:fs'
+import { join } from 'node:path'
 import { MCP_SERVER_NAME } from '../../bridge/types'
 import type { CodexStartRequest } from '../agent-adapter'
 import type { JsonObject } from './codex-types'
+import { gitDirsOf } from '../worktree-git'
 
 /**
  * What goes into `thread/start` and `thread/resume` (tech spec 2.1, 2.3 and spike results S3, S10).
@@ -52,35 +53,6 @@ export function personalServerConfig(approvalTools: readonly string[] = []): Jso
         }
       : {})
   }
-}
-
-/**
- * Where a working copy's git data lives: its admin directory (`<common>/worktrees/<id>` for a
- * linked worktree, read from its `.git` file, never guessed from the folder name) and the common
- * directory it shares. A folder with no `.git` file (a plain repository has a `.git` directory, which
- * is its own common directory) gives `null`.
- */
-export function gitDirsOf(worktree: string): { gitdir: string; common: string } | null {
-  const dotGit = join(worktree, '.git')
-  let text: string
-  try {
-    const stat = statSync(dotGit)
-    if (stat.isDirectory()) return { gitdir: dotGit, common: dotGit }
-    text = readFileSync(dotGit, 'utf8')
-  } catch {
-    return null
-  }
-  const match = /^gitdir:\s*(.+?)\s*$/m.exec(text)
-  const gitdirText = match?.[1]
-  if (!gitdirText) return null
-  const gitdir = isAbsolute(gitdirText) ? gitdirText : resolve(worktree, gitdirText)
-  let common = dirname(dirname(gitdir))
-  const commondirFile = join(gitdir, 'commondir')
-  if (existsSync(commondirFile)) {
-    const relative = readFileSync(commondirFile, 'utf8').trim()
-    if (relative) common = resolve(gitdir, relative)
-  }
-  return { gitdir, common }
 }
 
 /**

@@ -3,12 +3,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Project } from '../../src/shared/types/project'
 import type { Group } from '../../src/shared/types/group'
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import { expect, test } from './fixtures'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
     __availability: unknown[]
   }
 }
@@ -24,7 +24,7 @@ test('a renamed folder is reported unavailable and Locate brings it back', async
     await mkdir(original)
 
     const group = (await page.evaluate(() =>
-      window.harness.invoke('groups:create', { name: 'Shop' })
+      window.arc.invoke('groups:create', { name: 'Shop' })
     )) as { ok: true; data: Group }
     const groupId = group.data.id
 
@@ -36,17 +36,17 @@ test('a renamed folder is reported unavailable and Locate brings it back', async
       [original]
     )
     const picked = await page.evaluate(
-      (id) => window.harness.invoke('projects:pick', { groupId: id }),
+      (id) => window.arc.invoke('projects:pick', { groupId: id }),
       groupId
     )
     expect(picked.ok).toBe(true)
 
     await page.evaluate(() => {
       window.__availability = []
-      window.harness.on('availability:changed', (p) => window.__availability.push(p))
+      window.arc.on('availability:changed', (p) => window.__availability.push(p))
     })
     const open = await page.evaluate(
-      (id) => window.harness.invoke('groups:open', { groupId: id }),
+      (id) => window.arc.invoke('groups:open', { groupId: id }),
       groupId
     )
     expect(open.ok).toBe(true)
@@ -55,7 +55,7 @@ test('a renamed folder is reported unavailable and Locate brings it back', async
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.emit('focus'))
     await expect.poll(() => page.evaluate(() => window.__availability.length)).toBe(1)
     const listed = (await page.evaluate(
-      (id) => window.harness.invoke('projects:list', { groupId: id }),
+      (id) => window.arc.invoke('projects:list', { groupId: id }),
       groupId
     )) as { ok: true; data: Project[] }
     expect(await page.evaluate(() => window.__availability)).toEqual([
@@ -71,7 +71,7 @@ test('a renamed folder is reported unavailable and Locate brings it back', async
       [moved]
     )
     const relocated = (await page.evaluate(
-      ([g, p]) => window.harness.invoke('projects:relocate', { groupId: g!, projectId: p! }),
+      ([g, p]) => window.arc.invoke('projects:relocate', { groupId: g!, projectId: p! }),
       [groupId, listed.data[0]?.id]
     )) as { ok: true; data: Project }
     expect(relocated.data).toMatchObject({ path: moved, name: 'alpha-moved', available: true })
@@ -80,7 +80,7 @@ test('a renamed folder is reported unavailable and Locate brings it back', async
     expect(await page.evaluate(() => window.__availability.length)).toBe(1)
 
     const after = (await page.evaluate(
-      (id) => window.harness.invoke('projects:list', { groupId: id }),
+      (id) => window.arc.invoke('projects:list', { groupId: id }),
       groupId
     )) as { ok: true; data: Project[] }
     expect(after.data.map((p) => [p.path, p.available])).toEqual([[moved, true]])

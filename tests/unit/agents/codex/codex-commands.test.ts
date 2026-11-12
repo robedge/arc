@@ -4,11 +4,13 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   CodexCommands,
   codexHomeOf,
-  expandCodexPrompt,
-  parsePromptFile,
-  readCodexPrompts,
-  splitArgs
+  readCodexPrompts
 } from '../../../../src/main/agents/codex/codex-commands'
+import {
+  expandPromptBody,
+  parsePromptFile,
+  splitArgs
+} from '../../../../src/main/agents/prompt-files'
 import type { CodexSkillInfo } from '../../../../src/main/agents/codex/codex-probe'
 import type { ProviderState, ProviderStatusMap } from '../../../../src/shared/types/provider'
 import { useTempDir } from '../../helpers/temp-dir'
@@ -16,12 +18,12 @@ import { useTempDir } from '../../helpers/temp-dir'
 const dir = useTempDir('arc-codex-commands-')
 
 const expand = (body: string, args: string): string => {
-  const out = expandCodexPrompt(body, args)
+  const out = expandPromptBody(body, args)
   if (!out.ok) throw new Error(`missing ${out.missing.join(',')}`)
   return out.text
 }
 
-describe('expandCodexPrompt', () => {
+describe('expandPromptBody', () => {
   it('fills $1..$9 from the positional arguments and leaves a missing one empty', () => {
     expect(expand('a=$1 b=$2 c=$9.', 'one two')).toBe('a=one b=two c=.')
   })
@@ -50,11 +52,11 @@ describe('expandCodexPrompt', () => {
   })
 
   it('returns the missing required names instead of a half-expanded prompt', () => {
-    expect(expandCodexPrompt('Fix $FILE for $TICKET and $FILE', 'FILE=a')).toEqual({
+    expect(expandPromptBody('Fix $FILE for $TICKET and $FILE', 'FILE=a')).toEqual({
       ok: false,
       missing: ['TICKET']
     })
-    expect(expandCodexPrompt('Fix $FILE', '')).toEqual({ ok: false, missing: ['FILE'] })
+    expect(expandPromptBody('Fix $FILE', '')).toEqual({ ok: false, missing: ['FILE'] })
   })
 
   it('splits arguments the way a shell does for quotes', () => {

@@ -9,7 +9,7 @@ import type {
   ProviderStatusMap,
   WorkersPref
 } from '@shared/types/provider'
-import { DEFAULT_WORKER_MODEL, normalizeModel } from '../sessions/worker-model'
+import { DEFAULT_WORKER_MODEL, normalizeModel } from './claude-aliases'
 
 /** Which rule decided the worker's target. */
 export type TargetSource = 'command' | 'session' | 'plan' | 'brain' | 'default'

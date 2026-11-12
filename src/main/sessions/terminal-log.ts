@@ -1,5 +1,6 @@
 import { appendFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { ignoreUnhandled } from '@shared/assert-never'
 import { PROVIDER_TRAITS } from '@shared/provider-traits'
 import type { AgentEvent } from '../agents/agent-events'
 import { DELTA_FLUSH_BYTES, DELTA_FLUSH_MS, DeltaBatcher } from './batcher'
@@ -169,8 +170,7 @@ export class TranscriptFormatter {
       case 'unknown':
         return ''
       default: {
-        const exhaustive: never = event
-        void exhaustive
+        ignoreUnhandled(event)
         return ''
       }
     }

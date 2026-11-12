@@ -43,7 +43,6 @@ export interface CursorModelInfo {
   /** `name` plus the parsed parameters ("grok-4.7 · high · fast"); Auto for `default[]`. */
   displayName: string
   isDefault: boolean
-  /** The maker. */
   group: string
   /** The name without parameters. */
   base: string

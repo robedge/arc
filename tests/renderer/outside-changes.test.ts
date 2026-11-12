@@ -15,7 +15,7 @@ import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { Result } from '../../src/shared/errors'
 import type { ItemSummary } from '../../src/shared/types/item'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function item(over: Partial<ItemSummary> = {}): ItemSummary {
   return {
@@ -38,8 +38,8 @@ interface Disk {
 }
 
 /** A fake main process: one text item whose disk state the test controls. */
-function setup(disk: Disk): ReturnType<typeof mockHarness> {
-  return mockHarness((channel): Result<unknown> => {
+function setup(disk: Disk): ReturnType<typeof mockArc> {
+  return mockArc((channel): Result<unknown> => {
     if (channel === 'items:read') {
       return disk.missing
         ? { ok: false, error: { code: 'INTERNAL' } }
@@ -49,11 +49,23 @@ function setup(disk: Disk): ReturnType<typeof mockHarness> {
     if (channel === 'items:create') return { ok: true, data: item({ id: 'new', revision: 'n0' }) }
     if (channel === 'items:list') return { ok: true, data: [item()] }
     if (channel === 'sections:list' || channel === 'projects:list') return { ok: true, data: [] }
+    if (channel === 'storage:get') {
+      return {
+        ok: true,
+        data: {
+          mode: 'app',
+          linkedPath: null,
+          keptAside: false,
+          available: true,
+          hasKnowledge: true
+        }
+      }
+    }
     return { ok: true, data: undefined }
   })
 }
 
-const calls = (invoke: ReturnType<typeof mockHarness>, channel: string): unknown[][] =>
+const calls = (invoke: ReturnType<typeof mockArc>, channel: string): unknown[][] =>
   invoke.mock.calls.filter((c) => c[0] === channel)
 
 beforeEach(() => {
@@ -168,7 +180,7 @@ it('sectionsChanged re-runs sections:list', async () => {
 
 it('a slower earlier list response never overwrites a newer one', async () => {
   const resolvers: Array<(r: Result<unknown>) => void> = []
-  mockHarness(
+  mockArc(
     (channel) =>
       new Promise<Result<unknown>>((resolve) => {
         if (channel === 'items:list') resolvers.push(resolve)
@@ -213,7 +225,7 @@ it('an un-enumerated change rechecks the open item and detects deletion', async 
 
 // ---- banner actions ----
 
-async function openDirty(disk: Disk): Promise<ReturnType<typeof mockHarness>> {
+async function openDirty(disk: Disk): Promise<ReturnType<typeof mockArc>> {
   const invoke = setup(disk)
   await itemDraft.open('i1')
   render(ItemDetail, { item: item() })
@@ -300,7 +312,7 @@ it('the item Show in Finder invokes shell:reveal with group, section and item id
 })
 
 it('a reveal failure shows the mapped message as a toast', async () => {
-  mockHarness(() => ({ ok: false, error: { code: 'KNOWLEDGE_ROOT_MISSING' } }))
+  mockArc(() => ({ ok: false, error: { code: 'KNOWLEDGE_ROOT_MISSING' } }))
   toasts.list = []
   await revealInFinder({ groupId: 'g1' })
   expect(toasts.list.map((t) => t.message)).toEqual(['Knowledge folder not found'])

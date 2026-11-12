@@ -426,6 +426,18 @@ describe('dismissing', () => {
   })
 })
 
+describe('a suggestion row with damaged params', () => {
+  it.each(['{not json', '[1,2]', 'null'])('is still listed, with no params, for %s', (damaged) => {
+    addTurn('w1', 900_000)
+    service.onWorkerFinished(finished())
+    expect(ofKind('model-too-strong')[0]?.params).not.toEqual({})
+    opened.sqlite.prepare('UPDATE usage_suggestions SET params_json = ?').run(damaged)
+    const [s] = ofKind('model-too-strong')
+    expect(s?.text).toBe('W2 used Opus for a task that read 0 files and changed none.')
+    expect(s?.params).toEqual({})
+  })
+})
+
 describe('normalizeReadPath', () => {
   const roots = [{ path: '/Users/me/dev/api', name: 'api' }]
 

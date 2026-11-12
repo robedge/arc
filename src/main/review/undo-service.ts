@@ -3,7 +3,6 @@ import { isAbsolute, join, relative } from 'node:path'
 import { AppErrorException } from '../../shared/errors'
 import type { ReviewUndoPreview } from '../../shared/types/review'
 import type { ReviewMarksRepo } from '../db/repositories/review-marks-repo'
-import type { WorkersRepo } from '../db/repositories/workers-repo'
 import type { WorktreesRepo } from '../db/repositories/worktrees-repo'
 import { LONG_GIT_TIMEOUT_MS } from '../git/git'
 import type { GitRunner } from '../git/git'
@@ -15,7 +14,7 @@ import {
   freshMergeWorktree,
   mergeWorktreePath
 } from '../sessions/merge-worktree'
-import { isResolverRow } from '../sessions/worker-label'
+import { isResolverRow, type WorkersRepo } from '../db/repositories/workers-repo'
 import type { LocatedFile, ReviewService } from './review-service'
 
 /** Tries to publish the undo commit this many times when the branch keeps moving (same as a merge). */

@@ -24,7 +24,7 @@ import type {
   ProviderStatus
 } from '../../src/shared/types/provider'
 import type { SessionHeader as Header, PlanView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const cursor = (
   model: string,
@@ -172,7 +172,6 @@ const header: Header = {
   name: 'N',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
@@ -184,7 +183,7 @@ const header: Header = {
 }
 
 let saved: AppSettings
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   providers.reset()
@@ -198,7 +197,7 @@ beforeEach(() => {
     'usage.checkClaudePlanOnLaunch': true,
     'agents.loadOff': { brain: [], workers: [] }
   }
-  invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  invoke = mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(cleanup)
 
@@ -417,7 +416,7 @@ function plan(): PlanView {
 }
 
 it('PlanCard picks Cursor, a base model and an effort, and approves with the full id', async () => {
-  render(PlanCard, { plan: plan(), workerModel: 'auto' })
+  render(PlanCard, { plan: plan(), workers: { mode: 'auto' } })
   await fireEvent.change(screen.getByLabelText('Provider for api-retry'), {
     target: { value: 'cursor' }
   })

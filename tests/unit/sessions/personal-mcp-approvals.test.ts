@@ -276,7 +276,10 @@ describe('a Codex worker whose MCP servers could not be listed', () => {
     const texts = e!.rig.eventsRepo.latest(sessionId, 200).map((x) => x.text)
     expect(texts.filter((t) => t.includes("couldn't read your Codex MCP servers"))).toHaveLength(1)
 
-    const decided = start?.approvals?.handle(elicitation('trello'), new AbortController().signal)
+    const decided = start?.codex.approvals?.handle(
+      elicitation('trello'),
+      new AbortController().signal
+    )
     const attention = e!.rig.deps.attentionRepo
     await until(() => attention.listPending(sessionId).length === 1)
     expect(attention.listPending(sessionId)[0]).toMatchObject({
@@ -302,7 +305,7 @@ describe('a Codex worker whose MCP servers could not be listed', () => {
       personalMcpServers: ['trello'],
       personalMcpApprovalTools: { trello: ['trello_update_card'] }
     })
-    const decided = await start?.approvals?.handle(
+    const decided = await start?.codex.approvals?.handle(
       elicitation('trello'),
       new AbortController().signal
     )

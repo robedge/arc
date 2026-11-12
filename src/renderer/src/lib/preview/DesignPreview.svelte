@@ -1,9 +1,11 @@
 <script lang="ts">
   // Design Preview: a catalog of the ui/ building blocks with local state only.
-  // No IPC, no preload, no global stores except the motion store (reduced-motion).
+  // No IPC, no preload; the only global stores used are motion (reduced-motion) and commands,
+  // which is given the sample `/` list so the step-in sample never asks main.
   import { onMount } from 'svelte'
   import type { Snippet } from 'svelte'
   import { motion } from '../stores/motion.svelte'
+  import { commands } from '../stores/commands.svelte'
   import type { DraftStatus } from '../stores/item-draft.svelte'
   import Panel from '../components/ui/Panel.svelte'
   import Wordmark from '../components/ui/Wordmark.svelte'
@@ -40,7 +42,7 @@
   import type { SessionEventEntry, SessionMessage } from '@shared/types/session'
   import HeaderMenu from '../components/sessions/HeaderMenu.svelte'
   import { workersEntries } from '../model-options'
-  import type { AppSettings, ProviderModels } from '@shared/types/provider'
+  import type { AppSettings, ProviderModels, WorkersPref } from '@shared/types/provider'
   import type { LoadItem } from '@shared/types/agent-load'
   import PlanCard from '../components/sessions/PlanCard.svelte'
   import EventLog from '../components/sessions/EventLog.svelte'
@@ -126,6 +128,8 @@
       source: 'codex'
     }
   ]
+  // The step-in sample's `/` list comes from here, so it never asks main (there is no preload).
+  commands.provide('preview', sampleCommands)
 
   const colors = [
     ['ground', 'bg-ground'],
@@ -306,7 +310,7 @@
     name: 'Fix order sync',
     mode: 'plan_first' as const,
     workerLimit: 3,
-    model: 'auto',
+    workers: { mode: 'auto' } as WorkersPref,
     brainModel: 'sonnet',
     autoApprove: false,
     allowRules: [],
@@ -1109,10 +1113,13 @@
           {/each}
         </div>
         {#each planStatuses as status (status)}
-          <PlanCard plan={samplePlan(status)} workerModel="auto" />
+          <PlanCard plan={samplePlan(status)} workers={{ mode: 'auto' }} />
         {/each}
-        <PlanCard plan={samplePlan('proposed', true)} workerModel="auto" />
-        <PlanCard plan={samplePlan('proposed')} workerModel="haiku" />
+        <PlanCard plan={samplePlan('proposed', true)} workers={{ mode: 'auto' }} />
+        <PlanCard
+          plan={samplePlan('proposed')}
+          workers={{ mode: 'model', model: { provider: 'claude', model: 'haiku' } }}
+        />
         <div class="grid grid-cols-2 gap-3">
           {#each workerStatuses as status, i (status)}
             <WorkerCard

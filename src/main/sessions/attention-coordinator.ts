@@ -11,7 +11,7 @@ import type { AttentionRepo, AttentionRequestRow } from '../db/repositories/atte
 import { allowRuleMatches, allowRuleText, deriveAllowRule } from '../policy/allow-rules'
 import type { AllowRuleSpec } from '../policy/allow-rules'
 import { classifyBrainAction } from '../policy/brain-policy'
-import { classifyAction, isPublishAction, none } from '../policy/classify'
+import { classifyAction, isPublishAction, unclassified } from '../policy/classify'
 import type { Classification, ClassifyContext } from '../policy/classify'
 import {
   CODEX_PERMISSIONS_TOOL,
@@ -46,6 +46,17 @@ const NOTE_COMMAND_MAX = 200
  */
 export const ACTION_WITHDRAWN = 'withdrawn'
 
+/**
+ * How a provider's approval handler (Codex, Cursor) reaches the coordinator: the worker's
+ * `requestAction`, or the brain's.
+ */
+export type RequestAction = (
+  agent: BridgeAgent,
+  action: NormalizedAction,
+  meta: ActionMeta,
+  call: { signal: AbortSignal }
+) => Promise<ActionDecision>
+
 /** What the user's answer is: approve or deny a permission, or text for a question. */
 export type AttentionAnswer =
   | { approve: boolean; always?: boolean }
@@ -75,6 +86,8 @@ export interface AttentionHost {
   now: () => number
   newId: () => string
   logEvent: (kind: string, text: string, data?: unknown, workerId?: string | null) => void
+  /** The app log, for failures that are not session events (a classifier that threw). */
+  log?: { warn: (message: string, ...rest: unknown[]) => void }
   /** A user-turn message to the brain (not shown in the conversation). */
   notifyBrain: (text: string) => void
   /** The worker a bridge call came from; throws when it is not running. */
@@ -781,7 +794,8 @@ export class AttentionCoordinator {
       let verdict: Classification
       try {
         verdict = this.verdictFor(row, input)
-      } catch {
+      } catch (error: unknown) {
+        this.host.log?.warn(`attention: could not classify ${row.toolName}`, error)
         continue
       }
       if (verdict.category === null) continue
@@ -880,7 +894,8 @@ export class AttentionCoordinator {
       const verdict = this.verdictFor(row, input)
       const spec = deriveAllowRule(row.toolName, input, verdict)
       return spec ? { ...spec, text: allowRuleText(spec) } : null
-    } catch {
+    } catch (error: unknown) {
+      this.host.log?.warn(`attention: could not derive an allow rule for ${row.toolName}`, error)
       return null
     }
   }
@@ -895,7 +910,7 @@ export class AttentionCoordinator {
     const action = normalizeClaudeCall(toolName, input)
     if (row.source === 'brain') {
       const brain = classifyBrainAction(action, this.host.policyContext(null))
-      return brain.refuse === undefined ? brain.classification : none()
+      return brain.refuse === undefined ? brain.classification : unclassified()
     }
     return classifyAction(action, this.host.policyContext(row.workerId ?? ''))
   }

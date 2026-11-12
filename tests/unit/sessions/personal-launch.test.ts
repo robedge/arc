@@ -181,7 +181,7 @@ describe('personal MCP servers on Codex launches', () => {
     e!.rig.service.setConfig(sessionId, { workers: { mode: 'provider', provider: 'codex' } })
     await spawnWorker(e!)
     await until(() => codex.starts.length === 1)
-    expect(codex.starts[0]?.codex).toEqual({
+    expect(codex.starts[0]?.codex).toMatchObject({
       personalMcpServers: ['github'],
       disabledMcpServers: ['figma']
     })
@@ -195,6 +195,6 @@ describe('personal MCP servers on Codex launches', () => {
     e!.rig.service.setConfig(sessionId, { workers: { mode: 'provider', provider: 'codex' } })
     await spawnWorker(e!)
     await until(() => codex.starts.length === 1)
-    expect(codex.starts[0]?.codex).toEqual({})
+    expect(Object.keys(codex.starts[0]?.codex ?? {})).toEqual(['approvals'])
   })
 })

@@ -16,10 +16,8 @@ import { GroupsRepo } from '../../../src/main/db/repositories/groups-repo'
 import { KnowledgeStorageRepo } from '../../../src/main/db/repositories/knowledge-storage-repo'
 import { ProjectsRepo } from '../../../src/main/db/repositories/projects-repo'
 import { KnowledgeStorageService } from '../../../src/main/knowledge/knowledge-storage-service'
-import type {
-  FsOps,
-  KnowledgeStorageServiceDeps
-} from '../../../src/main/knowledge/knowledge-storage-service'
+import type { FsOps } from '../../../src/main/knowledge/fs-ops'
+import type { KnowledgeStorageServiceDeps } from '../../../src/main/knowledge/knowledge-storage-service'
 import type { IpcEvents } from '../../../src/shared/ipc/contract'
 import { createEnv } from './knowledge-test-env'
 import type { KnowledgeEnv } from './knowledge-test-env'

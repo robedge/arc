@@ -4,7 +4,7 @@ import SessionHeader from '../../src/renderer/src/lib/components/sessions/Sessio
 import { eventStyle } from '../../src/renderer/src/lib/components/sessions/event-kinds'
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
 import type { SessionHeader as Header } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -12,7 +12,7 @@ const header: Header = {
   name: 'Fix sync',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
+  workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
   allowRules: [],
@@ -22,9 +22,9 @@ const header: Header = {
   branches: []
 }
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
-  invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  invoke = mockArc(() => ({ ok: true, data: undefined }))
   activeSession.close()
 })
 afterEach(cleanup)

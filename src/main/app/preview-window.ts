@@ -10,7 +10,7 @@ let previewWindow: BrowserWindow | null = null
 
 /**
  * The Design Preview: a static second renderer entry. Deliberately no preload (so no
- * `window.harness`), no parent, no close-gate listener, and never registered as the main window.
+ * `window.arc`), no parent, no close-gate listener, and never registered as the main window.
  * `register.ts` only trusts the main window's top frame, so the preview cannot reach IPC.
  */
 export function openDesignPreview(): BrowserWindow {

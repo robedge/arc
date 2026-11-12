@@ -33,3 +33,11 @@ export const BRIDGE_TOOLS: readonly AnyBridgeTool[] = [
 export function toolsForRole(role: BridgeRole): AnyBridgeTool[] {
   return BRIDGE_TOOLS.filter((t) => t.role === role || t.role === 'any')
 }
+
+/**
+ * The tools of this role that the model itself is given. `request_permission` is left out: the
+ * Claude CLI calls it on its own, and the model never calls it as a tool.
+ */
+export function modelToolsForRole(role: BridgeRole): AnyBridgeTool[] {
+  return toolsForRole(role).filter((t) => t.name !== requestPermissionTool.name)
+}

@@ -8,7 +8,7 @@ import type {
   ProviderStatusMap,
   WorkersPref
 } from '@shared/types/provider'
-import { DEFAULT_WORKER_MODEL } from './worker-model'
+import { DEFAULT_WORKER_MODEL } from '../models/claude-aliases'
 
 /** The session columns that hold the provider choices. */
 export interface SessionPrefColumns {

@@ -1,6 +1,8 @@
 import type { z } from 'zod'
 import { READ_PATH_MAX } from '../agent-events'
 import type { AgentEvent } from '../agent-events'
+import { argsSummary, capResultText, summaryLine } from '../parser-text'
+import { asRecord, nonEmptyString } from '../../util/json'
 import {
   availableCommandsSchema,
   planUpdateSchema,
@@ -21,9 +23,6 @@ import {
  * message itself: a message ends at the next tool call or at the end of the turn.
  */
 
-const SUMMARY_MAX = 120
-/** A tool result's text is kept up to this many characters (the terminal shows the first lines). */
-const RESULT_TEXT_MAX = 16_384
 /** An assistant text this short, alone in its turn, can be the plan-limit refusal. */
 const LIMIT_TEXT_MAX = 300
 
@@ -56,11 +55,6 @@ export function isCursorPlanRefusal(text: string): boolean {
 /** `plan-refused` for the plan refusal, `rate-limit` for any other limit text. */
 function limitKind(text: string): 'plan-refused' | 'rate-limit' {
   return isCursorPlanRefusal(text) ? 'plan-refused' : 'rate-limit'
-}
-
-function truncate(text: string): string {
-  const oneLine = text.replace(/\s+/g, ' ').trim()
-  return oneLine.length > SUMMARY_MAX ? `${oneLine.slice(0, SUMMARY_MAX - 1)}…` : oneLine
 }
 
 type Buckets = { input: number; cacheWrite: number; cacheRead: number; output: number }
@@ -96,28 +90,6 @@ export function cursorUsageBuckets(value: unknown): Buckets | undefined {
   }
 }
 
-function cap(text: string): string {
-  return text.length > RESULT_TEXT_MAX ? text.slice(0, RESULT_TEXT_MAX) : text
-}
-
-function str(value: unknown): string {
-  return typeof value === 'string' ? value : ''
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
-}
-
-/** The first short string argument of an MCP call, for the one-line summary. */
-function argsSummary(args: unknown): string {
-  for (const value of Object.values(asRecord(args))) {
-    if (typeof value === 'string' && value.trim() !== '') return truncate(value)
-  }
-  return ''
-}
-
 /** The tool name each ACP kind shows as, matching the names the Claude and Codex parsers use. */
 const KIND_NAMES: Readonly<Record<string, string>> = {
   read: 'Read',
@@ -133,8 +105,8 @@ const KIND_NAMES: Readonly<Record<string, string>> = {
 
 /** The server and tool of an MCP call, from `rawInput` (known only after the first `tool_call_update`). */
 function mcpIdentity(call: CursorToolCall): { server: string; tool: string } | undefined {
-  const server = str(call.rawInput['providerIdentifier'])
-  const tool = str(call.rawInput['toolName'])
+  const server = nonEmptyString(call.rawInput['providerIdentifier']) ?? ''
+  const tool = nonEmptyString(call.rawInput['toolName']) ?? ''
   return server !== '' && tool !== '' ? { server, tool } : undefined
 }
 
@@ -235,17 +207,17 @@ export function createCursorParser(options: CursorParserOptions): CursorParser {
     }
     const name = KIND_NAMES[call.kind] ?? (call.title.replace(/\s+/g, ' ').trim() || 'Tool')
     let raw: string
-    if (call.kind === 'execute') raw = str(call.rawInput['command'])
+    if (call.kind === 'execute') raw = nonEmptyString(call.rawInput['command']) ?? ''
     else if (call.kind === 'read' || call.kind === 'edit' || call.kind === 'delete') {
-      raw = call.locations[0] ?? str(call.rawInput['path'])
+      raw = call.locations[0] ?? nonEmptyString(call.rawInput['path']) ?? ''
     } else raw = call.title
-    const detail = truncate(raw)
+    const detail = summaryLine(raw)
     return { name, summary: detail === '' || detail === name ? name : `${name}: ${detail}` }
   }
 
   function readPathOf(call: CursorToolCall): string | undefined {
     if (call.kind !== 'read') return undefined
-    const path = call.locations[0] ?? str(call.rawInput['path'])
+    const path = call.locations[0] ?? nonEmptyString(call.rawInput['path']) ?? ''
     return path !== '' && path.length <= READ_PATH_MAX ? path : undefined
   }
 
@@ -279,22 +251,25 @@ export function createCursorParser(options: CursorParserOptions): CursorParser {
     const out = call.rawOutput
     if (out) {
       const error = out['error']
-      if (typeof error === 'string' && error !== '') return { isError: true, content: cap(error) }
+      if (typeof error === 'string' && error !== '')
+        return { isError: true, content: capResultText(error) }
       if (call.kind === 'execute') {
         const exitCode = typeof out['exitCode'] === 'number' ? out['exitCode'] : 0
-        const text = [str(out['stdout']), str(out['stderr'])].filter((s) => s !== '').join('\n')
-        return { isError: exitCode !== 0, content: cap(text) }
+        const text = [nonEmptyString(out['stdout']) ?? '', nonEmptyString(out['stderr']) ?? '']
+          .filter((s) => s !== '')
+          .join('\n')
+        return { isError: exitCode !== 0, content: capResultText(text) }
       }
       if (typeof out['content'] === 'string')
-        return { isError: false, content: cap(out['content']) }
+        return { isError: false, content: capResultText(out['content']) }
     }
     const diffs = call.content
       .map(asRecord)
       .filter((c) => c['type'] === 'diff')
-      .map((c) => `edit ${str(c['path'])}`)
-    if (diffs.length > 0) return { isError: false, content: cap(diffs.join('\n')) }
+      .map((c) => `edit ${nonEmptyString(c['path']) ?? ''}`)
+    if (diffs.length > 0) return { isError: false, content: capResultText(diffs.join('\n')) }
     if (out && call.kind === 'other') {
-      return { isError: false, content: cap(JSON.stringify(out)) }
+      return { isError: false, content: capResultText(JSON.stringify(out)) }
     }
     return { isError: false, content: '' }
   }

@@ -34,9 +34,7 @@ class WorkerControlStore {
   async stepIn(workerId: string): Promise<boolean> {
     this.busy[workerId] = true
     try {
-      const ok = await this.run(workerId, () =>
-        window.harness.invoke('workers:step-in', { workerId })
-      )
+      const ok = await this.run(workerId, () => window.arc.invoke('workers:step-in', { workerId }))
       if (ok) this.pendingFocus = { workerId, target: 'input' }
       return ok
     } finally {
@@ -48,7 +46,7 @@ class WorkerControlStore {
     this.busy[workerId] = true
     try {
       const ok = await this.run(workerId, () =>
-        window.harness.invoke('workers:hand-back', { workerId })
+        window.arc.invoke('workers:hand-back', { workerId })
       )
       if (ok) this.pendingFocus = { workerId, target: 'step-in' }
       return ok
@@ -60,14 +58,14 @@ class WorkerControlStore {
   /** Sends the line to the worker; the draft is cleared only when the send succeeds. */
   async sendInput(workerId: string, text: string): Promise<boolean> {
     const ok = await this.run(workerId, () =>
-      window.harness.invoke('workers:send-input', { workerId, text })
+      window.arc.invoke('workers:send-input', { workerId, text })
     )
     if (ok) this.drafts[workerId] = ''
     return ok
   }
 
   async interrupt(workerId: string): Promise<boolean> {
-    return this.run(workerId, () => window.harness.invoke('workers:interrupt', { workerId }))
+    return this.run(workerId, () => window.arc.invoke('workers:interrupt', { workerId }))
   }
 
   clearFocus(): void {

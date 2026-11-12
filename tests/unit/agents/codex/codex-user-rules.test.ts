@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { PROTECTED_PREFIXES } from '../../../../src/main/agents/codex/codex-rules'
+import { PROTECTED_PREFIXES } from '../../../../src/main/agents/protected-commands'
 import {
   describePrefix,
   isCoveredByArcRules,

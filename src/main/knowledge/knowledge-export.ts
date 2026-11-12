@@ -2,7 +2,7 @@ import { constants as fsConstants } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AppErrorException } from '@shared/errors'
-import type { FsOps } from './knowledge-storage-service'
+import type { FsOps } from './fs-ops'
 
 const MAX_NAME_LENGTH = 100
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProviderHistoryMissingError } from '../../../src/main/agents/agent-adapter'
 import {
-  APPROVAL_WITHDRAWN,
+  CODEX_APPROVAL_WITHDRAWN,
   type CodexApprovalRequest
 } from '../../../src/main/agents/codex/codex-types'
 import { ModelRegistry } from '../../../src/main/models/model-registry'
@@ -107,7 +107,7 @@ describe('stepping in on a Codex worker', () => {
 
   it('cancels the pending approval with the interrupt, and a typed turn asks in the terminal', async () => {
     const s = await codexWorker()
-    const approvals = s.codex.starts[0]?.approvals
+    const approvals = s.codex.starts[0]?.codex.approvals
     if (!approvals) throw new Error('a Codex worker starts with an approval handler')
 
     // A push the worker was waiting on when the user stepped in.
@@ -119,7 +119,7 @@ describe('stepping in on a Codex worker', () => {
     // Codex withdraws the approvals of an interrupted turn (spike S6).
     const interrupt = s.worker.interrupt.bind(s.worker)
     s.worker.interrupt = () => {
-      waiting.abort(APPROVAL_WITHDRAWN)
+      waiting.abort(CODEX_APPROVAL_WITHDRAWN)
       return interrupt()
     }
 

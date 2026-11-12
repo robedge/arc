@@ -94,7 +94,7 @@ class WorkerTerminalsStore {
   async load(workerId: string): Promise<void> {
     const entry: Entry = { buffer: new TerminalBuffer(), early: [], queued: [], baseSeq: 0 }
     this.entries.set(workerId, entry)
-    const res = await window.harness.invoke('workers:open-terminal', { workerId })
+    const res = await window.arc.invoke('workers:open-terminal', { workerId })
     if (this.entries.get(workerId) !== entry) return
     if (!res.ok) {
       entry.buffer.error = messageFor(res.error)

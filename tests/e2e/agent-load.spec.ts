@@ -92,11 +92,11 @@ async function storedOff(page: Page): Promise<{ brain: string[]; workers: string
   return page.evaluate(async () => {
     const result = await (
       window as unknown as {
-        harness: {
+        arc: {
           invoke(c: string, r: unknown): Promise<{ ok: boolean; data: Record<string, unknown> }>
         }
       }
-    ).harness.invoke('settings:get', {})
+    ).arc.invoke('settings:get', {})
     return result.data['agents.loadOff'] as { brain: string[]; workers: string[] }
   })
 }

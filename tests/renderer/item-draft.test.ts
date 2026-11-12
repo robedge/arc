@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { itemDraft, AUTOSAVE_DELAY_MS } from '../../src/renderer/src/lib/stores/item-draft.svelte'
 import type { Result } from '../../src/shared/errors'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 type Handler = (channel: string, request: unknown) => Result<unknown> | Promise<Result<unknown>>
 
-function setup(save?: Handler): ReturnType<typeof mockHarness> {
-  return mockHarness((channel, request) => {
+function setup(save?: Handler): ReturnType<typeof mockArc> {
+  return mockArc((channel, request) => {
     if (channel === 'items:read') {
       const { itemId } = request as { itemId: string }
       return { ok: true, data: { type: 'text', content: `body-${itemId}`, revision: 'r0' } }
@@ -16,7 +16,7 @@ function setup(save?: Handler): ReturnType<typeof mockHarness> {
   })
 }
 
-const saves = (invoke: ReturnType<typeof mockHarness>): unknown[][] =>
+const saves = (invoke: ReturnType<typeof mockArc>): unknown[][] =>
   invoke.mock.calls.filter((c) => c[0] === 'items:save')
 
 beforeEach(async () => {

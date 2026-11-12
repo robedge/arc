@@ -17,6 +17,7 @@ import { defaultExec, type CliResolver, type ExecFn } from '../agents/cli-resolv
 import { loadKey, type LoadRole } from '../../shared/types/agent-load'
 import { skillFolders } from '../personal/load-listing'
 import { NOTHING_OFF, type OffFor } from '../personal/load-selection'
+import { isRecord, nonEmptyString } from '../util/json'
 
 /**
  * The plugin view (spec 005, tech spec 2.2; spec 007 section 2.6): one folder of sanitized plugins
@@ -88,14 +89,6 @@ interface RepoSettings {
   enabledPlugins: string[]
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined
-}
-
 /** Reads a repository's `.claude/settings.json` read-only; a missing or broken file counts as empty. */
 async function readRepoSettings(repoPath: string): Promise<RepoSettings> {
   const empty: RepoSettings = { hooks: false, enabledPlugins: [] }
@@ -133,16 +126,16 @@ export function parsePluginList(raw: string): InstalledPlugin[] {
   const out: InstalledPlugin[] = []
   for (const row of rows as unknown[]) {
     if (!isRecord(row)) continue
-    const id = str(row['id'])
-    const installPath = str(row['installPath'])
+    const id = nonEmptyString(row['id'])
+    const installPath = nonEmptyString(row['installPath'])
     if (!id || !installPath) continue
     out.push({
       id,
-      scope: str(row['scope']) ?? '',
+      scope: nonEmptyString(row['scope']) ?? '',
       enabled: row['enabled'] === true,
-      version: str(row['version']) ?? '',
+      version: nonEmptyString(row['version']) ?? '',
       installPath,
-      lastUpdated: str(row['lastUpdated']) ?? ''
+      lastUpdated: nonEmptyString(row['lastUpdated']) ?? ''
     })
   }
   return out
@@ -225,12 +218,12 @@ async function readSource(plugin: InstalledPlugin): Promise<Source | null> {
   } catch {
     // A plugin without a readable manifest still loads: the id gives it a name.
   }
-  const name = str(manifest['name']) ?? plugin.id.split('@')[0] ?? plugin.id
+  const name = nonEmptyString(manifest['name']) ?? plugin.id.split('@')[0] ?? plugin.id
   return {
     plugin,
     name,
-    description: str(manifest['description']),
-    version: str(manifest['version']) ?? plugin.version,
+    description: nonEmptyString(manifest['description']),
+    version: nonEmptyString(manifest['version']) ?? plugin.version,
     manifestMtime,
     manifest,
     stub: false

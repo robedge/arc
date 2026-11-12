@@ -7,7 +7,7 @@ import { planUsage } from '../../src/renderer/src/lib/stores/plan-usage.svelte'
 import { settings } from '../../src/renderer/src/lib/stores/settings.svelte'
 import type { AppSettings } from '../../src/shared/types/provider'
 import type { PlanNotice, PlanSnapshot } from '../../src/shared/types/usage'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const resetsAt = new Date(2026, 9, 20, 15, 40).getTime() / 1000
 const notice = (threshold: 80 | 95, over: Partial<PlanNotice> = {}): PlanNotice => ({
@@ -28,7 +28,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 9, 20, 9, 0))
   planUsage.reset()
   settings.reset()
-  mockHarness(() => ({ ok: true, data: undefined }))
+  mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(() => {
   cleanup()
@@ -57,7 +57,7 @@ describe('PlanNotices', () => {
   })
 
   it('dismiss removes the notice and sends its key', async () => {
-    const invoke = mockHarness(() => ({ ok: true, data: undefined }))
+    const invoke = mockArc(() => ({ ok: true, data: undefined }))
     planUsage.apply(snap([notice(80)]))
     render(PlanNotices)
     await fireEvent.click(screen.getByRole('button', { name: /Dismiss Claude 5-hour/ }))
@@ -66,7 +66,7 @@ describe('PlanNotices', () => {
   })
 
   it('puts the notice back when dismissing fails', async () => {
-    mockHarness(() => ({ ok: false, error: { code: 'INTERNAL', message: 'no' } }) as never)
+    mockArc(() => ({ ok: false, error: { code: 'INTERNAL', message: 'no' } }) as never)
     planUsage.apply(snap([notice(80)]))
     render(PlanNotices)
     await fireEvent.click(screen.getByRole('button', { name: /Dismiss/ }))
@@ -79,7 +79,7 @@ describe('Providers setting', () => {
     ({ 'usage.checkClaudePlanOnLaunch': on }) as unknown as AppSettings
 
   it('reads the setting and writes it back when toggled', async () => {
-    const invoke = mockHarness((channel, req) => {
+    const invoke = mockArc((channel, req) => {
       if (channel === 'settings:get') return { ok: true, data: values(true) }
       if (channel === 'settings:set')
         return { ok: true, data: { ...values(true), ...(req as object) } }

@@ -25,7 +25,7 @@
   async function dismiss(): Promise<void> {
     busy = true
     error = null
-    const res = await window.harness.invoke('sessions:dismiss-prompt', {
+    const res = await window.arc.invoke('sessions:dismiss-prompt', {
       sessionId: message.sessionId,
       messageId: message.id
     })

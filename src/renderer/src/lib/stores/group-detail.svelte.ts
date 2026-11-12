@@ -20,8 +20,8 @@ class GroupDetailStore {
     this.groupId = groupId
     if (groupId === null) return
     const [sections, projects] = await Promise.all([
-      window.harness.invoke('sections:list', { groupId }),
-      window.harness.invoke('projects:list', { groupId })
+      window.arc.invoke('sections:list', { groupId }),
+      window.arc.invoke('projects:list', { groupId })
     ])
     if (request !== this.requestId) return
     if (sections.ok && Array.isArray(sections.data)) this.sections = sections.data
@@ -43,7 +43,7 @@ class GroupDetailStore {
   /** Re-points a missing project via the main-process folder picker. */
   async relocateProject(projectId: string): Promise<AppError | null> {
     if (this.groupId === null) return { code: 'INTERNAL' }
-    const res = await window.harness.invoke('projects:relocate', {
+    const res = await window.arc.invoke('projects:relocate', {
       groupId: this.groupId,
       projectId
     })
@@ -58,14 +58,14 @@ class GroupDetailStore {
 
   async createSection(name: string): Promise<Section | AppError> {
     if (this.groupId === null) return { code: 'INTERNAL' }
-    const res = await window.harness.invoke('sections:create', { groupId: this.groupId, name })
+    const res = await window.arc.invoke('sections:create', { groupId: this.groupId, name })
     if (!res.ok) return res.error
     await this.reload()
     return res.data
   }
 
   async renameSection(sectionId: string, name: string): Promise<Section | AppError> {
-    const res = await window.harness.invoke('sections:rename', { sectionId, name })
+    const res = await window.arc.invoke('sections:rename', { sectionId, name })
     if (!res.ok) return res.error
     await this.reload()
     return res.data
@@ -73,7 +73,7 @@ class GroupDetailStore {
 
   /** Returns an error on failure, else null. */
   async deleteSection(sectionId: string): Promise<AppError | null> {
-    const res = await window.harness.invoke('sections:delete', { sectionId })
+    const res = await window.arc.invoke('sections:delete', { sectionId })
     if (!res.ok) return res.error
     await this.reload()
     return null
@@ -82,14 +82,14 @@ class GroupDetailStore {
   /** Adds folders by path; returns the result (with skipped items) or an error. */
   async addProjects(paths: string[]): Promise<AddProjectsResult | AppError> {
     if (this.groupId === null || paths.length === 0) return { added: [], skipped: [] }
-    const res = await window.harness.invoke('projects:add', { groupId: this.groupId, paths })
+    const res = await window.arc.invoke('projects:add', { groupId: this.groupId, paths })
     return this.afterAdd(res)
   }
 
   /** Opens the native folder picker in main and adds the chosen folders. */
   async pickProjects(): Promise<AddProjectsResult | AppError> {
     if (this.groupId === null) return { code: 'INTERNAL' }
-    const res = await window.harness.invoke('projects:pick', { groupId: this.groupId })
+    const res = await window.arc.invoke('projects:pick', { groupId: this.groupId })
     return this.afterAdd(res)
   }
 
@@ -101,7 +101,7 @@ class GroupDetailStore {
 
   async removeProject(projectId: string): Promise<AppError | null> {
     if (this.groupId === null) return { code: 'INTERNAL' }
-    const res = await window.harness.invoke('projects:remove', {
+    const res = await window.arc.invoke('projects:remove', {
       groupId: this.groupId,
       projectId
     })

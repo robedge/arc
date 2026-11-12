@@ -3,7 +3,8 @@ import { z } from 'zod'
 import {
   buildAgentEnv,
   type ProcessSupervisor,
-  type SupervisedProcess
+  type SupervisedProcess,
+  stopGracefully
 } from '../process-supervisor'
 import type { CodexPersonalServer } from '../agent-adapter'
 import { CodexRpc } from './codex-rpc'
@@ -281,21 +282,9 @@ export class CodexProbe implements CodexModelSource, CodexSkillSource, CodexRate
 
   /** Closes stdin, then signals the process group by its pid if Codex is still there. */
   private async stop(proc: SupervisedProcess): Promise<void> {
-    proc.expectExit()
-    proc.endStdin()
-    if (proc.hasExited()) return
-    let timer: NodeJS.Timeout | undefined
-    await Promise.race([
-      proc.exited,
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, this.deps.stopGraceMs ?? STOP_GRACE_MS)
-      })
-    ])
-    clearTimeout(timer)
-    if (proc.hasExited()) return
-    await proc.killLadder([
-      { signal: 'SIGTERM', waitMs: KILL_STEP_MS },
-      { signal: 'SIGKILL', waitMs: KILL_STEP_MS }
-    ])
+    await stopGracefully(proc, {
+      graceMs: this.deps.stopGraceMs ?? STOP_GRACE_MS,
+      termMs: KILL_STEP_MS
+    })
   }
 }

@@ -53,7 +53,7 @@
     busy = true
     serverError = null
     try {
-      const res = await window.harness.invoke('sessions:resolve-dirty', { token, choices })
+      const res = await window.arc.invoke('sessions:resolve-dirty', { token, choices })
       if (res.ok) onresolved(res.data)
       else serverError = messageFor(res.error)
     } finally {

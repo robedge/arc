@@ -22,11 +22,11 @@ class ImportFlow {
   prompt = $state<ConflictPrompt | null>(null)
 
   async pick(sectionId: string): Promise<void> {
-    await this.finish(sectionId, await window.harness.invoke('items:pickImport', { sectionId }))
+    await this.finish(sectionId, await window.arc.invoke('items:pick-import', { sectionId }))
   }
 
   async drop(sectionId: string, paths: string[]): Promise<void> {
-    await this.finish(sectionId, await window.harness.invoke('items:import', { sectionId, paths }))
+    await this.finish(sectionId, await window.arc.invoke('items:import', { sectionId, paths }))
   }
 
   private ask(sectionName: string, name: string): Promise<ConflictAnswer> {
@@ -67,7 +67,7 @@ class ImportFlow {
     }
 
     if (retryPaths.length > 0) {
-      const second = await window.harness.invoke('items:import', {
+      const second = await window.arc.invoke('items:import', {
         sectionId,
         paths: retryPaths,
         onConflict

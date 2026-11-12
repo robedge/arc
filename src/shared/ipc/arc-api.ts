@@ -1,8 +1,8 @@
 import type { Result } from '../errors'
 import type { Channel, ChannelRequest, ChannelResponse, IpcEventName, IpcEvents } from './contract'
 
-/** The shape of `window.harness`, exposed by the preload. */
-export interface HarnessApi {
+/** The shape of `window.arc`, exposed by the preload. */
+export interface ArcApi {
   invoke<C extends Channel>(
     channel: C,
     request: ChannelRequest<C>

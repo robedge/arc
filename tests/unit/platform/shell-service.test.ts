@@ -67,7 +67,7 @@ describe('openLink', () => {
       title: 'Orders'
     })
     // Prime the cache with the valid url, then edit the file behind the app's back.
-    await env.service.list(linksId)
+    await env.service.reconcileAndList(linksId)
     await writeFile(
       join(env.root, 'Links', 'Orders.md'),
       '---\nurl: "file:///etc/passwd"\ntitle: "Orders"\n---\n'

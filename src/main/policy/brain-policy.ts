@@ -7,9 +7,9 @@ import {
   commandWords,
   gitSubcommand,
   hasAny,
-  none,
+  mostSevere,
   parseArgs,
-  pick
+  unclassified
 } from './classify'
 import type { Classification, ClassifyContext } from './classify'
 import type { NormalizedAction } from './normalized-action'
@@ -284,7 +284,7 @@ function describeCommand(words: readonly ShellWord[]): string {
 }
 
 function changesCheckout(reason: string): Classification {
-  return pick([{ category: PolicyCategory.ChangesCheckout, reason }])
+  return mostSevere([{ category: PolicyCategory.ChangesCheckout, reason }])
 }
 
 /**
@@ -309,7 +309,7 @@ export function classifyBrainBash(command: string, ctx: ClassifyContext): Classi
       )
     }
   }
-  return none()
+  return unclassified()
 }
 
 /** What the brain may do with an action: refuse it outright, or let the usual escalation decide. */
@@ -340,8 +340,8 @@ export function classifyBrainAction(
       return {
         classification:
           action.readOnly === 'yes'
-            ? none()
-            : pick([
+            ? unclassified()
+            : mostSevere([
                 {
                   category: PolicyCategory.McpWrite,
                   reason: `${action.server} ${action.tool} may change something, so this needs you.`

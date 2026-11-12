@@ -1,13 +1,10 @@
 import { readFile, stat } from 'node:fs/promises'
 import type { KnowledgeStorageRepo } from '../db/repositories/knowledge-storage-repo'
 import type { PendingOp } from '../db/repositories/knowledge-storage-repo'
-import {
-  defaultFs,
-  groupDirs,
-  rollbackManifest,
-  undoStorageDirs
-} from './knowledge-storage-service'
-import type { FsOps, StorageManifest } from './knowledge-storage-service'
+import { defaultFs } from './fs-ops'
+import type { FsOps } from './fs-ops'
+import { groupDirs, rollbackManifest, undoStorageDirs } from './knowledge-storage-service'
+import type { StorageManifest } from './knowledge-storage-service'
 
 /**
  * Startup recovery for interrupted storage operations. Runs once, before any window loads data.

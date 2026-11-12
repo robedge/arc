@@ -23,8 +23,8 @@ async function saveConflictCopy(): Promise<void> {
  * Returns the unsubscribe function.
  */
 export function registerCloseFlush(): () => void {
-  return window.harness.on('app:before-close', () => {
+  return window.arc.on('app:before-close', () => {
     const save = itemDraft.hasConflict ? saveConflictCopy() : itemDraft.flush()
-    void save.catch(() => {}).finally(() => void window.harness.invoke('app:close-ready', {}))
+    void save.catch(() => {}).finally(() => void window.arc.invoke('app:close-ready', {}))
   })
 }

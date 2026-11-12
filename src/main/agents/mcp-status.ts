@@ -1,14 +1,11 @@
 import type { McpServerTools, McpToolInfo } from './agent-adapter'
+import { isRecord } from '../util/json'
 
 /**
  * What a running agent says about its MCP servers, reduced to what Arc decides on: which tools
  * are read-only and which are destructive (spec 007 section 2.6). Nothing else of the answer is kept:
  * server entries can carry URLs and tokens.
  */
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 /**
  * Claude's `control_request` `mcp_status` answer (spike S8, checked for `destructive`):

@@ -7,8 +7,7 @@ import {
   type CursorApprovalHandler,
   type CursorApprovalRequest
 } from '../agents/cursor/cursor-types'
-import { ACTION_WITHDRAWN, describeAction } from './attention-coordinator'
-import type { RequestAction } from './codex-approvals'
+import { ACTION_WITHDRAWN, describeAction, type RequestAction } from './attention-coordinator'
 import { toStoredCall, type NormalizedAction } from '../policy/normalized-action'
 
 type McpAction = Extract<NormalizedAction, { kind: 'mcp' }>

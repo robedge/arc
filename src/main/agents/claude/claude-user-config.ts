@@ -1,6 +1,6 @@
-import { readFile } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
-import type { PluginViewSource } from '../plugins/plugin-view'
+import type { PluginViewSource } from '../../plugins/plugin-view'
+import { isRecord, readJsonFile, type ConfigLog } from '../../util/json'
 
 /**
  * Read-only readers for the Claude Code configuration Arc agents load (spec 007 section 2.6): the
@@ -11,22 +11,6 @@ import type { PluginViewSource } from '../plugins/plugin-view'
 
 /** One MCP server entry exactly as the user wrote it (`command`/`args`/`env`, or `type`/`url`/`headers`). */
 export type McpServerSpec = Record<string, unknown>
-
-export interface ConfigLog {
-  warn: (message: string, ...rest: unknown[]) => void
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-async function readJson(path: string): Promise<unknown> {
-  try {
-    return JSON.parse(await readFile(path, 'utf8')) as unknown
-  } catch {
-    return undefined
-  }
-}
 
 /** Only the entries that are objects: a broken entry is left out instead of failing the agent's start. */
 function serversOf(value: unknown): Record<string, McpServerSpec> {
@@ -39,8 +23,11 @@ function serversOf(value: unknown): Record<string, McpServerSpec> {
 }
 
 /** `~/.claude/settings.json`: the `hooks` object and nothing else (never `permissions`, `env` or any other key). */
-export async function readUserHooks(home: string): Promise<Record<string, unknown> | undefined> {
-  const settings = await readJson(join(home, '.claude', 'settings.json'))
+export async function readUserHooks(
+  home: string,
+  log?: ConfigLog
+): Promise<Record<string, unknown> | undefined> {
+  const settings = await readJsonFile(join(home, '.claude', 'settings.json'), log)
   if (!isRecord(settings)) return undefined
   const hooks = settings['hooks']
   return isRecord(hooks) && Object.keys(hooks).length > 0 ? hooks : undefined
@@ -64,9 +51,10 @@ export interface UserMcpServers {
 /** `~/.claude.json`: user-scope servers and the local-scope servers of the given repositories. */
 export async function readUserMcpServers(
   home: string,
-  repoPaths: readonly string[]
+  repoPaths: readonly string[],
+  log?: ConfigLog
 ): Promise<UserMcpServers> {
-  const file = await readJson(join(home, '.claude.json'))
+  const file = await readJsonFile(join(home, '.claude.json'), log)
   const result: UserMcpServers = { user: {}, local: new Map() }
   if (!isRecord(file)) return result
   result.user = serversOf(file['mcpServers'])
@@ -83,8 +71,11 @@ export async function readUserMcpServers(
 }
 
 /** A repository's `.mcp.json`. Both `{ mcpServers: {...} }` and a bare `{ name: {...} }` are accepted. */
-export async function readRepoMcpServers(repoPath: string): Promise<Record<string, McpServerSpec>> {
-  return serversFromMcpFile(await readJson(join(repoPath, '.mcp.json')))
+export async function readRepoMcpServers(
+  repoPath: string,
+  log?: ConfigLog
+): Promise<Record<string, McpServerSpec>> {
+  return serversFromMcpFile(await readJsonFile(join(repoPath, '.mcp.json'), log))
 }
 
 function serversFromMcpFile(file: unknown): Record<string, McpServerSpec> {
@@ -125,16 +116,17 @@ function expandPluginVars(value: unknown, root: string): { value: unknown; unres
  * `plugin.json` (inline, or a path / list of paths to files in the plugin).
  */
 async function pluginServerSets(
-  plugin: PluginViewSource
+  plugin: PluginViewSource,
+  log?: ConfigLog
 ): Promise<Record<string, McpServerSpec>[]> {
-  const sets = [serversFromMcpFile(await readJson(join(plugin.installPath, '.mcp.json')))]
+  const sets = [serversFromMcpFile(await readJsonFile(join(plugin.installPath, '.mcp.json'), log))]
   const declared = plugin.manifest['mcpServers']
   const paths = typeof declared === 'string' ? [declared] : Array.isArray(declared) ? declared : []
   if (isRecord(declared)) sets.push(serversOf(declared))
   for (const path of paths) {
     if (typeof path !== 'string') continue
     const file = isAbsolute(path) ? path : resolve(plugin.installPath, path)
-    sets.push(serversFromMcpFile(await readJson(file)))
+    sets.push(serversFromMcpFile(await readJsonFile(file, log)))
   }
   return sets
 }
@@ -149,7 +141,7 @@ export async function readPluginMcpServers(
   log?: ConfigLog
 ): Promise<Record<string, McpServerSpec>> {
   const out: Record<string, McpServerSpec> = {}
-  for (const set of await pluginServerSets(plugin)) {
+  for (const set of await pluginServerSets(plugin, log)) {
     for (const [name, spec] of Object.entries(set)) {
       const { value, unresolved } = expandPluginVars(spec, plugin.installPath)
       if (unresolved) {

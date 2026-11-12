@@ -27,6 +27,8 @@ export interface GroupServiceDeps {
   stopWatcher?: (groupId: string) => Promise<void>
   /** Stops the group's session processes and removes their folders before the rows cascade away. */
   removeSessions?: (groupId: string) => Promise<void>
+  /** Receives the underlying fs error whenever one is reported to the caller as IO_FAILED. */
+  log?: { warn: (...args: unknown[]) => void }
   now?: () => number
   newId?: () => string
 }
@@ -63,6 +65,7 @@ export class GroupService {
   private readonly withStorageLock: NonNullable<GroupServiceDeps['withStorageLock']>
   private readonly stopWatcher?: GroupServiceDeps['stopWatcher']
   private readonly removeSessions?: GroupServiceDeps['removeSessions']
+  private readonly log: { warn: (...args: unknown[]) => void }
   private readonly now: () => number
   private readonly newId: () => string
 
@@ -74,6 +77,7 @@ export class GroupService {
     this.withStorageLock = deps.withStorageLock ?? ((_id, task) => task())
     this.stopWatcher = deps.stopWatcher
     this.removeSessions = deps.removeSessions
+    this.log = deps.log ?? { warn: () => undefined }
     this.now = deps.now ?? Date.now
     this.newId = deps.newId ?? (() => ulid(this.now()))
   }
@@ -132,7 +136,8 @@ export class GroupService {
       for (const def of BUILT_IN_SECTIONS) {
         if (def.folder) await mkdir(join(root, def.folder), { recursive: true })
       }
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`could not create the knowledge folders for group ${row.id}`, error)
       this.repo.delete(row.id)
       throw new AppErrorException('IO_FAILED')
     }
@@ -142,7 +147,7 @@ export class GroupService {
   rename(groupId: string, rawName: string): Group {
     const name = this.validName(rawName)
     const existing = this.repo.getById(groupId)
-    if (!existing) throw new AppErrorException('INTERNAL')
+    if (!existing) throw new AppErrorException('GROUP_NOT_FOUND')
 
     const nameKey = groupNameKey(name)
     const clash = this.repo.getByNameKey(nameKey)
@@ -165,7 +170,7 @@ export class GroupService {
    */
   async delete(groupId: string, exportTo?: string): Promise<void> {
     const existing = this.repo.getById(groupId)
-    if (!existing) throw new AppErrorException('INTERNAL')
+    if (!existing) throw new AppErrorException('GROUP_NOT_FOUND')
     if (exportTo !== undefined) {
       if (!this.exportKnowledge) throw new AppErrorException('INTERNAL')
       await this.exportKnowledge(groupId, exportTo)
@@ -183,6 +188,7 @@ export class GroupService {
         await removeAppGroupDir(this.appDataDir, groupId)
       } catch (error: unknown) {
         if (error instanceof AppErrorException) throw error
+        this.log.warn(`could not remove the folder of group ${groupId}`, error)
         throw new AppErrorException('IO_FAILED')
       }
     })

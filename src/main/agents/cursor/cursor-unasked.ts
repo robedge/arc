@@ -1,5 +1,7 @@
+import type { CursorBlockedOutcome } from '@shared/types/session'
 import { PolicyCategory, classifyAction, type ClassifyContext } from '../../policy/classify'
 import type { CursorToolCall } from './cursor-types'
+import { nonBlankString } from '../../util/json'
 
 /**
  * Tool calls that completed without a permission request (tech spec 2.4, "Actions that would run
@@ -8,8 +10,6 @@ import type { CursorToolCall } from './cursor-types'
  * M1). Each such call is classified with the same classifier the approvals use, so the session can
  * say what was stopped and what got through.
  */
-
-export type CursorBlockedOutcome = 'blocked' | 'ran-unasked' | 'outside-edit'
 
 export interface CursorBlockedNote {
   outcome: CursorBlockedOutcome
@@ -29,10 +29,6 @@ export const BLOCKED_WITHIN_MS = 2000
 const ACTION_MAX = 160
 const EDIT_KINDS = new Set(['edit', 'delete', 'move'])
 
-function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() !== '' ? value : undefined
-}
-
 function short(text: string): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
   return oneLine.length > ACTION_MAX ? `${oneLine.slice(0, ACTION_MAX - 1)}…` : oneLine
@@ -40,7 +36,9 @@ function short(text: string): string {
 
 function commandOf(call: CursorToolCall): string | undefined {
   return (
-    str(call.rawInput['command']) ?? str(/^`([\s\S]+)`$/.exec(call.title.trim())?.[1]) ?? undefined
+    nonBlankString(call.rawInput['command']) ??
+    nonBlankString(/^`([\s\S]+)`$/.exec(call.title.trim())?.[1]) ??
+    undefined
   )
 }
 
@@ -48,14 +46,14 @@ function commandOf(call: CursorToolCall): string | undefined {
 function editPathsOf(call: CursorToolCall): string[] {
   const paths = [...call.locations]
   for (const key of ['path', 'filePath', 'file_path']) {
-    const value = str(call.rawInput[key])
+    const value = nonBlankString(call.rawInput[key])
     if (value !== undefined) paths.push(value)
   }
   for (const item of call.content) {
     if (typeof item === 'object' && item !== null) {
       const entry = item as Record<string, unknown>
       if (entry['type'] === 'diff') {
-        const path = str(entry['path'])
+        const path = nonBlankString(entry['path'])
         if (path !== undefined) paths.push(path)
       }
     }

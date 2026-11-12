@@ -10,7 +10,7 @@ import {
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { CodexPersonalServer, CodexStartOptions } from '../../../src/main/agents/agent-adapter'
-import { pluginServerName } from '../../../src/main/personal/claude-user-config'
+import { pluginServerName } from '../../../src/main/agents/claude/claude-user-config'
 import { applyCodexMcp, PersonalConfigService } from '../../../src/main/personal/personal-config'
 import { PluginViewService, type PluginViewSource } from '../../../src/main/plugins/plugin-view'
 import { useTempDir } from '../helpers/temp-dir'

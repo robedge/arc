@@ -10,7 +10,7 @@ import type {
   SuggestionKind,
   UsageReport
 } from '../../src/shared/types/usage'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const { openSession } = vi.hoisted(() => ({ openSession: vi.fn() }))
 vi.mock('../../src/renderer/src/lib/navigate-session', () => ({ openSession }))
@@ -46,11 +46,11 @@ const snap = (suggestions: Suggestion[]): SessionUsage => ({
   updatedAt: 1
 })
 
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 beforeEach(() => {
   usage.reset()
   openSession.mockReset()
-  invoke = mockHarness(() => ({ ok: true, data: undefined }))
+  invoke = mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(cleanup)
 
@@ -110,7 +110,7 @@ it('store dismiss removes from the panel and the report and calls IPC', async ()
 })
 
 it('store dismiss restores everywhere when the call fails', async () => {
-  invoke = mockHarness(
+  invoke = mockArc(
     () =>
       ({
         ok: false,
@@ -131,7 +131,7 @@ it('the Usage page lists suggestions newest first, or a muted line when none', a
     ...base,
     suggestions: [sug('old', 'repeated-work', 1), sug('new', 'long-running', 9)]
   }
-  mockHarness(() => ({ ok: true, data: withItems }))
+  mockArc(() => ({ ok: true, data: withItems }))
   const { default: UsageView } =
     await import('../../src/renderer/src/lib/components/usage/UsageView.svelte')
   render(UsageView)
@@ -142,7 +142,7 @@ it('the Usage page lists suggestions newest first, or a muted line when none', a
   expect(order).toEqual(['long-running', 'repeated-work'])
   cleanup()
   usage.reset()
-  mockHarness(() => ({ ok: true, data: { ...base, suggestions: [] } }))
+  mockArc(() => ({ ok: true, data: { ...base, suggestions: [] } }))
   render(UsageView)
   await waitFor(() => expect(screen.getByText('No suggestions in this period.')).toBeTruthy())
 })

@@ -18,7 +18,6 @@ class PluginsStore {
   /** Counts finished changes so a form can clear itself when its install succeeds. */
   done = $state<{ seq: number; kind: PluginKind | null }>({ seq: 0, kind: null })
   private generation = 0
-  private opId: string | null = null
 
   /** Starts a change and returns once main accepted it; progress then arrives as `plugins:progress`. */
   async run(
@@ -29,48 +28,37 @@ class PluginsStore {
     if (this.op) return
     this.failure = null
     this.op = { kind, target }
-    this.opId = null
-    try {
-      const result = await start()
-      if (result.ok) {
-        if (this.op) this.opId = result.data.opId
-        return
-      }
-      this.op = null
-      if (result.error.code === 'PLUGIN_BUSY') toasts.show(messageFor(result.error), 'warning')
-      else this.failure = result.error.details?.reason ?? messageFor(result.error)
-    } catch {
-      this.op = null
-      this.failure = 'The plugin change failed.'
-    }
+    const result = await start()
+    if (result.ok) return
+    this.op = null
+    if (result.error.code === 'PLUGIN_BUSY') toasts.show(messageFor(result.error), 'warning')
+    else this.failure = result.error.details?.reason ?? messageFor(result.error)
   }
 
   install(name: string, marketplace?: string): Promise<void> {
     const request = marketplace ? { name, marketplace } : { name }
-    return this.run('install', name, () => window.harness.invoke('plugins:install', request))
+    return this.run('install', name, () => window.arc.invoke('plugins:install', request))
   }
 
   update(id: string): Promise<void> {
-    return this.run('update', id, () => window.harness.invoke('plugins:update', { id }))
+    return this.run('update', id, () => window.arc.invoke('plugins:update', { id }))
   }
 
   uninstall(id: string): Promise<void> {
-    return this.run('uninstall', id, () => window.harness.invoke('plugins:uninstall', { id }))
+    return this.run('uninstall', id, () => window.arc.invoke('plugins:uninstall', { id }))
   }
 
   checkUpdates(): Promise<void> {
-    return this.run('check-updates', '', () => window.harness.invoke('plugins:check-updates', {}))
+    return this.run('check-updates', '', () => window.arc.invoke('plugins:check-updates', {}))
   }
 
   /** `plugins:progress`. A change started elsewhere (another window) is adopted too, so actions stay disabled. */
   handleProgress(event: PluginProgress): void {
     if (event.state === 'running') {
       if (!this.op) this.op = { kind: event.kind, target: event.target }
-      this.opId = event.opId
       return
     }
     this.op = null
-    this.opId = null
     if (event.state === 'done') {
       this.done = { seq: this.done.seq + 1, kind: event.kind }
     } else {
@@ -82,24 +70,11 @@ class PluginsStore {
   async load(silent = false): Promise<void> {
     const generation = ++this.generation
     if (!silent || this.status !== 'ready') this.status = 'loading'
-    let status: PluginsStatus = 'error'
-    let rows: PluginRow[] = []
-    let reason: string | null = null
-    try {
-      const result = await window.harness.invoke('plugins:list', {})
-      if (result.ok && Array.isArray(result.data)) {
-        status = 'ready'
-        rows = result.data
-      } else if (!result.ok) {
-        reason = result.error.details?.reason ?? null
-      }
-    } catch {
-      // Shown as the generic error below.
-    }
+    const result = await window.arc.invoke('plugins:list', {})
     if (generation !== this.generation) return
-    this.rows = rows
-    this.reason = reason
-    this.status = status
+    this.rows = result.ok ? result.data : []
+    this.reason = result.ok ? null : (result.error.details?.reason ?? null)
+    this.status = result.ok ? 'ready' : 'error'
   }
 
   reset(): void {
@@ -108,7 +83,6 @@ class PluginsStore {
     this.rows = []
     this.reason = null
     this.op = null
-    this.opId = null
     this.failure = null
   }
 }

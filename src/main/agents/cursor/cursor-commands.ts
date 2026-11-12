@@ -3,7 +3,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { commandId, type CommandInfo } from '../../../shared/types/commands'
 import type { ProviderStatusMap } from '../../../shared/types/provider'
-import { expandCodexPrompt, parsePromptFile } from '../codex/codex-commands'
+import { expandPromptBody, parsePromptFile } from '../prompt-files'
 import type { CursorCommand } from './cursor-types'
 
 /**
@@ -203,7 +203,7 @@ export class CursorCommands implements CursorCommandRunner {
         message: `Arc could not read ${file.path} to run /${name}, so the worker was not started.`
       }
     }
-    const expanded = expandCodexPrompt(body, args)
+    const expanded = expandPromptBody(body, args)
     if (!expanded.ok) {
       const hint = file.argumentHint !== undefined ? ` (${file.argumentHint})` : ''
       return {

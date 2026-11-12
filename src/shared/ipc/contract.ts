@@ -63,7 +63,7 @@ export const channelSchemas = {
   // Shape only; GroupService owns the name rules so callers get specific error codes.
   'groups:create': z.object({ name: z.string() }).strict(),
   'groups:rename': z.object({ groupId: z.string(), name: z.string() }).strict(),
-  // `exportTo` is a token from `storage:pickExportFolder`: the knowledge is exported and verified first; if that fails nothing is deleted.
+  // `exportTo` is a token from `storage:pick-export-folder`: the knowledge is exported and verified first; if that fails nothing is deleted.
   'groups:delete': z.object({ groupId: z.string(), exportTo: z.string().optional() }).strict(),
   // The renderer calls this when the user selects a group; drives availability checks.
   'groups:open': z.object({ groupId: z.string() }).strict(),
@@ -87,9 +87,9 @@ export const channelSchemas = {
     .object({ itemId: z.string(), content: z.string(), baseRevision: z.string() })
     .strict(),
   'items:rename': z.object({ itemId: z.string(), title: z.string() }).strict(),
-  'items:setDescription': z.object({ itemId: z.string(), description: z.string() }).strict(),
+  'items:set-description': z.object({ itemId: z.string(), description: z.string() }).strict(),
   'items:delete': z.object({ itemId: z.string() }).strict(),
-  'items:pickImport': z.object({ sectionId: z.string() }).strict(),
+  'items:pick-import': z.object({ sectionId: z.string() }).strict(),
   'items:import': z
     .object({
       sectionId: z.string(),
@@ -107,8 +107,8 @@ export const channelSchemas = {
       description: z.string().optional()
     })
     .strict(),
-  'shell:openLink': z.object({ itemId: z.string() }).strict(),
-  'shell:openUrl': z.object({ url: z.string() }).strict(),
+  'shell:open-link': z.object({ itemId: z.string() }).strict(),
+  'shell:open-url': z.object({ url: z.string() }).strict(),
   // Ids only: main resolves the path itself (itemId > sectionId > the group's knowledge root).
   'shell:reveal': z
     .object({
@@ -119,8 +119,8 @@ export const channelSchemas = {
     .strict(),
   'storage:get': z.object({ groupId: z.string() }).strict(),
   // Opens the native folder picker in main and preflights the choice; the path never comes from the renderer.
-  'storage:pickFolder': z.object({ groupId: z.string() }).strict(),
-  // `token` is the one returned by `storage:pickFolder` for this group.
+  'storage:pick-folder': z.object({ groupId: z.string() }).strict(),
+  // `token` is the one returned by `storage:pick-folder` for this group.
   'storage:link': z
     .object({
       groupId: z.string(),
@@ -136,9 +136,9 @@ export const channelSchemas = {
   // Opens the native folder picker in main; relinks the group to the chosen folder.
   'storage:locate': z.object({ groupId: z.string() }).strict(),
   // The linked folder is missing: switch to app storage (restores kept-aside knowledge, else starts empty).
-  'storage:useAppStorage': z.object({ groupId: z.string() }).strict(),
+  'storage:use-app-storage': z.object({ groupId: z.string() }).strict(),
   // Opens the native folder picker in main for an export destination; the path never comes from the renderer.
-  'storage:pickExportFolder': z.object({ groupId: z.string() }).strict(),
+  'storage:pick-export-folder': z.object({ groupId: z.string() }).strict(),
   // Copies the whole knowledge root (including .arc/) to `<chosen>/<group name>-knowledge/` and verifies it.
   'storage:export': z.object({ groupId: z.string(), token: z.string() }).strict(),
   'providers:get': z.object({}).strict(),
@@ -270,7 +270,8 @@ export const channelSchemas = {
     .strict(),
   'sessions:rename': z.object({ sessionId: z.string(), name: z.string() }).strict(),
   // Any subset; a `brainModel` change applies from the brain's next turn, `workers` from the next worker.
-  // `brainModel` must be a Claude model until the brain can run on Codex (Slice 4); a Codex one is refused.
+  // `brainModel` must be a model its provider offers (a Claude alias or reported id, a listed Codex or
+  // Cursor model); anything else is refused with `VALIDATION_FAILED`.
   'sessions:set-config': z
     .object({
       sessionId: z.string(),
@@ -327,10 +328,9 @@ export const channelSchemas = {
   'sessions:dismiss-prompt': z
     .object({ sessionId: z.string(), messageId: z.number().int() })
     .strict(),
-  'sessions:page': z
+  'sessions:page-messages': z
     .object({
       sessionId: z.string(),
-      kind: z.enum(['messages', 'events']),
       beforeId: z.number().int(),
       limit: z.number().int().min(1).max(200)
     })
@@ -360,21 +360,21 @@ export interface ChannelResponses {
   'items:create': ItemSummary
   'items:save': { revision: string }
   'items:rename': ItemSummary
-  'items:setDescription': void
+  'items:set-description': void
   'items:delete': void
-  'items:pickImport': ImportReport
+  'items:pick-import': ImportReport
   'items:import': ImportReport
   'links:upsert': ItemSummary
-  'shell:openLink': void
-  'shell:openUrl': void
+  'shell:open-link': void
+  'shell:open-url': void
   'shell:reveal': void
   'storage:get': StorageState
-  'storage:pickFolder': StoragePickResult
+  'storage:pick-folder': StoragePickResult
   'storage:link': StorageState
   'storage:unlink': StorageState
   'storage:locate': StorageLocateResult
-  'storage:useAppStorage': StorageState
-  'storage:pickExportFolder': StorageExportPickResult
+  'storage:use-app-storage': StorageState
+  'storage:pick-export-folder': StorageExportPickResult
   'storage:export': StorageExportResult
   'providers:get': ProviderStatusMap
   'providers:check': ProviderStatusMap
@@ -395,10 +395,11 @@ export interface ChannelResponses {
   'commands:list': CommandInfo[]
   /** Rebuilds the plugin view and probes again, ignoring the cache. Same errors as `commands:list`. */
   'commands:refresh': CommandInfo[]
-  /** The user's installed plugins (user scope) with description, counts and flags. Error `PLUGIN_FAILED` (`details.reason` is the CLI's message). */
+  /** What Claude loads for the user: plugins, user-level servers and tools, with each item's on/off state. */
   'agent-load:get': LoadCatalogueData
   'agent-load:codex': CodexLoadData
   'agent-load:cursor': CursorLoadData
+  /** The user's installed plugins (user scope) with description, counts and flags. Error `PLUGIN_FAILED` (`details.reason` is the CLI's message). */
   'plugins:list': PluginRow[]
   /** Starts `claude plugin install`; progress arrives as `plugins:progress`. Error `PLUGIN_BUSY` while another change runs. */
   'plugins:install': { opId: string }
@@ -432,7 +433,7 @@ export interface ChannelResponses {
   'review:send-notes': { messageId: number; count: number }
   'sessions:resolve-dirty': ResolveDirtyResult
   'sessions:rename': SessionSummary
-  /** Error `VALIDATION_FAILED` for a model that is neither an alias (opus, sonnet, haiku), 'auto' (workers) nor a model id a run reported. Pushes `session:header`. */
+  /** Error `VALIDATION_FAILED` for a model its provider does not offer (not a Claude alias, 'auto' for workers, a reported model id, a listed Codex or Cursor model). Pushes `session:header`. */
   'sessions:set-config': SessionHeader
   'sessions:remove-allow-rule': SessionHeader
   /** Error `CLI_UNAVAILABLE` (nothing persisted) when Claude Code is missing or signed out; the renderer keeps the draft. */
@@ -468,11 +469,11 @@ export interface ChannelResponses {
    * the brain is told. Error `VALIDATION_FAILED` when the worker is not eligible (queued, finished,
    * a resolver, or already controlled).
    */
-  'workers:step-in': { ok: true }
+  'workers:step-in': void
   /** The worker carries on with its task by itself. Error `VALIDATION_FAILED` when the user is not in control. */
-  'workers:hand-back': { ok: true }
+  'workers:hand-back': void
   /** One line to the worker, verbatim (1 to 20,000 characters). Error `VALIDATION_FAILED` when the user is not in control or the worker has no process. */
-  'workers:send-input': { ok: true }
+  'workers:send-input': void
   /** Escape: stops the current reply and nothing else. */
   'workers:interrupt': { outcome: 'idle' | 'acked' | 'sigint' | 'killed' }
   /**
@@ -495,8 +496,8 @@ export interface ChannelResponses {
   'workers:continue': void
   /** Marks a prompt message `dismissed` (Not now) and pushes the updated `session:message`. Error `VALIDATION_FAILED` for an unknown or already answered prompt. */
   'sessions:dismiss-prompt': void
-  /** Up to `limit` rows older than `beforeId`, ascending; the kind picks which list. */
-  'sessions:page': SessionMessage[] | SessionEventEntry[]
+  /** Up to `limit` messages older than `beforeId`, ascending. Error `SESSION_NOT_FOUND`. */
+  'sessions:page-messages': SessionMessage[]
 }
 
 export type Channel = keyof typeof channelSchemas
@@ -622,32 +623,35 @@ export interface KnowledgeChangedPayload {
 }
 
 export type IpcEventName = keyof IpcEvents
-export const eventNames: readonly IpcEventName[] = [
-  'availability:changed',
-  'app:before-close',
-  'knowledge:changed',
-  'storage:progress',
-  'providers:changed',
-  'settings:changed',
-  'commands:changed',
-  'plugins:progress',
-  'plugins:changed',
-  'session:brain-delta',
-  'session:message',
-  'session:event-logged',
-  'session:brain-state',
-  'session:summary',
-  'session:header',
-  'session:dirty-question',
-  'session:plan',
-  'session:worker-changed',
-  'usage:session-changed',
-  'usage:changed',
-  'plan:changed',
-  'session:review-changed',
-  'worker:terminal',
-  'session:attention',
-  'session:open-attention'
-]
+/** Every push event; `satisfies` makes the compiler reject a missing or unknown name. */
+const eventFlags = {
+  'availability:changed': true,
+  'app:before-close': true,
+  'knowledge:changed': true,
+  'storage:progress': true,
+  'providers:changed': true,
+  'settings:changed': true,
+  'commands:changed': true,
+  'plugins:progress': true,
+  'plugins:changed': true,
+  'session:brain-delta': true,
+  'session:message': true,
+  'session:event-logged': true,
+  'session:brain-state': true,
+  'session:summary': true,
+  'session:header': true,
+  'session:dirty-question': true,
+  'session:plan': true,
+  'session:worker-changed': true,
+  'usage:session-changed': true,
+  'usage:changed': true,
+  'plan:changed': true,
+  'session:review-changed': true,
+  'worker:terminal': true,
+  'session:attention': true,
+  'session:open-attention': true
+} satisfies Record<IpcEventName, true>
+
+export const eventNames = Object.keys(eventFlags) as IpcEventName[]
 
 export const channelNames = Object.keys(channelSchemas) as Channel[]

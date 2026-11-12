@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { RESOLVER_MARKER, commandName, workerLabel } from '../../../src/main/sessions/worker-label'
+import { RESOLVER_MARKER } from '../../../src/main/db/repositories/workers-repo'
+import { commandName, workerLabel } from '../../../src/main/sessions/worker-label'
 
 const row = { number: 2, slug: 'api-retry', dependsOnJson: '[]' }
 

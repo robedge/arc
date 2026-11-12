@@ -8,7 +8,7 @@ import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import { plugins } from '../../src/renderer/src/lib/stores/plugins.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { PluginRow as Row } from '../../src/shared/types/plugins'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const row = (over: Partial<Row> = {}): Row => ({
   id: 'superpowers@market',
@@ -28,7 +28,7 @@ let list: () => unknown
 
 beforeEach(() => {
   list = () => ({ ok: true, data: [row()] })
-  mockHarness((channel) =>
+  mockArc((channel) =>
     channel === 'plugins:list'
       ? (list() as never)
       : channel === 'plan:get'

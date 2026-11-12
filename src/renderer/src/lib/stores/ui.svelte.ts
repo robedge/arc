@@ -42,7 +42,7 @@ class UiStore {
     this.selectedSectionId = null
     this.selectedItemId = null
     void groupDetail.load(id)
-    if (id !== null) void window.harness.invoke('groups:open', { groupId: id })
+    if (id !== null) void window.arc.invoke('groups:open', { groupId: id })
   }
 
   selectSection(id: string | null): void {

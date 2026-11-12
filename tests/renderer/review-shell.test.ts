@@ -8,7 +8,7 @@ import { activeSession } from '../../src/renderer/src/lib/stores/active-session.
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import type { ReviewSnapshot } from '../../src/shared/types/review'
 import type { SessionHeader as Header, SessionSnapshot } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -16,7 +16,7 @@ const header: Header = {
   name: 'Fix sync',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
+  workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
   allowRules: [],
@@ -112,7 +112,7 @@ const reviewData: ReviewSnapshot = {
 beforeEach(() => {
   review.reset()
   activeSession.close()
-  mockHarness((channel) => {
+  mockArc((channel) => {
     if (channel === 'review:get') return { ok: true, data: reviewData }
     return { ok: true, data: {} }
   })

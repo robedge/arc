@@ -2,7 +2,7 @@ import { isRegularFileInside } from '../knowledge/knowledge-index'
 import { binaryMimeOf, importClassOf } from '../knowledge/import-types'
 import { resolveInRoot } from '../knowledge/knowledge-paths'
 
-export const KNOWLEDGE_SCHEME = 'harness-knowledge'
+export const KNOWLEDGE_SCHEME = 'arc-knowledge'
 
 const ID_SHAPE = /^[0-9A-Z]{26}$/
 const SVG_CSP = "sandbox; default-src 'none'; style-src 'unsafe-inline'"
@@ -22,7 +22,7 @@ export interface KnowledgeResponse {
 const notFound = (status: 404 | 405 = 404): KnowledgeResponse => ({ status, headers: {} })
 
 /**
- * Pure core of the `harness-knowledge://<groupId>/<itemId>` handler: decides the status, headers
+ * Pure core of the `arc-knowledge://<groupId>/<itemId>` handler: decides the status, headers
  * and which file to read. GET only; the item must exist in the database and belong to the group;
  * the path is proven inside the group's root; only binary allowlist types are ever served.
  */

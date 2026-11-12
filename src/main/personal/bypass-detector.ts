@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { loadKey, type LoadRole } from '../../shared/types/agent-load'
@@ -11,7 +10,8 @@ import {
 import { readCursorUserConfig } from '../agents/cursor/cursor-user-config'
 import type { PluginViewSource } from '../plugins/plugin-view'
 import { NOTHING_OFF, type OffFor } from './load-selection'
-import { hookEventsOf, isRecord, readUserHooks, type ConfigLog } from './claude-user-config'
+import { hookEventsOf, readUserHooks } from '../agents/claude/claude-user-config'
+import { isRecord, readJsonFile, type ConfigLog } from '../util/json'
 
 /**
  * Finds what can skip Arc's approvals (spec 007 section 2.6, tech spec 2.3). Arc allows it and says
@@ -46,19 +46,11 @@ export interface BypassDetectorDeps {
   log?: ConfigLog
 }
 
-async function readJson(path: string): Promise<unknown> {
-  try {
-    return JSON.parse(await readFile(path, 'utf8')) as unknown
-  } catch {
-    return undefined
-  }
-}
-
 /** A plugin's hook events: `hooks/hooks.json` and the manifest's `hooks` (inline, or the path(s) of file(s)). */
-async function pluginHookEvents(plugin: PluginViewSource): Promise<string[]> {
+async function pluginHookEvents(plugin: PluginViewSource, log?: ConfigLog): Promise<string[]> {
   const events: string[] = []
   const fromFile = async (path: string): Promise<void> => {
-    const file = await readJson(path)
+    const file = await readJsonFile(path, log)
     if (isRecord(file)) events.push(...hookEventsOf(isRecord(file['hooks']) ? file['hooks'] : file))
   }
   await fromFile(join(plugin.installPath, 'hooks', 'hooks.json'))
@@ -99,11 +91,11 @@ export class BypassDetector {
     const off = (this.deps.off ?? NOTHING_OFF)(role)
     try {
       const home = (this.deps.getHome ?? homedir)()
-      for (const event of hookEventsOf(await readUserHooks(home))) {
+      for (const event of hookEventsOf(await readUserHooks(home, this.deps.log))) {
         if (!off.has(loadKey.hook(event))) found.add(event)
       }
       for (const plugin of (await this.deps.plugins?.sources(repoPaths, role)) ?? []) {
-        for (const event of await pluginHookEvents(plugin)) found.add(event)
+        for (const event of await pluginHookEvents(plugin, this.deps.log)) found.add(event)
       }
     } catch (error: unknown) {
       this.deps.log?.warn('could not read the Claude hooks for the approval-bypass check', error)
@@ -113,7 +105,7 @@ export class BypassDetector {
 
   private async cursorSetup(repoPaths: readonly string[]): Promise<CursorBypass> {
     try {
-      return await readCursorUserConfig((this.deps.getHome ?? homedir)(), repoPaths)
+      return await readCursorUserConfig((this.deps.getHome ?? homedir)(), repoPaths, this.deps.log)
     } catch (error: unknown) {
       this.deps.log?.warn('could not read the Cursor settings for the approval-bypass check', error)
       return { allowEntries: [], hookEvents: [] }

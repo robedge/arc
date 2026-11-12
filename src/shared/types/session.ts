@@ -15,6 +15,10 @@ export type BrainState = 'idle' | 'thinking' | 'waiting'
 /** Name every session has until the brain's title (or the fallback) renames it. */
 export const PLACEHOLDER_SESSION_NAME = 'New session'
 
+/** What a `cursor-blocked` event reports about a call Cursor made without asking Arc. */
+export const CURSOR_BLOCKED_OUTCOMES = ['blocked', 'ran-unasked', 'outside-edit'] as const
+export type CursorBlockedOutcome = (typeof CURSOR_BLOCKED_OUTCOMES)[number]
+
 /**
  * The badge in the session list. Derived, never stored (see `deriveListStatus` in main):
  * stopped session -> 'stopped'; else pending attention -> 'needs-attention'; else brain thinking
@@ -69,10 +73,8 @@ export interface SessionHeader {
   name: string
   mode: SessionMode
   workerLimit: number
-  /** 'auto' or the pinned model id; a provider pick reads as 'auto'. `workers` is authoritative. */
-  model: string
-  /** The session's Workers choice. Always set by the main process. */
-  workers?: WorkersPref
+  /** The session's Workers choice: Auto, a provider, or one model for every worker. */
+  workers: WorkersPref
   /** The brain's own model: an alias or a model id. Applies from the brain's next reply. */
   brainModel: string
   /** What runs the brain: `sessions.brain_provider` with `brain_model`. Always set by the main process. */

@@ -82,7 +82,7 @@ import type { UsageRecorder } from '../usage/usage-recorder'
 import type { PlanUsageService } from '../usage/plan-usage-service'
 import type { TokenTotals } from '../../shared/types/usage'
 import type { WorkerManagerDeps } from './worker-manager'
-import { normalizeModel } from './worker-model'
+import { normalizeModel } from '../models/claude-aliases'
 import type {
   ModelRef,
   ProviderId,
@@ -245,11 +245,6 @@ function branchDto(row: SessionProjectRow): SessionBranch {
   }
 }
 
-/** The header's older `model` string: 'auto', or the pinned model; a provider pick reads as 'auto'. */
-function legacyWorkersModel(workers: WorkersPref): string {
-  return workers.mode === 'model' ? workers.model.model : 'auto'
-}
-
 function headerDto(
   row: SessionRow,
   branches: SessionBranch[],
@@ -257,15 +252,13 @@ function headerDto(
   status: ProviderStatusMap,
   chain: BrainChain
 ): SessionHeader {
-  const workers = workersPrefOf(row)
   return {
     id: row.id,
     groupId: row.groupId,
     name: row.name,
     mode: row.mode,
     workerLimit: row.workerLimit,
-    model: legacyWorkersModel(workers),
-    workers,
+    workers: workersPrefOf(row),
     brainModel: row.brainModel,
     brainRunningOn: brainRunningOn(row, status, chain),
     autoApprove: row.autoApprove,
@@ -1525,6 +1518,8 @@ export class SessionService {
   }
 
   /** Older rows than `beforeId`, ascending. */
+  page(sessionId: string, kind: 'messages', beforeId: number, limit: number): SessionMessage[]
+  page(sessionId: string, kind: 'events', beforeId: number, limit: number): SessionEventEntry[]
   page(
     sessionId: string,
     kind: 'messages' | 'events',
@@ -1931,7 +1926,7 @@ export class SessionService {
       brainThreadsRepo: this.deps.brainThreadsRepo,
       messagesRepo: this.deps.messagesRepo,
       eventsRepo: this.deps.eventsRepo,
-      engine: {
+      resources: {
         plansRepo: this.deps.plansRepo,
         workersRepo: this.deps.workersRepo,
         worktreesRepo: this.deps.worktreesRepo,

@@ -23,7 +23,7 @@ import type {
 import type { ProviderRegistry } from '../agents/provider-registry'
 import type { AgentEvent } from '../agents/agent-events'
 import type { ClassifyContext } from '../policy/classify'
-import { PERMISSION_PROMPT_TOOL } from '../agents/claude-adapter'
+import { PERMISSION_PROMPT_TOOL } from '../agents/claude/claude-adapter'
 import { BridgeToolError } from '../bridge/types'
 import {
   applyCodexMcp,
@@ -41,8 +41,8 @@ import type {
   WorkerStatusEntry
 } from '../bridge/types'
 import type { BridgeRegistry } from '../bridge/bridge-server'
-import { toolsForRole } from '../bridge/tools/registry'
-import { assertNever } from '@shared/assert-never'
+import { modelToolsForRole } from '../bridge/tools/registry'
+import { assertNever, ignoreUnhandled } from '@shared/assert-never'
 import { planRefusedText, providerName, runningOnLabel } from '@shared/provider-label'
 import { PROVIDER_IDS } from '@shared/types/provider'
 import type { ModelRef, ProviderId, ProviderStatusMap } from '@shared/types/provider'
@@ -54,7 +54,12 @@ import type {
   SessionProjectsRepo
 } from '../db/repositories/session-projects-repo'
 import type { SessionsRepo } from '../db/repositories/sessions-repo'
-import type { WorkerRow, WorkersRepo } from '../db/repositories/workers-repo'
+import {
+  RESOLVER_MARKER,
+  isResolverRow,
+  type WorkerRow,
+  type WorkersRepo
+} from '../db/repositories/workers-repo'
 import { rootOf } from '../usage/read-paths'
 import { usageAgentKey } from '../usage/usage-recorder'
 import type { UsageRecorder, UsageRun, UsageTracker } from '../usage/usage-recorder'
@@ -69,7 +74,7 @@ import type { WorktreeGit } from '../git/worktrees'
 import { answerNote } from './attention-coordinator'
 import type { RateLimitGate } from './rate-limit-gate'
 import { classifyWorkerExit } from './worker-exit'
-import { RESOLVER_MARKER, commandName, isResolverRow, workerLabel as labelOf } from './worker-label'
+import { commandName, workerLabel as labelOf } from './worker-label'
 import type { ModelRegistry } from '../models/model-registry'
 import { reasonOf, resolveWorkerTarget, standInFor } from '../models/provider-resolution'
 import type { FallbackReason, WorkerTarget } from '../models/provider-resolution'
@@ -213,7 +218,7 @@ export interface WorkerManagerDeps {
   sessionProjectsRepo: SessionProjectsRepo
   worktreeGit: WorktreeGit
   bridge?: BridgeRegistry | undefined
-  /** The engine behind the tools; handed to the bridge for each worker. */
+  /** The session behind the tools (its orchestrator); handed to the bridge for each worker. */
   services: BridgeServices
   /** The models each provider offers, for `resolveTarget`. */
   models: ModelRegistry
@@ -1411,14 +1416,6 @@ export class WorkerManager {
       addDirs: [...trees.slice(1).map((t) => t.path), knowledgeDir, ...otherCheckouts],
       readOnlyDirs: [knowledgeDir, ...otherCheckouts],
       access: 'worker-write',
-      // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
-      approvals: createCodexApprovalHandler({
-        agent,
-        requestAction: (a, action, meta, call) =>
-          this.deps.services.requestAction(a, action, meta, call),
-        mcp: this.deps.personal?.mcp,
-        covered: mcpCover
-      }),
       instructions:
         prompt ??
         buildWorkerPrompt({
@@ -1459,12 +1456,18 @@ export class WorkerManager {
         )
       }
       common.extraEnv = { MCP_TOOL_TIMEOUT: WORKER_MCP_TOOL_TIMEOUT_MS }
-      // The CLI calls request_permission itself; the model is not given it as a tool to call.
-      common.bridgeTools = toolsForRole('worker')
-        .filter((t) => t.name !== 'request_permission')
-        .map((t) => t.name)
+      common.bridgeTools = modelToolsForRole('worker').map((t) => t.name)
     }
-    const codex: CodexStartOptions = {}
+    // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
+    const codex: CodexStartOptions = {
+      approvals: createCodexApprovalHandler({
+        agent,
+        requestAction: (a, action, meta, call) =>
+          this.deps.services.requestAction(a, action, meta, call),
+        mcp: this.deps.personal?.mcp,
+        covered: mcpCover
+      })
+    }
     if (provider === 'codex' && this.deps.personal) {
       const mcp = await this.deps.personal.codexMcp(first.path, 'workers')
       mcpCover.servers = applyCodexMcp(codex, mcp)
@@ -1756,8 +1759,7 @@ export class WorkerManager {
       case 'unknown':
         return
       default: {
-        const exhaustive: never = event
-        void exhaustive
+        ignoreUnhandled(event)
       }
     }
   }
@@ -2134,7 +2136,11 @@ export class WorkerManager {
     if (run.resolver) return run.recordChain
     run.recordChain = run.recordChain
       .then(() => this.doRecordHeads(run.workerId))
-      .catch(() => undefined)
+      // Per-worktree git errors are logged inside; this catches a failing repo write so the chain
+      // stays usable for the next record.
+      .catch((error: unknown) => {
+        this.deps.log.warn(`could not record the commits of worker ${run.workerId}`, error)
+      })
     return run.recordChain
   }
 
@@ -2605,7 +2611,7 @@ export class WorkerManager {
   }
 
   /**
-   * Sends the adapter queued behind the running turn (Codex starts them one after another) would
+   * Sends the adapter queued behind the running turn (Codex and Cursor start them one after another) would
    * start turns in the user's hands once the interrupt ends the current one. The brain's messages
    * among them are held until hand-back; anything else (a nudge) is stale and dropped.
    */

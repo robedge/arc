@@ -10,7 +10,7 @@ import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { storage } from '../../src/renderer/src/lib/stores/storage.svelte'
 import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const LINKED: StorageState = {
   mode: 'linked',
@@ -44,7 +44,7 @@ const SECTIONS = [
 ]
 
 function host(state: StorageState, extra: (channel: string) => unknown = () => undefined) {
-  return mockHarness((channel) => {
+  return mockArc((channel) => {
     const custom = extra(channel)
     if (custom !== undefined) return custom as never
     if (channel === 'storage:get') return ok(state)
@@ -153,7 +153,7 @@ describe('StorageMissingBanner in GroupView', () => {
     const invoke = host(state, (c) => {
       if (c === 'storage:locate')
         return ok({ located: true, state: LINKED, looksLikeKnowledge: false })
-      if (c === 'storage:useAppStorage') return ok(APP)
+      if (c === 'storage:use-app-storage') return ok(APP)
       return undefined
     })
     render(GroupView)
@@ -211,7 +211,7 @@ describe('StorageMissingBanner in GroupView', () => {
       Array.from(dialog.querySelectorAll('button')).find((b) => b.type === 'submit') as HTMLElement
     )
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith('storage:useAppStorage', { groupId: 'g' })
+      expect(invoke).toHaveBeenCalledWith('storage:use-app-storage', { groupId: 'g' })
     )
     await waitFor(() => expect(screen.queryByText('Knowledge folder not found')).toBeNull())
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -227,7 +227,7 @@ describe('StorageMissingBanner in GroupView', () => {
 describe('availability:changed for the knowledge root', () => {
   it('shows then hides the banner and ignores other groups and project events', async () => {
     let current = LINKED
-    mockHarness((c) => {
+    mockArc((c) => {
       if (c === 'storage:get') return ok(current)
       if (c === 'sections:list') return ok(SECTIONS)
       return ok([])

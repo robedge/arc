@@ -76,7 +76,13 @@ function input(
   }
 }
 
-const base = { groupName: 'G', knowledgePath: '/k', projects: [], workersEnabled: true }
+const base = {
+  groupName: 'G',
+  knowledgePath: '/k',
+  projects: [],
+  workersEnabled: true,
+  brainProvider: 'claude' as const
+}
 
 describe('brain prompt version 6', () => {
   it('is version 6', () => {

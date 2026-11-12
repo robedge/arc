@@ -43,7 +43,7 @@ async function importFile(name: string, content: Buffer | string): Promise<strin
 
 const get = (url: string, method = 'GET') => resolveKnowledgeRequest({ method, url }, deps)
 const urlFor = (groupId: string, itemId: string): string =>
-  `harness-knowledge://${groupId.toLowerCase()}/${itemId}?rev=1`
+  `arc-knowledge://${groupId.toLowerCase()}/${itemId}?rev=1`
 
 describe('resolveKnowledgeRequest', () => {
   it('serves a png with its type and nosniff', async () => {
@@ -81,7 +81,7 @@ describe('resolveKnowledgeRequest', () => {
     expect((await get(urlFor(env.groupId, id), 'POST')).status).not.toBe(200)
   })
 
-  it.each(['harness-knowledge://abc/../x', 'harness-knowledge://../..', 'not a url'])(
+  it.each(['arc-knowledge://abc/../x', 'arc-knowledge://../..', 'not a url'])(
     'rejects malformed url %s',
     async (url) => {
       expect((await get(url)).status).toBe(404)

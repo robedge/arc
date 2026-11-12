@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ProviderNotAvailableError } from '../../../src/main/agents/provider-registry'
 import { bridgeToolNamer } from '../../../src/main/agents/tool-namer'
 import { planView } from '../../../src/main/sessions/plan-coordinator'
 import type { PlanRow } from '../../../src/main/db/repositories/plans-repo'
@@ -58,12 +57,11 @@ describe('the agent layer starts agents through the provider registry', () => {
 })
 
 describe('AdapterRegistry', () => {
-  it('has no Codex adapter yet and says so', async () => {
+  it('throws a plain error for a provider with no wired adapter', async () => {
     e = await makeEngineRig(dir())
     const registry = e.rig.deps.registry
     expect(registry.adapter('claude').provider).toBe('claude')
-    expect(() => registry.adapter('codex')).toThrow(ProviderNotAvailableError)
-    expect(() => registry.adapter('codex')).toThrow(/codex adapter is not available yet/)
+    expect(() => registry.adapter('codex')).toThrow(/No codex adapter is wired/)
   })
 })
 

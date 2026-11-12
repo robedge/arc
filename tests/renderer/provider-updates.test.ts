@@ -50,7 +50,7 @@ beforeEach(() => {
     if (channel === 'plan:get') return { ok: true, data: { plans: [], notices: [] } }
     return { ok: true, data: [] }
   })
-  Object.defineProperty(window, 'harness', {
+  Object.defineProperty(window, 'arc', {
     configurable: true,
     value: {
       invoke,

@@ -1,34 +1,34 @@
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import { expect, test } from './fixtures'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
   }
 }
 
-test('links:upsert lists a link and shell:openLink records the call', async ({
+test('links:upsert lists a link and shell:open-link records the call', async ({
   app,
   window: page
 }) => {
-  const group = await page.evaluate(() => window.harness.invoke('groups:create', { name: 'Shop' }))
+  const group = await page.evaluate(() => window.arc.invoke('groups:create', { name: 'Shop' }))
   if (!group.ok) throw new Error('group create failed')
   const sections = await page.evaluate(
-    (id) => window.harness.invoke('sections:list', { groupId: id }),
+    (id) => window.arc.invoke('sections:list', { groupId: id }),
     group.data.id
   )
   const links = sections.ok ? sections.data.find((s) => s.kind === 'links') : undefined
   if (!links) throw new Error('no links section')
 
   const bad = await page.evaluate(
-    (id) => window.harness.invoke('links:upsert', { sectionId: id, url: 'wiki.example.com' }),
+    (id) => window.arc.invoke('links:upsert', { sectionId: id, url: 'wiki.example.com' }),
     links.id
   )
   expect(bad).toMatchObject({ ok: false, error: { code: 'LINK_URL_INVALID' } })
 
   const created = await page.evaluate(
     (id) =>
-      window.harness.invoke('links:upsert', {
+      window.arc.invoke('links:upsert', {
         sectionId: id,
         url: 'https://wiki.example.com/orders',
         title: 'Orders wiki',
@@ -43,13 +43,13 @@ test('links:upsert lists a link and shell:openLink records the call', async ({
   if (!created.ok) return
 
   const listed = await page.evaluate(
-    (id) => window.harness.invoke('items:list', { sectionId: id }),
+    (id) => window.arc.invoke('items:list', { sectionId: id }),
     links.id
   )
   expect(listed.ok && listed.data.map((i) => i.title)).toEqual(['Orders wiki'])
 
   const opened = await page.evaluate(
-    (id) => window.harness.invoke('shell:openLink', { itemId: id }),
+    (id) => window.arc.invoke('shell:open-link', { itemId: id }),
     created.data.id
   )
   expect(opened.ok).toBe(true)

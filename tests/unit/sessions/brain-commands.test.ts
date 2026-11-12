@@ -31,7 +31,13 @@ const spec: CommandInfo = {
   description: 'Write the functional spec',
   source: 'repo:api'
 }
-const base = { groupName: 'G', knowledgePath: '/k', projects: [], workersEnabled: true }
+const base = {
+  groupName: 'G',
+  knowledgePath: '/k',
+  projects: [],
+  workersEnabled: true,
+  brainProvider: 'claude' as const
+}
 
 function many(count: number): CommandInfo[] {
   return Array.from({ length: count }, (_, i) => ({

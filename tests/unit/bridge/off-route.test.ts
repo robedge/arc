@@ -105,3 +105,14 @@ describe('the /off/<server> route', () => {
     expect(parseRpc(res.body, 7)['result']).toEqual({ tools: [] })
   })
 })
+
+describe('a request body that is not JSON', () => {
+  it.each([
+    ['/off/<server>', () => offUrl('github')],
+    ['/mcp', () => bridge.url]
+  ])('is answered 400 on %s', async (_route, url) => {
+    const reg = bridge.registerAgent(worker, {} as BridgeServices)
+    const res = await rawPost(url(), { authorization: `Bearer ${reg.token}` }, undefined)
+    expect(res.status).toBe(400)
+  })
+})

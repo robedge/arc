@@ -13,7 +13,7 @@ import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { ImportReport } from '../../src/shared/types/item'
 import type { Section } from '../../src/shared/types/section'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const docs: Section = {
   id: 'docs1',
@@ -32,11 +32,11 @@ function conflict(name: string, path = `/src/${name}`): { name: string; path: st
 
 /** Answers items:list/read with nothing and everything else through `onImport`. */
 function harness(onImport: (channel: string, request: unknown) => ImportReport): {
-  invoke: ReturnType<typeof mockHarness>
+  invoke: ReturnType<typeof mockArc>
 } {
-  const invoke = mockHarness((channel, request) => {
+  const invoke = mockArc((channel, request) => {
     if (channel === 'items:list' || channel === 'sections:list') return { ok: true, data: [] }
-    if (channel === 'items:pickImport' || channel === 'items:import') {
+    if (channel === 'items:pick-import' || channel === 'items:import') {
       return { ok: true, data: onImport(channel, request) }
     }
     return { ok: true, data: undefined }
@@ -44,7 +44,7 @@ function harness(onImport: (channel: string, request: unknown) => ImportReport):
   return { invoke }
 }
 
-function importCalls(invoke: ReturnType<typeof mockHarness>): unknown[][] {
+function importCalls(invoke: ReturnType<typeof mockArc>): unknown[][] {
   return invoke.mock.calls.filter((c) => c[0] === 'items:import')
 }
 
@@ -66,19 +66,19 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-it('Import… invokes items:pickImport and Docs has no New button', async () => {
+it('Import… invokes items:pick-import and Docs has no New button', async () => {
   const { invoke } = harness(() => empty)
   mount()
   expect(screen.queryByRole('button', { name: /^New/ })).toBeNull()
   await fireEvent.click(screen.getByRole('button', { name: 'Import…' }))
   await waitFor(() =>
-    expect(invoke).toHaveBeenCalledWith('items:pickImport', { sectionId: 'docs1' })
+    expect(invoke).toHaveBeenCalledWith('items:pick-import', { sectionId: 'docs1' })
   )
 })
 
 it('dropping files invokes items:import with the getPathForFile paths', async () => {
   const { invoke } = harness(() => empty)
-  const getPath = window.harness.getPathForFile as ReturnType<typeof vi.fn>
+  const getPath = window.arc.getPathForFile as ReturnType<typeof vi.fn>
   getPath.mockImplementation((f: File) => `/dropped/${f.name}`)
   mount()
   const event = new Event('drop', { bubbles: true, cancelable: true })
@@ -109,9 +109,9 @@ it('a FILE_TOO_LARGE failure shows the spec message and valid files are not bloc
   expect(toast.textContent).toContain("'setup.exe' isn't a supported file type.")
 })
 
-function conflictingHarness(names: string[]): ReturnType<typeof mockHarness> {
+function conflictingHarness(names: string[]): ReturnType<typeof mockArc> {
   return harness((channel) =>
-    channel === 'items:pickImport' ? { ...empty, conflicts: names.map((n) => conflict(n)) } : empty
+    channel === 'items:pick-import' ? { ...empty, conflicts: names.map((n) => conflict(n)) } : empty
   ).invoke
 }
 

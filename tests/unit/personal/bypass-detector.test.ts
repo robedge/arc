@@ -43,6 +43,34 @@ describe('Claude hook events that can skip the permission prompt', () => {
     expect(report.claudeHookEvents).toEqual(['PreToolUse'])
   })
 
+  it('warns, without the file contents, when the user settings are not valid JSON, and stays quiet when they are missing', async () => {
+    const home = join(dir(), 'home')
+    const settings = join(home, '.claude', 'settings.json')
+    mkdirSync(join(home, '.claude'), { recursive: true })
+    writeFileSync(settings, '{"hooks": {"PreToolUse": "/secret/guard.sh"')
+    const log = { warn: vi.fn() }
+    const detector = new BypassDetector({
+      getHome: () => home,
+      getCodexHome: () => join(home, '.codex'),
+      log
+    })
+    expect((await detector.detect()).claudeHookEvents).toEqual([])
+    expect(log.warn).toHaveBeenCalled()
+    for (const [message] of log.warn.mock.calls) {
+      expect(String(message)).toContain(settings)
+      expect(String(message)).not.toContain('secret')
+    }
+
+    log.warn.mockClear()
+    const empty = join(dir(), 'empty-home')
+    await new BypassDetector({
+      getHome: () => empty,
+      getCodexHome: () => join(empty, '.codex'),
+      log
+    }).detect()
+    expect(log.warn).not.toHaveBeenCalled()
+  })
+
   it('adds the events of enabled plugins: hooks/hooks.json, an inline manifest object and a manifest path', async () => {
     const home = join(dir(), 'home')
     const byFile = plugin('a', { PermissionRequest: hook('x') })

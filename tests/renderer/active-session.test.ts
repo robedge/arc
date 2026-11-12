@@ -1,7 +1,7 @@
 import { beforeEach, expect, it } from 'vitest'
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
 import type { SessionMessage, SessionSnapshot } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function msg(id: number, over: Partial<SessionMessage> = {}): SessionMessage {
   return {
@@ -25,7 +25,7 @@ function snapshot(over: Partial<SessionSnapshot> = {}): SessionSnapshot {
       name: 'S',
       mode: 'plan_first',
       workerLimit: 3,
-      model: 'auto',
+      workers: { mode: 'auto' },
       brainModel: 'sonnet',
       autoApprove: false,
       allowRules: [],
@@ -47,7 +47,7 @@ function snapshot(over: Partial<SessionSnapshot> = {}): SessionSnapshot {
 }
 
 beforeEach(() => {
-  mockHarness(() => ({ ok: true, data: { messageId: 5 } }))
+  mockArc(() => ({ ok: true, data: { messageId: 5 } }))
   activeSession.close()
   activeSession.setSnapshot(snapshot())
 })
@@ -123,7 +123,7 @@ it('a renamed event entry updates the header name', () => {
 })
 
 it('a project that joined with unsaved changes opens the question, and answering it does not reopen the session', () => {
-  const invoke = mockHarness(() => ({ ok: true, data: snapshot() }))
+  const invoke = mockArc(() => ({ ok: true, data: snapshot() }))
   activeSession.applyDirtyQuestion({
     sessionId: 's1',
     needsDirtyChoice: {

@@ -36,7 +36,7 @@ function rig(perCwd: (cwd: string) => RawCommand[]): Rig {
   const clock = { now: 1000 }
   const run = vi.fn((cwd: string) => Promise.resolve(perCwd(cwd)))
   const catalogue = new CommandCatalogue({
-    probe: { run },
+    probe: { listCommands: run },
     getViewDir: () => Promise.resolve(view.dir),
     now: () => clock.now
   })
@@ -69,7 +69,7 @@ describe('CommandCatalogue with the personal hooks and MCP files', () => {
       () => Promise.resolve(files)
     )
     const catalogue = new CommandCatalogue({
-      probe: { run },
+      probe: { listCommands: run },
       getViewDir: () => Promise.resolve(view),
       getPersonal,
       now: () => 1000
@@ -93,7 +93,7 @@ describe('CommandCatalogue with the personal hooks and MCP files', () => {
     >(() => Promise.resolve([PLUGIN]))
     const warn = vi.fn()
     const catalogue = new CommandCatalogue({
-      probe: { run },
+      probe: { listCommands: run },
       getViewDir: () => Promise.resolve(makeView()),
       getPersonal: () => Promise.reject(new Error('disk full')),
       log: { warn },
@@ -136,7 +136,7 @@ describe('CommandCatalogue with Codex entries', () => {
       entries instanceof Error ? Promise.reject(entries) : Promise.resolve(entries)
     )
     const catalogue = new CommandCatalogue({
-      probe: { run: vi.fn(() => Promise.resolve([USER, PLUGIN])) },
+      probe: { listCommands: vi.fn(() => Promise.resolve([USER, PLUGIN])) },
       getViewDir: () => Promise.resolve(makeView()),
       codex: { list: codexList }
     })
@@ -285,7 +285,7 @@ describe('CommandCatalogue.list', () => {
     )
     const warn = vi.fn()
     const catalogue = new CommandCatalogue({
-      probe: { run },
+      probe: { listCommands: run },
       getViewDir: () => Promise.resolve(makeView()),
       log: { warn }
     })

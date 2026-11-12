@@ -3,12 +3,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AddProjectsResult, Project } from '../../src/shared/types/project'
 import type { Group } from '../../src/shared/types/group'
-import type { HarnessApi } from '../../src/shared/ipc/harness-api'
+import type { ArcApi } from '../../src/shared/ipc/arc-api'
 import { expect, test } from './fixtures'
 
 declare global {
   interface Window {
-    harness: HarnessApi
+    arc: ArcApi
   }
 }
 
@@ -23,9 +23,7 @@ test('projects:pick adds the queued folders and projects:list returns them', asy
     await mkdir(a)
     await mkdir(b)
 
-    const group = await page.evaluate(() =>
-      window.harness.invoke('groups:create', { name: 'Shop' })
-    )
+    const group = await page.evaluate(() => window.arc.invoke('groups:create', { name: 'Shop' }))
     expect(group.ok).toBe(true)
     const groupId = (group as { ok: true; data: Group }).data.id
 
@@ -39,7 +37,7 @@ test('projects:pick adds the queued folders and projects:list returns them', asy
     )
 
     const picked = await page.evaluate(
-      (id) => window.harness.invoke('projects:pick', { groupId: id }),
+      (id) => window.arc.invoke('projects:pick', { groupId: id }),
       groupId
     )
     expect(picked).toEqual({
@@ -49,7 +47,7 @@ test('projects:pick adds the queued folders and projects:list returns them', asy
     expect((picked as { ok: true; data: AddProjectsResult }).data.added).toHaveLength(2)
 
     const listed = await page.evaluate(
-      (id) => window.harness.invoke('projects:list', { groupId: id }),
+      (id) => window.arc.invoke('projects:list', { groupId: id }),
       groupId
     )
     const projects = (listed as { ok: true; data: Project[] }).data

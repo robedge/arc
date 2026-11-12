@@ -49,7 +49,7 @@ class ItemDraftStore {
     this.title = title
     if (itemId === null) return
     this.loading = true
-    const res = await window.harness.invoke('items:read', { itemId })
+    const res = await window.arc.invoke('items:read', { itemId })
     if (this.itemId !== itemId) return
     this.loading = false
     if (res.ok && res.data.type === 'text') {
@@ -130,7 +130,7 @@ class ItemDraftStore {
   async recheck(): Promise<void> {
     const itemId = this.itemId
     if (itemId === null || this.loading) return
-    const res = await window.harness.invoke('items:read', { itemId })
+    const res = await window.arc.invoke('items:read', { itemId })
     if (itemId !== this.itemId) return
     await this.applyExternal(itemId, res.ok && res.data.type === 'text' ? res.data.revision : null)
   }
@@ -146,7 +146,7 @@ class ItemDraftStore {
   async keepMine(): Promise<void> {
     const itemId = this.itemId
     if (itemId === null) return
-    const res = await window.harness.invoke('items:read', { itemId })
+    const res = await window.arc.invoke('items:read', { itemId })
     if (itemId !== this.itemId) return
     if (!res.ok || res.data.type !== 'text') {
       this.external = 'deleted'
@@ -161,9 +161,9 @@ class ItemDraftStore {
   /** Deleted on disk: saves the editor text as a new item in the same section. */
   async saveAsNew(sectionId: string, title: string): Promise<ItemSummary | AppError> {
     const text = this.text
-    const created = await window.harness.invoke('items:create', { sectionId, title })
+    const created = await window.arc.invoke('items:create', { sectionId, title })
     if (!created.ok) return created.error
-    const saved = await window.harness.invoke('items:save', {
+    const saved = await window.arc.invoke('items:save', {
       itemId: created.data.id,
       content: text,
       baseRevision: created.data.revision
@@ -175,7 +175,7 @@ class ItemDraftStore {
 
   /** Loads disk content into the editor; false when the item could not be read as text. */
   private async loadFromDisk(itemId: string, onlyIfClean: boolean): Promise<boolean> {
-    const res = await window.harness.invoke('items:read', { itemId })
+    const res = await window.arc.invoke('items:read', { itemId })
     if (itemId !== this.itemId) return true
     if (!res.ok || res.data.type !== 'text') return false
     if (onlyIfClean && this.dirty) {
@@ -195,7 +195,7 @@ class ItemDraftStore {
 
   private async save(itemId: string, text: string): Promise<void> {
     this.status = 'saving'
-    const res = await window.harness.invoke('items:save', {
+    const res = await window.arc.invoke('items:save', {
       itemId,
       content: text,
       baseRevision: this.lastSavedRevision

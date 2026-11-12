@@ -7,7 +7,7 @@ import ProvidersSettings from '../../src/renderer/src/lib/components/settings/Pr
 import { models } from '../../src/renderer/src/lib/stores/models.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import { settings } from '../../src/renderer/src/lib/stores/settings.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const codexModels: ProviderModels = {
   claude: [
@@ -44,7 +44,6 @@ const header: Header = {
   name: 'N',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
@@ -56,7 +55,7 @@ const header: Header = {
 }
 
 let saved: AppSettings
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 let modelsReply: ProviderModels
 
 beforeEach(() => {
@@ -70,7 +69,7 @@ beforeEach(() => {
     'usage.checkClaudePlanOnLaunch': true,
     'agents.loadOff': { brain: [], workers: [] }
   }
-  invoke = mockHarness((channel, request) => {
+  invoke = mockArc((channel, request) => {
     if (channel === 'providers:models') return { ok: true, data: modelsReply }
     if (channel === 'settings:get') return { ok: true, data: saved }
     if (channel === 'settings:set') {

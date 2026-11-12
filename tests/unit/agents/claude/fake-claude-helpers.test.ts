@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createClaudeParser } from '../../../src/main/agents/claude-parser'
+import { createClaudeParser } from '../../../../src/main/agents/claude/claude-parser'
 
 const fake = resolve('tests/e2e/fixtures/fake-claude.mjs')
 let tmp: string | undefined

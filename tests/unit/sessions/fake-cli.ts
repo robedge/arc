@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { AgentAdapter } from '../../../src/main/agents/agent-adapter'
-import { ClaudeAdapter } from '../../../src/main/agents/claude-adapter'
+import { ClaudeAdapter } from '../../../src/main/agents/claude/claude-adapter'
 import { ProcessSupervisor } from '../../../src/main/agents/process-supervisor'
 
 const fake = resolve('tests/e2e/fixtures/fake-claude.mjs')

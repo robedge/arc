@@ -47,7 +47,7 @@
     busy = true
     serverError = null
     try {
-      const res = await window.harness.invoke('sessions:create', {
+      const res = await window.arc.invoke('sessions:create', {
         groupId,
         request: request.trim(),
         mode,

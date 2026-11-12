@@ -13,14 +13,13 @@ import type {
 import { readCursorMcpServers } from '../agents/cursor/cursor-mcp-config'
 import type { PluginViewSource } from '../plugins/plugin-view'
 import {
-  isRecord,
   readPluginMcpServers,
   readRepoMcpServers,
   readUserHooks,
   readUserMcpServers,
-  type ConfigLog,
   type McpServerSpec
-} from './claude-user-config'
+} from '../agents/claude/claude-user-config'
+import { isRecord, type ConfigLog } from '../util/json'
 import { loadKey } from '../../shared/types/agent-load'
 import { NOTHING_OFF, type OffFor } from './load-selection'
 import type { McpToolCatalogue } from './mcp-tool-catalogue'
@@ -201,7 +200,7 @@ export class PersonalConfigService implements PersonalLaunchConfig {
   async claude(request: ClaudePersonalRequest): Promise<ClaudePersonalFiles> {
     const home = (this.deps.getHome ?? homedir)()
     const off = request.role ? this.off(request.role) : new Set<string>()
-    const hooks = withoutOffHooks(await readUserHooks(home), off)
+    const hooks = withoutOffHooks(await readUserHooks(home, this.log), off)
     const servers = withoutOffServers(await this.mcpServers(home, request), off)
     const hooksJson = hooks ? JSON.stringify({ hooks }) : undefined
     const mcpJson = JSON.stringify({ mcpServers: servers })
@@ -303,12 +302,12 @@ export class PersonalConfigService implements PersonalLaunchConfig {
     for (const plugin of await this.deps.plugins.sources(request.repoPaths, request.role)) {
       plugins.push(await readPluginMcpServers(plugin, this.log))
     }
-    const user = await readUserMcpServers(home, request.repoPaths)
+    const user = await readUserMcpServers(home, request.repoPaths, this.log)
     // With several repositories the first one to define a name keeps it.
     const repos: Record<string, McpServerSpec>[] = []
     const local: Record<string, McpServerSpec>[] = []
     for (const repo of request.repoPaths) {
-      repos.unshift(await readRepoMcpServers(repo))
+      repos.unshift(await readRepoMcpServers(repo, this.log))
       const own = user.local.get(repo)
       if (own) local.unshift(own)
     }

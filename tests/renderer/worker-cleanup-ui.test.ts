@@ -9,7 +9,7 @@ import type {
   WorkerStatus,
   WorkerView
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -17,7 +17,7 @@ const header: Header = {
   name: 'Fix sync',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
+  workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
   allowRules: [],
@@ -53,12 +53,12 @@ function worker(status: WorkerStatus, over: Partial<WorkerView> = {}): WorkerVie
 
 let unmerged = 0
 let removeResult: { ok: true; data: undefined } | { ok: false; error: { code: string } }
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   unmerged = 0
   removeResult = { ok: true, data: undefined }
-  invoke = mockHarness((channel) => {
+  invoke = mockArc((channel) => {
     if (channel === 'workers:get')
       return {
         ok: true,

@@ -154,7 +154,7 @@ export interface ResolveRequestInput {
   note?: string | undefined
 }
 
-/** What the tools need from the engine. The orchestrator of a session implements it. */
+/** What the tools need from a session. Its orchestrator implements it. */
 export interface BridgeServices {
   /** Blocks until the user decides. The bridge keeps the MCP call alive with progress notifications. */
   proposePlan(
@@ -185,7 +185,7 @@ export interface BridgeServices {
   ): Promise<PermissionDecision>
   /**
    * Worker or brain, any provider: the same decision as `requestPermission` on a provider-neutral
-   * action. Codex's approval requests arrive here (through the adapter's `ApprovalHandler`), not
+   * action. Codex's approval requests arrive here (through the adapter's `CodexApprovalHandler`), not
    * through the bridge. Aborting `call.signal` with `ACTION_WITHDRAWN` cancels the stored request.
    */
   requestAction(

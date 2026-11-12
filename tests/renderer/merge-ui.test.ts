@@ -10,7 +10,7 @@ import type {
   WorkerStatus,
   WorkerView
 } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 afterEach(cleanup)
 
@@ -78,7 +78,7 @@ it('a merged worker card shows Merged', () => {
 })
 
 it('WorkerDetails has no Stop button for a merged worker', async () => {
-  mockHarness(() => ({ ok: false, error: { code: 'NOT_FOUND' } }) as never)
+  mockArc(() => ({ ok: false, error: { code: 'NOT_FOUND' } }) as never)
   render(WorkerDetails, { worker: worker('merged'), onclose: () => {} })
   expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()

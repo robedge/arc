@@ -1,8 +1,7 @@
 import type { CommitsRepo } from '../db/repositories/commits-repo'
 import type { MergesRepo } from '../db/repositories/merges-repo'
-import type { WorkersRepo } from '../db/repositories/workers-repo'
 import type { GitRunner } from '../git/git'
-import { isResolverRow } from '../sessions/worker-label'
+import { isResolverRow, type WorkersRepo } from '../db/repositories/workers-repo'
 
 /** Label of the user's own changes (their commits and Arc's Undo commits). */
 export const USER_LABEL = 'You'

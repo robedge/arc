@@ -6,7 +6,7 @@ import type { StorageState } from '@shared/types/storage'
 import DialogHost from '../../src/renderer/src/lib/components/dialogs/DialogHost.svelte'
 import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const APP: StorageState = {
   mode: 'app',
@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 function host(state: StorageState, extra: (channel: string) => Result<unknown> | undefined) {
-  return mockHarness((channel) => {
+  return mockArc((channel) => {
     const custom = extra(channel)
     if (custom) return custom
     if (channel === 'storage:get') return ok(state)
@@ -40,12 +40,12 @@ async function exportButton(): Promise<HTMLElement> {
 describe('Export knowledge first', () => {
   it('a cancelled pick changes nothing', async () => {
     const invoke = host(APP, (c) =>
-      c === 'storage:pickExportFolder' ? ok({ picked: false }) : undefined
+      c === 'storage:pick-export-folder' ? ok({ picked: false }) : undefined
     )
     render(DialogHost)
     await fireEvent.click(await exportButton())
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith('storage:pickExportFolder', { groupId: 'a' })
+      expect(invoke).toHaveBeenCalledWith('storage:pick-export-folder', { groupId: 'a' })
     )
     expect(invoke).not.toHaveBeenCalledWith('storage:export', expect.anything())
     expect(screen.queryByRole('alert')).toBeNull()
@@ -54,7 +54,7 @@ describe('Export knowledge first', () => {
 
   it('a blocked folder shows the mapped message and does not export', async () => {
     const invoke = host(APP, (c) =>
-      c === 'storage:pickExportFolder'
+      c === 'storage:pick-export-folder'
         ? ok({ picked: true, path: '/x', blocked: 'inside-other-group', token: null })
         : undefined
     )
@@ -68,7 +68,7 @@ describe('Export knowledge first', () => {
 
   it('success shows the path and count, returns to the confirm step, and deletes nothing', async () => {
     const invoke = host(APP, (c) => {
-      if (c === 'storage:pickExportFolder')
+      if (c === 'storage:pick-export-folder')
         return ok({ picked: true, path: '/out', blocked: null, token: 't1' })
       if (c === 'storage:export') return ok({ count: 12, path: '/out/Alpha-knowledge' })
       return undefined
@@ -85,7 +85,7 @@ describe('Export knowledge first', () => {
 
   it('a failed export shows the error and stays on the confirm step', async () => {
     const invoke = host(APP, (c) => {
-      if (c === 'storage:pickExportFolder')
+      if (c === 'storage:pick-export-folder')
         return ok({ picked: true, path: '/out', blocked: null, token: 't1' })
       if (c === 'storage:export') return err('EXPORT_FAILED')
       return undefined
@@ -103,9 +103,9 @@ describe('Export knowledge first', () => {
   it('disables Delete, Cancel and the button while exporting', async () => {
     let release: (r: Result<unknown>) => void = () => {}
     const pending = new Promise<Result<unknown>>((resolve) => (release = resolve))
-    mockHarness((channel) => {
+    mockArc((channel) => {
       if (channel === 'storage:get') return ok(APP)
-      if (channel === 'storage:pickExportFolder')
+      if (channel === 'storage:pick-export-folder')
         return ok({ picked: true, path: '/out', blocked: null, token: 't1' })
       if (channel === 'storage:export') return pending
       return ok(undefined)

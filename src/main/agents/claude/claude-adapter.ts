@@ -6,13 +6,18 @@ import type {
   InterruptOutcome,
   McpServerTools,
   StartOptions
-} from './agent-adapter'
-import type { AgentEvent } from './agent-events'
+} from '../agent-adapter'
+import type { AgentEvent } from '../agent-events'
 import { createClaudeParser } from './claude-parser'
-import { EventQueue } from './event-queue'
-import { parseClaudeMcpStatus } from './mcp-status'
-import { buildAgentEnv, type ProcessSupervisor, type SupervisedProcess } from './process-supervisor'
-import { bridgeToolNamer } from './tool-namer'
+import { EventQueue } from '../event-queue'
+import { parseClaudeMcpStatus } from '../mcp-status'
+import {
+  buildAgentEnv,
+  type ProcessSupervisor,
+  type SupervisedProcess,
+  stopGracefully
+} from '../process-supervisor'
+import { bridgeToolNamer } from '../tool-namer'
 
 /**
  * `--setting-sources project` keeps the user's permission rules, env and other settings out of the
@@ -126,7 +131,7 @@ export interface ClaudeAdapterTimings {
   mcpStatusMs: number
 }
 
-export const DEFAULT_TIMINGS: ClaudeAdapterTimings = {
+export const DEFAULT_CLAUDE_TIMINGS: ClaudeAdapterTimings = {
   interruptAckMs: 3000,
   sigintMs: 3000,
   termMs: 2000,
@@ -155,7 +160,7 @@ export class ClaudeAdapter implements AgentAdapter {
   private readonly timings: ClaudeAdapterTimings
 
   constructor(private readonly deps: ClaudeAdapterDeps) {
-    this.timings = { ...DEFAULT_TIMINGS, ...deps.timings }
+    this.timings = { ...DEFAULT_CLAUDE_TIMINGS, ...deps.timings }
   }
 
   async start(options: StartOptions): Promise<AgentHandle> {
@@ -382,20 +387,9 @@ class ClaudeHandle implements AgentHandle {
   async stop(): Promise<void> {
     if (this.exitSeen) return
     if (this.turnActive) this.writeInterrupt()
-    this.proc.expectExit()
-    this.proc.endStdin()
-    let timer: NodeJS.Timeout | undefined
-    const exited = await Promise.race([
-      this.proc.exited,
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), this.timings.stopGraceMs)
-      })
-    ])
-    clearTimeout(timer)
-    if (exited) return
-    await this.proc.killLadder([
-      { signal: 'SIGTERM', waitMs: this.timings.stopTermMs },
-      { signal: 'SIGKILL', waitMs: this.timings.stopTermMs }
-    ])
+    await stopGracefully(this.proc, {
+      graceMs: this.timings.stopGraceMs,
+      termMs: this.timings.stopTermMs
+    })
   }
 }

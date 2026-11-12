@@ -45,7 +45,7 @@ describe('push guards (spec 004, tech spec 2.5)', () => {
       .map(rel)
       .sort()
     expect(importers).toEqual([
-      'src/main/app/bootstrap.ts',
+      'src/main/app/build-services.ts',
       'src/main/review/push-service.ts',
       'src/main/review/review-service.ts',
       'src/main/sessions/session-service.ts'

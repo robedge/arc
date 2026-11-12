@@ -126,7 +126,12 @@ describe('buildAgentEnv', () => {
       cwd: process.cwd(),
       env: {
         ...buildAgentEnv(
-          { ...process.env, ANTHROPIC_API_KEY: 'k', NODE_OPTIONS: '--max-old-space-size=64' },
+          {
+            ...process.env,
+            MCP_TOOL_TIMEOUT: undefined,
+            ANTHROPIC_API_KEY: 'k',
+            NODE_OPTIONS: '--max-old-space-size=64'
+          },
           '/merged/path'
         ),
         ...nodeEnv

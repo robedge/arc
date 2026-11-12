@@ -192,6 +192,6 @@ describe('SectionService.delete', () => {
     const docs = (await service.list(groupId)).find((s) => s.name === 'Docs')
     expect(await codeOf(service.delete(docs?.id ?? ''))).toBe('VALIDATION_FAILED')
     expect(existsSync(join(root, 'Docs'))).toBe(true)
-    expect(await codeOf(service.delete('nope'))).toBe('INTERNAL')
+    expect(await codeOf(service.delete('nope'))).toBe('SECTION_NOT_FOUND')
   })
 })

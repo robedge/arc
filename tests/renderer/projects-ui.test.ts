@@ -8,7 +8,7 @@ import { groupDetail } from '../../src/renderer/src/lib/stores/group-detail.svel
 import { toasts } from '../../src/renderer/src/lib/stores/toasts.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
 import type { Project } from '../../src/shared/types/project'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const NOT_GIT = 'Not a git repository — read-only in sessions'
 
@@ -37,7 +37,7 @@ it('ProjectRow shows the not-git label only when isGit is false', () => {
 })
 
 it('Add Project invokes projects:pick for the group', async () => {
-  const invoke = mockHarness(() => ({ ok: true, data: { added: [], skipped: [] } }))
+  const invoke = mockArc(() => ({ ok: true, data: { added: [], skipped: [] } }))
   render(ProjectsSection)
   expect(screen.getByText('Add a project folder or drag one here')).toBeTruthy()
   await fireEvent.click(screen.getByRole('button', { name: 'Add Project' }))
@@ -49,8 +49,8 @@ function dropFiles(target: Element, files: File[]): void {
 }
 
 it('dropping files reads each path synchronously and invokes projects:add', async () => {
-  const invoke = mockHarness(() => ({ ok: true, data: { added: [], skipped: [] } }))
-  const getPath = window.harness.getPathForFile as ReturnType<typeof vi.fn>
+  const invoke = mockArc(() => ({ ok: true, data: { added: [], skipped: [] } }))
+  const getPath = window.arc.getPathForFile as ReturnType<typeof vi.fn>
   getPath.mockImplementation((f: File) => `/dropped/${f.name}`)
   render(ProjectsSection)
   const files = [new File([], 'one'), new File([], 'two')]
@@ -70,19 +70,19 @@ it('dropping files reads each path synchronously and invokes projects:add', asyn
 })
 
 it('a skipped not-directory path shows a toast', async () => {
-  mockHarness(() => ({
+  mockArc(() => ({
     ok: true,
     data: { added: [], skipped: [{ path: '/f.txt', code: 'PROJECT_NOT_DIRECTORY' }] }
   }))
-  window.harness.getPathForFile = vi.fn(() => '/f.txt')
+  window.arc.getPathForFile = vi.fn(() => '/f.txt')
   render(ProjectsSection)
   render(Toaster)
   dropFiles(screen.getByRole('region'), [new File([], 'f.txt')])
   expect(await screen.findByText('Only folders can be added as projects.')).toBeTruthy()
 })
 
-async function openRemove(): Promise<ReturnType<typeof mockHarness>> {
-  const invoke = mockHarness((channel) =>
+async function openRemove(): Promise<ReturnType<typeof mockArc>> {
+  const invoke = mockArc((channel) =>
     channel === 'projects:list'
       ? { ok: true, data: [] }
       : channel === 'sections:list'
@@ -114,13 +114,13 @@ it('remove confirm Remove invokes projects:remove', async () => {
   )
 })
 
-function emitterHarness(handler: Parameters<typeof mockHarness>[0]): {
-  invoke: ReturnType<typeof mockHarness>
+function emitterHarness(handler: Parameters<typeof mockArc>[0]): {
+  invoke: ReturnType<typeof mockArc>
   emit: (payload: unknown) => void
 } {
-  const invoke = mockHarness(handler)
+  const invoke = mockArc(handler)
   let cb: (p: unknown) => void = () => {}
-  window.harness.on = vi.fn((_n: string, fn: (p: unknown) => void) => {
+  window.arc.on = vi.fn((_n: string, fn: (p: unknown) => void) => {
     cb = fn
     return () => {}
   }) as never
@@ -130,7 +130,7 @@ function emitterHarness(handler: Parameters<typeof mockHarness>[0]): {
 it('availability:changed flips a loaded project to Folder not found with Locate and Remove', async () => {
   groupDetail.projects = [project()]
   const { emit } = emitterHarness(() => ({ ok: true, data: [] }))
-  window.harness.on('availability:changed', (e) => groupDetail.applyAvailability(e))
+  window.arc.on('availability:changed', (e) => groupDetail.applyAvailability(e))
   render(ProjectsSection)
   expect(screen.queryByText('Folder not found')).toBeNull()
   emit({ groupId: 'g', projectId: 'p1', available: false })
@@ -142,7 +142,7 @@ it('availability:changed flips a loaded project to Folder not found with Locate 
 it('availability:changed for another group is ignored', async () => {
   groupDetail.projects = [project()]
   const { emit } = emitterHarness(() => ({ ok: true, data: [] }))
-  window.harness.on('availability:changed', (e) => groupDetail.applyAvailability(e))
+  window.arc.on('availability:changed', (e) => groupDetail.applyAvailability(e))
   render(ProjectsSection)
   emit({ groupId: 'other', projectId: 'p1', available: false })
   await Promise.resolve()
@@ -152,7 +152,7 @@ it('availability:changed for another group is ignored', async () => {
 
 it('Locate invokes projects:relocate and the row is available again', async () => {
   groupDetail.projects = [project({ available: false })]
-  const invoke = mockHarness((channel) => {
+  const invoke = mockArc((channel) => {
     if (channel === 'projects:relocate')
       return { ok: true, data: project({ path: '/x/moved', name: 'moved' }) }
     if (channel === 'projects:list')
@@ -169,7 +169,7 @@ it('Locate invokes projects:relocate and the row is available again', async () =
 })
 
 it('selecting a group invokes groups:open with its id', () => {
-  const invoke = mockHarness(() => ({ ok: true, data: [] }))
+  const invoke = mockArc(() => ({ ok: true, data: [] }))
   ui.selectGroup('g7')
   expect(invoke).toHaveBeenCalledWith('groups:open', { groupId: 'g7' })
   ui.selectGroup(null)

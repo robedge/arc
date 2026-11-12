@@ -2,7 +2,7 @@
 import { beforeEach, expect, it } from 'vitest'
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import type { ReviewNote, ReviewSnapshot } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function note(id: string): ReviewNote {
   return {
@@ -31,7 +31,7 @@ beforeEach(() => review.reset())
 
 it('a refresh that was already running when a note was saved does not make the note disappear', async () => {
   let answerGet: (() => void) | null = null
-  mockHarness((channel) => {
+  mockArc((channel) => {
     if (channel === 'review:get') {
       // The main process read the notes before the new one existed, and answers late.
       const stale = snapshot([note('n1')])

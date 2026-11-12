@@ -51,7 +51,7 @@ test('2.1 group name rules: empty, duplicate ignoring case, and 61 characters cr
 
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(nav.getByRole('button', { name: /^(Storefront|storefront|x+)$/ })).toHaveCount(1)
-  const listed = await page.evaluate(() => window.harness.invoke('groups:list', {}))
+  const listed = await page.evaluate(() => window.arc.invoke('groups:list', {}))
   expect(listed.ok && listed.data.map((g) => g.name)).toEqual(['Storefront'])
 })
 

@@ -4,7 +4,7 @@ import Conversation from '../../src/renderer/src/lib/components/sessions/Convers
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import type { SessionHeader as Header, SessionMessage } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const header: Header = {
   id: 's1',
@@ -12,7 +12,7 @@ const header: Header = {
   name: 'Fix sync',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
+  workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
   allowRules: [],
@@ -51,7 +51,7 @@ function load(messages: SessionMessage[], changedFileCount = 2): void {
 }
 
 beforeEach(() => {
-  mockHarness(() => ({ ok: true, data: undefined }))
+  mockArc(() => ({ ok: true, data: undefined }))
 })
 
 afterEach(() => {

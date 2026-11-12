@@ -41,6 +41,8 @@ export interface KnowledgeServiceDeps {
   index: KnowledgeIndex
   metaStore: MetaStore
   getKnowledgeRoot: (groupId: string) => string
+  /** Receives the underlying fs error whenever one is reported to the caller as IO_FAILED. */
+  log?: { warn: (...args: unknown[]) => void }
 }
 
 /** True when `raw` parses as an absolute http or https URL. */
@@ -58,9 +60,17 @@ function fold(name: string): string {
 }
 
 export class KnowledgeService {
-  constructor(private readonly deps: KnowledgeServiceDeps) {}
+  private readonly log: { warn: (...args: unknown[]) => void }
 
-  async list(sectionId: string): Promise<ItemSummary[]> {
+  constructor(private readonly deps: KnowledgeServiceDeps) {
+    this.log = deps.log ?? { warn: () => undefined }
+  }
+
+  /**
+   * Re-indexes the section from disk first (item rows are written for files added, changed or
+   * removed outside Arc), then lists it. Not a pure read.
+   */
+  async reconcileAndList(sectionId: string): Promise<ItemSummary[]> {
     const section = this.requireSection(sectionId)
     await this.deps.index.reconcileSection(section.groupId, sectionId)
     return this.deps.itemsRepo.listBySection(sectionId).map((row) => this.toSummary(row))
@@ -77,7 +87,7 @@ export class KnowledgeService {
     if (isBinary) {
       return {
         type: 'binary',
-        url: `harness-knowledge://${row.groupId}/${row.id}?rev=${encodeURIComponent(this.revisionOf(row))}`,
+        url: `arc-knowledge://${row.groupId}/${row.id}?rev=${encodeURIComponent(this.revisionOf(row))}`,
         mime
       }
     }
@@ -244,7 +254,8 @@ export class KnowledgeService {
     const { row, path, root } = await this.locate(itemId)
     try {
       await rm(path, { force: true })
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not delete ${row.relPath}`, error)
       throw new AppErrorException('IO_FAILED')
     }
     this.deps.itemsRepo.deleteByRelPath(row.groupId, row.relPath)
@@ -310,6 +321,9 @@ export class KnowledgeService {
         )
         report.added.push(this.toSummary(row))
       } catch (error: unknown) {
+        if (!(error instanceof AppErrorException)) {
+          this.log.warn(`knowledge: could not import ${source}`, error)
+        }
         report.failed.push({
           name,
           code: error instanceof AppErrorException ? error.code : 'IO_FAILED'
@@ -324,7 +338,8 @@ export class KnowledgeService {
     let info: Stats
     try {
       info = await stat(source)
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not stat import source ${source}`, error)
       throw new AppErrorException('IO_FAILED')
     }
     if (!info.isFile()) throw new AppErrorException('FILE_UNSUPPORTED')
@@ -343,7 +358,8 @@ export class KnowledgeService {
       } finally {
         await handle.close()
       }
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not read import source ${source}`, error)
       throw new AppErrorException('IO_FAILED')
     }
     const whole = info.size <= SNIFF_BYTES
@@ -370,7 +386,7 @@ export class KnowledgeService {
 
   private requireSection(sectionId: string): SectionRow {
     const section = this.deps.sectionsRepo.getById(sectionId)
-    if (!section) throw new AppErrorException('INTERNAL')
+    if (!section) throw new AppErrorException('SECTION_NOT_FOUND')
     return section
   }
 
@@ -381,7 +397,7 @@ export class KnowledgeService {
     path: string
   }> {
     const row = this.deps.itemsRepo.getById(itemId)
-    if (!row) throw new AppErrorException('INTERNAL')
+    if (!row) throw new AppErrorException('ITEM_NOT_FOUND')
     const section = this.requireSection(row.sectionId)
     const root = this.deps.getKnowledgeRoot(row.groupId)
     const path = await resolveInRoot(root, row.relPath.split('/'))
@@ -402,6 +418,7 @@ export class KnowledgeService {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         this.deps.itemsRepo.deleteByRelPath(row.groupId, row.relPath)
       }
+      this.log.warn(`knowledge: could not read ${row.relPath}`, error)
       throw new AppErrorException('IO_FAILED')
     }
   }
@@ -413,6 +430,7 @@ export class KnowledgeService {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         this.deps.itemsRepo.deleteByRelPath(row.groupId, row.relPath)
       }
+      this.log.warn(`knowledge: could not stat ${row.relPath}`, error)
       throw new AppErrorException('IO_FAILED')
     }
   }
@@ -420,7 +438,8 @@ export class KnowledgeService {
   private async write(path: string, text: string): Promise<void> {
     try {
       await atomicWriteFile(path, text)
-    } catch {
+    } catch (error: unknown) {
+      this.log.warn(`knowledge: could not write ${path}`, error)
       throw new AppErrorException('IO_FAILED')
     }
   }

@@ -18,7 +18,7 @@ class PlanUsageStore {
   meters = $derived(this.plans)
 
   async load(): Promise<void> {
-    const result = await window.harness.invoke('plan:get', {})
+    const result = await window.arc.invoke('plan:get', {})
     if (result.ok) this.apply(result.data)
   }
 
@@ -32,12 +32,8 @@ class PlanUsageStore {
   async dismissNotice(key: string): Promise<void> {
     const before = this.notices
     this.notices = before.filter((n) => n.key !== key)
-    try {
-      const result = await window.harness.invoke('plan:dismiss-notice', { key })
-      if (!result.ok) this.restore(before, key)
-    } catch {
-      this.restore(before, key)
-    }
+    const result = await window.arc.invoke('plan:dismiss-notice', { key })
+    if (!result.ok) this.restore(before, key)
   }
 
   private restore(before: PlanNotice[], key: string): void {
@@ -51,7 +47,7 @@ class PlanUsageStore {
 
   /** Asks main to read the limits now; main throttles. */
   async refresh(): Promise<void> {
-    const result = await window.harness.invoke('plan:refresh', {})
+    const result = await window.arc.invoke('plan:refresh', {})
     if (result.ok) this.apply(result.data)
   }
 

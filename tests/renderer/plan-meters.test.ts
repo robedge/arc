@@ -5,7 +5,7 @@ import { planUsage } from '../../src/renderer/src/lib/stores/plan-usage.svelte'
 import { limitSeverity } from '../../src/renderer/src/lib/usage/derive'
 import { formatAsOf, formatResetTime } from '../../src/renderer/src/lib/format/time'
 import type { PlanLimit, PlanSnapshot, ProviderPlan } from '../../src/shared/types/usage'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const limit = (windowId: string, label: string, usedPercent: number, extra = {}): PlanLimit => ({
   provider: 'claude',
@@ -25,7 +25,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 9, 20, 9, 0))
   planUsage.reset()
-  mockHarness(() => ({ ok: true, data: snap([claude([limit('5h', '5h', 42)])]) }))
+  mockArc(() => ({ ok: true, data: snap([claude([limit('5h', '5h', 42)])]) }))
 })
 afterEach(() => {
   cleanup()
@@ -62,7 +62,7 @@ describe('store', () => {
     expect(planUsage.meters).toHaveLength(1)
   })
   it('load and refresh call the plan channels', async () => {
-    const invoke = mockHarness(() => ({ ok: true, data: snap([claude([limit('5h', '5h', 42)])]) }))
+    const invoke = mockArc(() => ({ ok: true, data: snap([claude([limit('5h', '5h', 42)])]) }))
     await planUsage.load()
     expect(invoke).toHaveBeenCalledWith('plan:get', {})
     planUsage.reset()

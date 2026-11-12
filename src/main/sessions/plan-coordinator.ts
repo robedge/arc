@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { AppErrorException } from '@shared/errors'
 import { isProviderId } from '@shared/provider-label'
 import type { PlanView, PlanWorkerView, SessionMessage } from '@shared/types/session'
@@ -6,7 +7,7 @@ import { BridgeToolError } from '../bridge/types'
 import type { PlanDecisionResult, ProposePlanInput } from '../bridge/types'
 import type { MessagesRepo } from '../db/repositories/messages-repo'
 import type { PlanRow, PlansRepo } from '../db/repositories/plans-repo'
-import { DEFAULT_WORKER_MODEL } from './worker-model'
+import { DEFAULT_WORKER_MODEL } from '../models/claude-aliases'
 import type { GatePlan } from './plan-gate'
 
 export type PlanDecision = 'approve' | 'ask-changes' | 'reject'
@@ -35,24 +36,50 @@ function normalizeProvider(value: unknown): ProviderId {
   return isProviderId(value) ? value : 'claude'
 }
 
-/** Reads stored plan workers; a missing or unknown provider becomes `claude`. */
+/**
+ * One stored plan worker; only `name` is required, a missing or malformed field reads as empty. Legacy
+ * rows lack `provider`, and an unknown one reads as `claude`.
+ */
+const storedPlanWorkerSchema = z.object({
+  name: z.string(),
+  task: z.string().catch(''),
+  repos: z.array(z.string()).catch([]),
+  model: z.string().nullable().catch(null),
+  rationale: z.string().catch(''),
+  command: z.string().optional(),
+  approvedModel: z.string().optional(),
+  provider: z.unknown().optional(),
+  approvedProvider: z.unknown().optional()
+})
+
+/**
+ * Reads stored plan workers; a missing or unknown provider becomes `claude`. An element that is not a
+ * plan worker is left out, and anything that is not a JSON array reads as no workers.
+ */
 export function parsePlanWorkers(json: string): PlanWorkerView[] {
+  let parsed: unknown
   try {
-    const parsed: unknown = JSON.parse(json)
-    if (!Array.isArray(parsed)) return []
-    return (parsed as PlanWorkerView[]).map((w) => {
-      const provider = normalizeProvider(w.provider)
-      return {
-        ...w,
-        provider,
-        ...(w.approvedModel !== undefined
-          ? { approvedProvider: normalizeProvider(w.approvedProvider ?? provider) }
-          : {})
-      }
-    })
+    parsed = JSON.parse(json)
   } catch {
     return []
   }
+  if (!Array.isArray(parsed)) return []
+  const workers: PlanWorkerView[] = []
+  for (const element of parsed) {
+    const result = storedPlanWorkerSchema.safeParse(element)
+    if (!result.success) continue
+    const { provider: rawProvider, approvedProvider, approvedModel, command, ...rest } = result.data
+    const provider = normalizeProvider(rawProvider)
+    workers.push({
+      ...rest,
+      provider,
+      ...(command !== undefined ? { command } : {}),
+      ...(approvedModel !== undefined
+        ? { approvedModel, approvedProvider: normalizeProvider(approvedProvider ?? provider) }
+        : {})
+    })
+  }
+  return workers
 }
 
 /** What a plan worker will run on: the user's approved choice, else the brain's proposal, else the default. */

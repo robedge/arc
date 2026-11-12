@@ -172,7 +172,7 @@ describe('CursorCommands.list', () => {
 })
 
 describe('CommandCatalogue with Cursor', () => {
-  const noProbe = { run: vi.fn(() => Promise.resolve([])) }
+  const noProbe = { listCommands: vi.fn(() => Promise.resolve([])) }
 
   it('appends the Cursor entries after the Codex ones and passes refresh through', async () => {
     const r = rig()
@@ -205,7 +205,7 @@ describe('CommandCatalogue with Cursor', () => {
     const warn = vi.fn()
     const failing = { list: () => Promise.reject(new Error('boom')) }
     const base = {
-      probe: { run: () => Promise.reject(new Error('no claude')) },
+      probe: { listCommands: () => Promise.reject(new Error('no claude')) },
       getViewDir: () => Promise.resolve(undefined),
       log: { warn }
     }

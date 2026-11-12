@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/svelte'
 import GroupSidebar from '../../src/renderer/src/lib/components/shell/GroupSidebar.svelte'
 import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 beforeEach(() => {
   groups.list = [
@@ -16,7 +16,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 it('lists groups from the store and selects on click', async () => {
-  mockHarness(() => ({ ok: true, data: [] }))
+  mockArc(() => ({ ok: true, data: [] }))
   render(GroupSidebar)
   expect(screen.getByRole('button', { name: 'Alpha' })).toBeTruthy()
   await fireEvent.click(screen.getByRole('button', { name: 'Beta' }))
@@ -30,7 +30,7 @@ it('opens the create dialog from New Group', async () => {
 })
 
 it('marks only the selected group row with hud-row data-selected', async () => {
-  mockHarness(() => ({ ok: true, data: [] }))
+  mockArc(() => ({ ok: true, data: [] }))
   ui.selectGroup('a')
   render(GroupSidebar)
   const alpha = screen.getByRole('button', { name: 'Alpha' })

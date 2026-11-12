@@ -7,7 +7,7 @@ import WorkerCard from '../../src/renderer/src/lib/components/sessions/WorkerCar
 import WorkerDetails from '../../src/renderer/src/lib/components/sessions/WorkerDetails.svelte'
 import type { RunningOn } from '../../src/shared/types/provider'
 import type { PlanView, WorkerView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const claude: RunningOn = { provider: 'claude', model: 'sonnet' }
 const codex: RunningOn = { provider: 'codex', model: 'gpt-5.5' }
@@ -44,7 +44,7 @@ function worker(over: Partial<WorkerView> = {}): WorkerView {
 }
 
 beforeEach(() => {
-  mockHarness(() => ({ ok: true, data: undefined }))
+  mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(cleanup)
 
@@ -129,7 +129,7 @@ it('PlanCard renders each planned worker label from runningOn', () => {
     createdAt: 1,
     resolvedAt: null
   }
-  render(PlanCard, { plan, workerModel: 'auto' })
+  render(PlanCard, { plan, workers: { mode: 'auto' } })
   const labels = [...document.querySelectorAll('[data-plan-provider]')].map((e) => e.textContent)
   expect(labels[0]).toBe('Codex · gpt-5.5')
   expect(labels[1]).toContain('Claude (Codex unavailable)')

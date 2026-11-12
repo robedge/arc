@@ -10,6 +10,7 @@ import {
   type ProviderId,
   type ProviderStatus
 } from '@shared/types/provider'
+import { parseJsonObject } from '../util/json'
 
 const execFileAsync = promisify(execFile)
 
@@ -127,16 +128,9 @@ function isNotFound(error: unknown): boolean {
 
 /** `true`/`false` from `status --format json`; undefined when the output is not recognisable JSON. */
 export function cursorAuthFromJson(text: string): boolean | undefined {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    return undefined
-  }
-  if (typeof parsed !== 'object' || parsed === null) return undefined
-  const { isAuthenticated, status } = parsed as { isAuthenticated?: unknown; status?: unknown }
-  if (typeof isAuthenticated === 'boolean') return isAuthenticated
-  if (typeof status === 'string') return status === 'authenticated'
+  const parsed = parseJsonObject(text)
+  if (typeof parsed?.['isAuthenticated'] === 'boolean') return parsed['isAuthenticated']
+  if (typeof parsed?.['status'] === 'string') return parsed['status'] === 'authenticated'
   return undefined
 }
 
@@ -149,30 +143,14 @@ export function cursorAuthFromText(text: string): boolean | undefined {
 
 /** The `latestVersion` of `about --format json`. */
 export function cursorLatestFromJson(text: string): string | undefined {
-  try {
-    const parsed: unknown = JSON.parse(text)
-    const latest =
-      typeof parsed === 'object' && parsed !== null
-        ? (parsed as { latestVersion?: unknown }).latestVersion
-        : undefined
-    return typeof latest === 'string' ? CURSOR_VERSION_RE.exec(latest)?.[0] : undefined
-  } catch {
-    return undefined
-  }
+  const latest = parseJsonObject(text)?.['latestVersion']
+  return typeof latest === 'string' ? CURSOR_VERSION_RE.exec(latest)?.[0] : undefined
 }
 
 /** The `subscriptionTier` of `about --format json` ("Free", "Pro"...); undefined when absent. */
 export function cursorTierFromJson(text: string): string | undefined {
-  try {
-    const parsed: unknown = JSON.parse(text)
-    const tier =
-      typeof parsed === 'object' && parsed !== null
-        ? (parsed as { subscriptionTier?: unknown }).subscriptionTier
-        : undefined
-    return typeof tier === 'string' && tier.trim() !== '' ? tier.trim() : undefined
-  } catch {
-    return undefined
-  }
+  const tier = parseJsonObject(text)?.['subscriptionTier']
+  return typeof tier === 'string' && tier.trim() !== '' ? tier.trim() : undefined
 }
 
 /** The `Latest   <version> (up to date)` line of `about`. */

@@ -1,12 +1,12 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import { channelNames, eventNames } from '@shared/ipc/contract'
-import type { HarnessApi } from '@shared/ipc/harness-api'
+import type { ArcApi } from '@shared/ipc/arc-api'
 
 const channels: ReadonlySet<string> = new Set(channelNames)
 const events: ReadonlySet<string> = new Set(eventNames)
 
-const api: HarnessApi = {
+const api: ArcApi = {
   invoke: (channel, request) => {
     if (!channels.has(channel)) throw new Error(`Unknown channel: ${channel}`)
     return ipcRenderer.invoke(channel, request)
@@ -23,4 +23,4 @@ const api: HarnessApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file)
 }
 
-contextBridge.exposeInMainWorld('harness', api)
+contextBridge.exposeInMainWorld('arc', api)

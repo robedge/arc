@@ -93,11 +93,7 @@
         {#each activeSession.messages as message (message.id)}
           {@const plan = message.planId ? activeSession.plans[message.planId] : undefined}
           {#if plan}
-            <PlanCard
-              {plan}
-              workerModel={activeSession.header?.model ?? 'auto'}
-              workers={activeSession.header?.workers}
-            />
+            <PlanCard {plan} workers={activeSession.header?.workers ?? { mode: 'auto' }} />
           {:else if message.prompt?.kind === 'continue-workers'}
             <ContinueWorkersPrompt {message} prompt={message.prompt} />
           {:else}

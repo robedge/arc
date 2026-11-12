@@ -2,8 +2,8 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  APPROVAL_WITHDRAWN,
-  type ApprovalHandler,
+  CODEX_APPROVAL_WITHDRAWN,
+  type CodexApprovalHandler,
   type CodexApprovalKind,
   type CodexApprovalRequest,
   type CodexItem,
@@ -34,8 +34,8 @@ let sessionId: string
 let wt: string
 let coordinator: AttentionCoordinator
 let host: AttentionHost
-let workerHandler: ApprovalHandler
-let brainHandler: ApprovalHandler
+let workerHandler: CodexApprovalHandler
+let brainHandler: CodexApprovalHandler
 const notes: string[] = []
 const rules = vi.fn()
 const stored: SessionAllowRuleRow[] = []
@@ -71,7 +71,10 @@ function makeCoordinator(): AttentionCoordinator {
   return new AttentionCoordinator(repo, host)
 }
 
-function handlersFor(c: AttentionCoordinator): { w: ApprovalHandler; b: ApprovalHandler } {
+function handlersFor(c: AttentionCoordinator): {
+  w: CodexApprovalHandler
+  b: CodexApprovalHandler
+} {
   const requestAction: Parameters<typeof createCodexApprovalHandler>[0]['requestAction'] = (
     agent,
     action,
@@ -439,7 +442,7 @@ describe('a Codex MCP tool approval decided with the catalogue and the covered s
   function handlerWith(
     covered: string[],
     tools: McpServerTools[] | Error
-  ): { handler: ApprovalHandler; cover: McpCoverage } {
+  ): { handler: CodexApprovalHandler; cover: McpCoverage } {
     const catalogue = new McpToolCatalogue()
     catalogue.attach(worker.agentId, () =>
       tools instanceof Error ? Promise.reject(tools) : Promise.resolve(tools)
@@ -615,7 +618,7 @@ describe('interrupt and restart', () => {
     const pending = workerHandler.handle(command('git push origin HEAD'), controller.signal)
     const row = await pendingRow()
     expect(coordinator.state().count).toBe(1)
-    controller.abort(APPROVAL_WITHDRAWN)
+    controller.abort(CODEX_APPROVAL_WITHDRAWN)
     expect((await pending).decision).toBe('decline') // dropped by the adapter, which sees the abort
     expect(repo.get(row.id)).toMatchObject({ status: 'cancelled', delivered: true })
     expect(coordinator.state().count).toBe(0)

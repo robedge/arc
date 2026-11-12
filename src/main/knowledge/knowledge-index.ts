@@ -247,7 +247,7 @@ export class KnowledgeIndex {
     const { lines, body } = splitFrontMatter(buffer.toString('utf8'))
     if (kind === 'link') {
       // A link file is self-contained: url and title in front matter, description in the body.
-      // An invalid url is still listed so the user can fix it; `shell:openLink` revalidates.
+      // An invalid url is still listed so the user can fix it; `shell:open-link` revalidates.
       return this.deps.itemsRepo.upsertByRelPath({
         groupId: section.groupId,
         sectionId: section.id,

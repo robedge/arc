@@ -5,7 +5,7 @@ import { eventStyle } from '../../src/renderer/src/lib/components/sessions/event
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import { messageFor } from '../../src/renderer/src/lib/ipc/messages'
 import type { ReviewFile } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const file = (path: string): ReviewFile => ({
   path,
@@ -22,14 +22,14 @@ const file = (path: string): ReviewFile => ({
 let paths: string[]
 let workers: string[]
 let undoResult: () => unknown
-let invoke: ReturnType<typeof mockHarness>
+let invoke: ReturnType<typeof mockArc>
 
 beforeEach(() => {
   review.reset()
   paths = ['a.ts', 'b.ts', 'c.ts']
   workers = []
   undoResult = () => ({ ok: true, data: undefined })
-  invoke = mockHarness(async (channel, request) => {
+  invoke = mockArc(async (channel, request) => {
     if (channel === 'review:get') {
       return {
         ok: true,

@@ -1,4 +1,5 @@
 import type { IconName } from '../ui/icons'
+import { CURSOR_BLOCKED_OUTCOMES, type CursorBlockedOutcome } from '@shared/types/session'
 import type { WorkerTone } from './worker-status'
 
 export interface EventStyle {
@@ -30,8 +31,6 @@ export function eventStyle(kind: string): EventStyle | null {
   return EVENT_STYLE[kind] ?? null
 }
 
-export type CursorBlockedOutcome = 'blocked' | 'ran-unasked' | 'outside-edit'
-
 export interface CursorBlockedData {
   outcome: CursorBlockedOutcome
   action: string
@@ -44,10 +43,10 @@ export function parseCursorBlocked(dataJson: string | null | undefined): CursorB
   if (!dataJson) return null
   try {
     const data = JSON.parse(dataJson) as Partial<CursorBlockedData>
-    const outcomes: unknown[] = ['blocked', 'ran-unasked', 'outside-edit']
-    if (!outcomes.includes(data.outcome) || typeof data.action !== 'string') return null
+    const outcome = CURSOR_BLOCKED_OUTCOMES.find((o) => o === data.outcome)
+    if (outcome === undefined || typeof data.action !== 'string') return null
     return {
-      outcome: data.outcome as CursorBlockedOutcome,
+      outcome,
       action: data.action,
       kind: data.kind === 'edit' ? 'edit' : 'execute'
     }

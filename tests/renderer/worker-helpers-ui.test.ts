@@ -5,7 +5,7 @@ import WorkerDetails from '../../src/renderer/src/lib/components/sessions/Worker
 import TerminalPanel from '../../src/renderer/src/lib/components/sessions/TerminalPanel.svelte'
 import { TerminalBuffer } from '../../src/renderer/src/lib/stores/worker-terminals.svelte'
 import type { WorkerView } from '../../src/shared/types/session'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 function worker(over: Partial<WorkerView> = {}): WorkerView {
   return {
@@ -32,7 +32,7 @@ function worker(over: Partial<WorkerView> = {}): WorkerView {
 }
 
 beforeEach(() => {
-  mockHarness(() => ({ ok: true, data: undefined }))
+  mockArc(() => ({ ok: true, data: undefined }))
 })
 afterEach(cleanup)
 

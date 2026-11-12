@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { channelSchemas } from '../../../src/shared/ipc/contract'
-import { BRAIN_DISALLOWED_TOOLS } from '../../../src/main/agents/claude-adapter'
+import { BRAIN_DISALLOWED_TOOLS } from '../../../src/main/agents/claude/claude-adapter'
 import type { AttentionRequestRow } from '../../../src/main/db/repositories/attention-repo'
 import { askUserTool } from '../../../src/main/bridge/tools/ask-user'
 import { attentionView } from '../../../src/main/sessions/attention-service'

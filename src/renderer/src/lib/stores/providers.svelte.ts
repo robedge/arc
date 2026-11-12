@@ -41,7 +41,7 @@ class ProvidersStore {
   }
 
   async load(): Promise<void> {
-    const result = await window.harness.invoke('providers:get', {})
+    const result = await window.arc.invoke('providers:get', {})
     if (result.ok) this.set(result.data)
   }
 
@@ -51,7 +51,7 @@ class ProvidersStore {
     if (targets.every((p) => this.busy[p])) return
     for (const p of targets) this.busy[p] = true
     try {
-      const result = await window.harness.invoke('providers:check', provider ? { provider } : {})
+      const result = await window.arc.invoke('providers:check', provider ? { provider } : {})
       if (result.ok) this.set(result.data)
     } finally {
       for (const p of targets) this.busy[p] = false
@@ -63,7 +63,7 @@ class ProvidersStore {
     if (this.bypassBusy) return
     this.bypassBusy = true
     try {
-      const result = await window.harness.invoke('providers:bypass', {})
+      const result = await window.arc.invoke('providers:bypass', {})
       if (result.ok) {
         const data: Partial<BypassReport> = (result.data as BypassReport | undefined) ?? {}
         this.bypass = {
@@ -106,7 +106,7 @@ class ProvidersStore {
 
   /** Marks the update notice for this version as seen; main answers with the refreshed statuses. */
   async dismissUpdate(provider: ProviderId, version: string): Promise<void> {
-    const result = await window.harness.invoke('providers:dismiss-update', { provider, version })
+    const result = await window.arc.invoke('providers:dismiss-update', { provider, version })
     if (result.ok) this.set(result.data)
   }
 

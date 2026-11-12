@@ -4,7 +4,7 @@ import { err, ok } from '@shared/errors'
 import DialogHost from '../../src/renderer/src/lib/components/dialogs/DialogHost.svelte'
 import { groups } from '../../src/renderer/src/lib/stores/groups.svelte'
 import { ui } from '../../src/renderer/src/lib/stores/ui.svelte'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const existing = { id: 'g1', name: 'Storefront', createdAt: 1, updatedAt: 1 }
 
@@ -28,7 +28,7 @@ afterEach(cleanup)
 
 describe('group create NameDialog', () => {
   it('shows a required message for an empty name', async () => {
-    const invoke = mockHarness(() => ok(null))
+    const invoke = mockArc(() => ok(null))
     open()
     await submitWith('   ')
     expect(await screen.findByText('Group name is required.')).toBeTruthy()
@@ -36,7 +36,7 @@ describe('group create NameDialog', () => {
   })
 
   it('shows a length message for 61 characters', async () => {
-    const invoke = mockHarness(() => ok(null))
+    const invoke = mockArc(() => ok(null))
     open()
     await submitWith('a'.repeat(61))
     expect(await screen.findByText('Group name must be 60 characters or fewer.')).toBeTruthy()
@@ -44,7 +44,7 @@ describe('group create NameDialog', () => {
   })
 
   it('shows a duplicate message case-insensitively', async () => {
-    const invoke = mockHarness(() => ok(null))
+    const invoke = mockArc(() => ok(null))
     open()
     await submitWith('storefront')
     expect(await screen.findByText('A group with this name already exists.')).toBeTruthy()
@@ -52,7 +52,7 @@ describe('group create NameDialog', () => {
   })
 
   it('shows a server GROUP_NAME_DUPLICATE inline', async () => {
-    const invoke = mockHarness(() => err('GROUP_NAME_DUPLICATE'))
+    const invoke = mockArc(() => err('GROUP_NAME_DUPLICATE'))
     open()
     await submitWith('Admin')
     expect(await screen.findByText('A group with this name already exists.')).toBeTruthy()
@@ -62,7 +62,7 @@ describe('group create NameDialog', () => {
 
   it('creates a valid group, selects it, and closes', async () => {
     const created = { id: 'g2', name: 'Admin', createdAt: 2, updatedAt: 2 }
-    const invoke = mockHarness((channel) =>
+    const invoke = mockArc((channel) =>
       channel === 'groups:create' ? ok(created) : ok([existing, created])
     )
     open()

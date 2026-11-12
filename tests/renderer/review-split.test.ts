@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import ReviewScreen from '../../src/renderer/src/lib/components/review/ReviewScreen.svelte'
 import { review } from '../../src/renderer/src/lib/stores/review.svelte'
 import type { ReviewFileDiff } from '../../src/shared/types/review'
-import { mockHarness } from './helpers'
+import { mockArc } from './helpers'
 
 const diff: ReviewFileDiff = {
   kind: 'text',
@@ -43,7 +43,7 @@ beforeEach(() => {
   localStorage.clear()
   review.reset()
   review.layout = 'unified'
-  mockHarness((channel) => {
+  mockArc((channel) => {
     if (channel === 'review:get') {
       return {
         ok: true,
