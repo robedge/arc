@@ -15,6 +15,38 @@ Pre-release website: https://tests.myedgenet.com
 - **Usage.** Token counts per agent, plan usage meters, a Usage page and suggestions for cutting token spend.
 - **Agent loading.** Choose which of your MCP servers, plugins, skills and hooks the brain and the workers load.
 
+## How it works
+
+Every session belongs to one group. Arc creates a session branch in each of the group's project repos, branching from `dev` (or from the repo's default branch when it has no `dev`). Workers never touch your working copy or each other's files: each one gets its own git worktree off the session branch, and Arc merges the finished work back. Arc never pushes on its own. You push from the change review.
+
+```mermaid
+flowchart TD
+    A["Open a session in a group"] --> B["Brain reads the group's knowledge and projects"]
+    B --> C["Brain proposes a plan: workers and models"]
+    C --> D{"Spawn mode"}
+    D -->|"Plan-first"| E["You approve or edit the plan"]
+    D -->|"Autonomous"| F["Brain starts workers up to your worker cap"]
+    E --> F
+    F --> G["Each worker runs in its own git worktree on the session branch"]
+    G --> H{"Risky action or question?"}
+    H -->|"Yes"| I["Brain answers if it can, otherwise it goes to Needs attention"]
+    I --> J["You approve, deny or answer"]
+    J --> G
+    H -->|"No"| K["Worker finishes"]
+    K --> L["Arc merges it into the session branch"]
+    L --> M{"Conflict?"}
+    M -->|"Yes"| N["A resolver worker fixes it"]
+    M -->|"No"| O["Brain posts a summary"]
+    N --> O
+    O --> P["You review the diff and push"]
+```
+
+1. You open a session and write a request. The brain reads the group's notes, docs and projects.
+2. The brain proposes a plan that lists the workers it intends to start and the model for each. In Plan-first mode nothing runs until you approve it. In Autonomous mode the brain starts workers itself, up to a worker cap you set.
+3. Workers run side by side. When one needs a permission it lacks, such as a push or a destructive command, or asks a question, the brain answers what it can. Anything else waits in Needs attention until you approve, deny or answer.
+4. When a worker finishes, Arc merges its work into the session branch on its own, one worker at a time per repository. If two workers changed the same lines, a resolver worker settles the conflict. It asks you only when it isn't confident.
+5. When all the work is merged, the brain posts a summary of what changed in each repository. You review the diff file by file and push the session branch.
+
 ## Development
 
 Requires Node 22 or newer and pnpm 10.
