@@ -1,6 +1,6 @@
 import type { ProviderId, ProviderState } from '../../shared/types/provider'
 import type { AgentEvent } from './agent-events'
-import type { ApprovalHandler, CodexInput } from './codex/codex-types'
+import type { CodexApprovalHandler, CodexInput } from './codex/codex-types'
 import type { CursorApprovalHandler, CursorToolCall } from './cursor/cursor-types'
 
 export type AgentRole = 'brain' | 'worker'
@@ -33,11 +33,6 @@ export interface CommonStartOptions {
   access: 'brain-readonly' | 'worker-write'
   /** Resume this provider thread (Claude `--resume <id>`, Codex `thread/resume`). */
   resume?: { threadId: string }
-  /**
-   * Codex only: decides the approval requests the app-server sends. Claude ignores it (its prompts
-   * arrive through the bridge's `request_permission` tool). Left unset, Codex requests are declined.
-   */
-  approvals?: ApprovalHandler
   /** Extra env set last (bridge token, test switches). Not filtered. */
   extraEnv?: Readonly<Record<string, string>>
 }
@@ -62,6 +57,11 @@ export interface ClaudeStartOptions {
 
 /** What only the Codex adapter needs. */
 export interface CodexStartOptions {
+  /**
+   * Decides the approval requests the app-server sends (Claude's prompts arrive through the bridge's
+   * `request_permission` tool instead). Left unset, Codex requests are declined.
+   */
+  approvals?: CodexApprovalHandler
   /**
    * `CODEX_HOME` for this agent. Left unset, the user's own `CODEX_HOME` (if their env sets one) is
    * passed through. Never an Arc-private home: a separate home drops the user's login.
@@ -154,7 +154,7 @@ export class ProviderHistoryMissingError extends Error {
 /**
  * How an interrupt ended:
  * - `idle`: no turn was running.
- * - `acked`: the turn ended after the stream-json interrupt; the process is still alive.
+ * - `acked`: the turn ended after the provider's interrupt or cancel request; the process is still alive.
  * - `sigint`: it needed SIGINT; the process survived and the turn ended.
  * - `killed`: the process had to be killed. Resume it later with the provider's thread id.
  */
@@ -197,14 +197,15 @@ export interface AgentHandle {
   /** Sends a user message. Resolves false if the process is gone. */
   send(text: string): Promise<boolean>
   /**
-   * Starts a turn with structured input (a skill plus its arguments). Only Codex has it
-   * (`turn/start.input`); a Claude command is plain text.
+   * Starts a turn with structured input (a skill plus its arguments). Present when the provider
+   * takes input items (Codex `turn/start.input`); a Claude command is plain text.
    */
   sendInput?(input: CodexInput[]): Promise<boolean>
   interrupt(): Promise<InterruptOutcome>
   /**
-   * Changes the model for the turns that start from now on, without a restart. Only Codex has it
-   * (`turn/start.model`); a Claude model change restarts the process.
+   * Changes the model for the turns that start from now on, without a restart. Present when the
+   * provider switches models live (Codex `turn/start.model`, Cursor's next prompt); a Claude model
+   * change restarts the process.
    */
   setModel?(model: string): void
   /**
@@ -215,8 +216,8 @@ export interface AgentHandle {
    */
   mcpTools?(): Promise<McpServerTools[]>
   /**
-   * Drops the sends that wait behind the running turn and returns them, oldest first. Only an
-   * adapter that queues sends itself has it (Codex). Step-in uses it so what was queued before the
+   * Drops the sends that wait behind the running turn and returns them, oldest first. Present
+   * when the adapter queues sends itself (Codex, Cursor). Step-in uses it so what was queued before the
    * user took control does not start a turn in their hands.
    */
   discardQueuedSends?(): string[]

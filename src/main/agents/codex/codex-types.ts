@@ -66,9 +66,9 @@ export interface CodexApprovalDecision {
  * resolved it). When the process ended or Arc stopped it, the signal aborts without this reason:
  * the request is only lost, and can be answered again after a resume.
  */
-export const APPROVAL_WITHDRAWN = 'withdrawn'
+export const CODEX_APPROVAL_WITHDRAWN = 'withdrawn'
 
-export interface ApprovalHandler {
+export interface CodexApprovalHandler {
   /**
    * Decides one request. `signal` aborts when Codex withdraws the request (the turn was interrupted
    * or the process ended); the answer is then dropped.

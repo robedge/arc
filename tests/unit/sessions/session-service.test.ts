@@ -632,7 +632,7 @@ describe('page', () => {
     for (let i = 0; i < 5; i += 1) await rig.service.sendMessage(sessionId, `m${i}`)
     const all = rig.messagesRepo.latest(sessionId, 50)
     const before = all[4]?.id ?? 0
-    const older = rig.service.page(sessionId, 'messages', before, 2) as { id: number }[]
+    const older = rig.service.page(sessionId, 'messages', before, 2)
     expect(older.map((m) => m.id)).toEqual([all[2]?.id, all[3]?.id])
     for (let i = 0; i < 3; i += 1)
       rig.eventsRepo.append({
@@ -644,7 +644,7 @@ describe('page', () => {
         dataJson: null
       })
     const events = rig.eventsRepo.latest(sessionId, 10)
-    const page = rig.service.page(sessionId, 'events', events[2]?.id ?? 0, 5) as { text: string }[]
+    const page = rig.service.page(sessionId, 'events', events[2]?.id ?? 0, 5)
     expect(page.map((e) => e.text)).toEqual(['e0', 'e1'])
   })
 })

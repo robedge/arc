@@ -39,8 +39,8 @@ import {
   threadResponseSchema,
   turnNotificationSchema,
   turnStartResponseSchema,
-  APPROVAL_WITHDRAWN,
-  type ApprovalHandler,
+  CODEX_APPROVAL_WITHDRAWN,
+  type CodexApprovalHandler,
   type CodexApprovalDecision,
   type CodexApprovalKind,
   type CodexApprovalRequest,
@@ -161,7 +161,7 @@ export class CodexAdapter implements AgentAdapter {
       proc,
       this.timings,
       this.deps.now ?? Date.now,
-      options.approvals
+      options.codex.approvals
     )
     try {
       await handle.handshake(
@@ -223,7 +223,7 @@ class CodexHandle implements AgentHandle {
     private readonly proc: SupervisedProcess,
     private readonly timings: CodexAdapterTimings,
     private readonly now: () => number,
-    private readonly approvals: ApprovalHandler | undefined
+    private readonly approvals: CodexApprovalHandler | undefined
   ) {
     this.events = this.queue
     this.parser = createCodexParser({ agentId, now })
@@ -400,7 +400,7 @@ class CodexHandle implements AgentHandle {
     } else if (method === 'serverRequest/resolved') {
       const id = params['requestId']
       if (typeof id === 'number' || typeof id === 'string') {
-        this.approvalAborts.get(id)?.abort(APPROVAL_WITHDRAWN)
+        this.approvalAborts.get(id)?.abort(CODEX_APPROVAL_WITHDRAWN)
       }
     }
 
@@ -420,7 +420,7 @@ class CodexHandle implements AgentHandle {
     if (this.activeTurnId === turn.id || this.activeTurnId === null) this.activeTurnId = null
     // Codex withdraws the pending approvals of an interrupted turn (spike S6); its `serverRequest/resolved`
     // arrives after `turn/completed`, so the handlers are cancelled here and not on that notification.
-    if (turn.status === 'interrupted') this.abortApprovals(APPROVAL_WITHDRAWN)
+    if (turn.status === 'interrupted') this.abortApprovals(CODEX_APPROVAL_WITHDRAWN)
     for (const w of this.waiters) w('turn')
     this.waiters.clear()
     this.drain()
@@ -611,7 +611,7 @@ class CodexHandle implements AgentHandle {
 
   // ---- server requests -------------------------------------------------------------------
 
-  /** `reason` tells the handler whether Codex withdrew the requests (`APPROVAL_WITHDRAWN`) or they were only lost. */
+  /** `reason` tells the handler whether Codex withdrew the requests (`CODEX_APPROVAL_WITHDRAWN`) or they were only lost. */
   private abortApprovals(reason?: string): void {
     for (const controller of this.approvalAborts.values()) controller.abort(reason)
     this.approvalAborts.clear()

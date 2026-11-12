@@ -1411,14 +1411,6 @@ export class WorkerManager {
       addDirs: [...trees.slice(1).map((t) => t.path), knowledgeDir, ...otherCheckouts],
       readOnlyDirs: [knowledgeDir, ...otherCheckouts],
       access: 'worker-write',
-      // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
-      approvals: createCodexApprovalHandler({
-        agent,
-        requestAction: (a, action, meta, call) =>
-          this.deps.services.requestAction(a, action, meta, call),
-        mcp: this.deps.personal?.mcp,
-        covered: mcpCover
-      }),
       instructions:
         prompt ??
         buildWorkerPrompt({
@@ -1464,7 +1456,16 @@ export class WorkerManager {
         .filter((t) => t.name !== 'request_permission')
         .map((t) => t.name)
     }
-    const codex: CodexStartOptions = {}
+    // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
+    const codex: CodexStartOptions = {
+      approvals: createCodexApprovalHandler({
+        agent,
+        requestAction: (a, action, meta, call) =>
+          this.deps.services.requestAction(a, action, meta, call),
+        mcp: this.deps.personal?.mcp,
+        covered: mcpCover
+      })
+    }
     if (provider === 'codex' && this.deps.personal) {
       const mcp = await this.deps.personal.codexMcp(first.path, 'workers')
       mcpCover.servers = applyCodexMcp(codex, mcp)
@@ -2605,7 +2606,7 @@ export class WorkerManager {
   }
 
   /**
-   * Sends the adapter queued behind the running turn (Codex starts them one after another) would
+   * Sends the adapter queued behind the running turn (Codex and Cursor start them one after another) would
    * start turns in the user's hands once the interrupt ends the current one. The brain's messages
    * among them are held until hand-back; anything else (a nudge) is stale and dropped.
    */

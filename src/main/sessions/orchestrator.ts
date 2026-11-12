@@ -1821,8 +1821,11 @@ export class Orchestrator {
       model: resolveBrainModel(launch.brainModel),
       addDirs: launch.addDirs,
       instructions: launch.instructions,
-      access: 'brain-readonly' as const,
-      // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
+      access: 'brain-readonly' as const
+    }
+    const claude: ClaudeStartOptions = {}
+    // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
+    const codex: CodexStartOptions = {
       approvals: createCodexApprovalHandler({
         agent: brainAgent,
         requestAction: (a, action, meta, call) =>
@@ -1831,8 +1834,6 @@ export class Orchestrator {
         covered: mcpCover
       })
     }
-    const claude: ClaudeStartOptions = {}
-    const codex: CodexStartOptions = {}
     // The user's Cursor servers the Brain switch turned off: a no-op session entry each, and a deny entry.
     const cursorStart: CursorStartOptions = {}
     const personalMcp = this.deps.engine.personal?.mcp

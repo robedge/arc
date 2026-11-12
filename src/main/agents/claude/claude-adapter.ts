@@ -130,7 +130,7 @@ export interface ClaudeAdapterTimings {
   mcpStatusMs: number
 }
 
-export const DEFAULT_TIMINGS: ClaudeAdapterTimings = {
+export const DEFAULT_CLAUDE_TIMINGS: ClaudeAdapterTimings = {
   interruptAckMs: 3000,
   sigintMs: 3000,
   termMs: 2000,
@@ -159,7 +159,7 @@ export class ClaudeAdapter implements AgentAdapter {
   private readonly timings: ClaudeAdapterTimings
 
   constructor(private readonly deps: ClaudeAdapterDeps) {
-    this.timings = { ...DEFAULT_TIMINGS, ...deps.timings }
+    this.timings = { ...DEFAULT_CLAUDE_TIMINGS, ...deps.timings }
   }
 
   async start(options: StartOptions): Promise<AgentHandle> {

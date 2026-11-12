@@ -23,8 +23,8 @@ import {
   type CodexAdapterTimings
 } from '../../../../src/main/agents/codex/codex-adapter'
 import {
-  APPROVAL_WITHDRAWN,
-  type ApprovalHandler,
+  CODEX_APPROVAL_WITHDRAWN,
+  type CodexApprovalHandler,
   type CodexApprovalDecision,
   type CodexApprovalRequest
 } from '../../../../src/main/agents/codex/codex-types'
@@ -100,7 +100,10 @@ function received(
   )
 }
 
-function options(over: Partial<CodexStartRequest> = {}): CodexStartRequest {
+/** Start overrides; `approvals` is a shortcut for `codex.approvals`. */
+type StartOverrides = Partial<CodexStartRequest> & { approvals?: CodexApprovalHandler }
+
+function options({ approvals, ...over }: StartOverrides = {}): CodexStartRequest {
   return {
     provider: 'codex',
     agentId: 'w1',
@@ -108,15 +111,15 @@ function options(over: Partial<CodexStartRequest> = {}): CodexStartRequest {
     cwd: dir,
     model: 'fake-deep',
     access: 'worker-write',
-    codex: {},
     ...over,
+    codex: { ...(approvals ? { approvals } : {}), ...over.codex },
     extraEnv: { ...nodeEnv, ...over.extraEnv }
   }
 }
 
 async function begin(
   script: string | undefined,
-  over: Partial<CodexStartRequest> = {},
+  over: StartOverrides = {},
   env: Record<string, string> = {},
   adapter: CodexAdapter = adapterFor()
 ): Promise<{ handle: AgentHandle; log: string }> {
@@ -724,7 +727,7 @@ describe('CodexAdapter interrupt', () => {
 
   it('cancels the approval a turn is waiting on when the turn is interrupted', async () => {
     const seen: { aborted: boolean; reason?: unknown; request: CodexApprovalRequest }[] = []
-    const approvals: ApprovalHandler = {
+    const approvals: CodexApprovalHandler = {
       handle: (request, signal) =>
         new Promise((resolve) => {
           const entry: (typeof seen)[number] = { aborted: false, request }
@@ -752,7 +755,7 @@ describe('CodexAdapter interrupt', () => {
     expect(seen).toHaveLength(1)
     expect(seen[0]?.aborted).toBe(true)
     // Codex withdrew it: the coordinator cancels the stored request for good
-    expect(seen[0]?.reason).toBe(APPROVAL_WITHDRAWN)
+    expect(seen[0]?.reason).toBe(CODEX_APPROVAL_WITHDRAWN)
     expect(w.events.find((e) => e.type === 'approval' && e.state === 'resolved')).toMatchObject({
       decision: 'cancelled'
     })
@@ -824,10 +827,10 @@ describe('CodexAdapter stop and crash', () => {
 describe('CodexAdapter approvals', () => {
   /** Plays one command approval (the committed scenario) and returns what the handler saw and the model said. */
   async function playCommand(
-    approvals: ApprovalHandler | undefined
+    approvals: CodexApprovalHandler | undefined
   ): Promise<{ say: string; seen: CodexApprovalRequest[]; answer: unknown; ran: boolean }> {
     const seen: CodexApprovalRequest[] = []
-    const wrapped: ApprovalHandler | undefined = approvals
+    const wrapped: CodexApprovalHandler | undefined = approvals
       ? {
           handle: (request, signal) => {
             seen.push(request)
@@ -896,7 +899,7 @@ describe('CodexAdapter approvals', () => {
     // never a session-wide grant, even if a handler asks for one
     const bad = {
       handle: () => Promise.resolve({ decision: 'acceptForSession' })
-    } as unknown as ApprovalHandler
+    } as unknown as CodexApprovalHandler
     expect((await playCommand(bad)).answer).toEqual({ decision: 'decline' })
   })
 
@@ -947,7 +950,7 @@ describe('CodexAdapter approvals', () => {
 
   it('answers file changes, permissions, MCP elicitations and questions in the shapes Codex expects', async () => {
     const kinds: string[] = []
-    const approvals: ApprovalHandler = {
+    const approvals: CodexApprovalHandler = {
       handle: (request) => {
         kinds.push(request.kind)
         return Promise.resolve({ decision: 'accept' })
@@ -1025,7 +1028,7 @@ describe('CodexAdapter approvals', () => {
 
   it('answers requestUserInput with no answers and never shows it to the approval handler (S5)', async () => {
     const seen: string[] = []
-    const approvals: ApprovalHandler = {
+    const approvals: CodexApprovalHandler = {
       handle: (request) => {
         seen.push(request.kind)
         return Promise.resolve({ decision: 'accept' })
@@ -1231,7 +1234,7 @@ describe('CodexAdapter approvals when the process ends', () => {
   it('aborts a waiting handler without the withdrawn reason, so the request stays pending for the resume', async () => {
     let reason: unknown = 'unset'
     let aborted = false
-    const approvals: ApprovalHandler = {
+    const approvals: CodexApprovalHandler = {
       handle: (_request, signal) =>
         new Promise((resolve) => {
           signal.addEventListener('abort', () => {
@@ -1254,7 +1257,7 @@ describe('CodexAdapter approvals when the process ends', () => {
     await handle.stop()
     await w.waitFor(isType('exit'))
     expect(aborted).toBe(true)
-    expect(reason).not.toBe(APPROVAL_WITHDRAWN)
+    expect(reason).not.toBe(CODEX_APPROVAL_WITHDRAWN)
   })
 })
 
