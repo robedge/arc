@@ -17,22 +17,15 @@
 
   interface Props {
     plan: PlanView
-    /** The header's worker model: 'auto' or the model forced onto every worker. */
-    workerModel: string
-    /** The header's Workers pin; read from `workerModel` when absent. */
-    workers?: WorkersPref
+    /** The header's Workers pin. */
+    workers: WorkersPref
   }
 
-  let { plan, workerModel, workers }: Props = $props()
+  let { plan, workers }: Props = $props()
 
   const FALLBACK_MODEL = 'sonnet'
 
-  const pin = $derived<WorkersPref>(
-    workers ??
-      (workerModel === 'auto'
-        ? { mode: 'auto' }
-        : { mode: 'model', model: { provider: 'claude', model: workerModel } })
-  )
+  const pin = $derived<WorkersPref>(workers)
   /** The header fixes every worker's provider and model. */
   const forced = $derived(pin.mode === 'model')
   const pinned = $derived(pin.mode !== 'auto')

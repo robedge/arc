@@ -31,9 +31,7 @@ test('Help > Design Preview opens one preview; a second click keeps two windows'
 test('the preview has no preload bridge', async ({ app, window: main }) => {
   await main.waitForLoadState('domcontentloaded')
   const preview = await openPreview(app)
-  expect(await preview.evaluate(() => typeof (window as { arc?: unknown }).arc)).toBe(
-    'undefined'
-  )
+  expect(await preview.evaluate(() => typeof (window as { arc?: unknown }).arc)).toBe('undefined')
 })
 
 test('closing the preview keeps the app running; quitting with both open exits promptly', async ({

@@ -157,7 +157,7 @@ it('Load earlier appears for a full snapshot, pages with the smallest id and pre
       name: 'x',
       mode: 'plan_first',
       workerLimit: 3,
-      model: 'auto',
+      workers: { mode: 'auto' },
       brainModel: 'sonnet',
       autoApprove: false,
       allowRules: [],

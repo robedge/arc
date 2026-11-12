@@ -12,7 +12,7 @@ const header: Header = {
   name: 'Old name',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
+  workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
   allowRules: [],

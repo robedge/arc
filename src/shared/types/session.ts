@@ -73,10 +73,8 @@ export interface SessionHeader {
   name: string
   mode: SessionMode
   workerLimit: number
-  /** 'auto' or the pinned model id; a provider pick reads as 'auto'. `workers` is authoritative. */
-  model: string
-  /** The session's Workers choice. Always set by the main process. */
-  workers?: WorkersPref
+  /** The session's Workers choice: Auto, a provider, or one model for every worker. */
+  workers: WorkersPref
   /** The brain's own model: an alias or a model id. Applies from the brain's next reply. */
   brainModel: string
   /** What runs the brain: `sessions.brain_provider` with `brain_model`. Always set by the main process. */

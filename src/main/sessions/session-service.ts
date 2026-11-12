@@ -245,11 +245,6 @@ function branchDto(row: SessionProjectRow): SessionBranch {
   }
 }
 
-/** The header's older `model` string: 'auto', or the pinned model; a provider pick reads as 'auto'. */
-function legacyWorkersModel(workers: WorkersPref): string {
-  return workers.mode === 'model' ? workers.model.model : 'auto'
-}
-
 function headerDto(
   row: SessionRow,
   branches: SessionBranch[],
@@ -257,15 +252,13 @@ function headerDto(
   status: ProviderStatusMap,
   chain: BrainChain
 ): SessionHeader {
-  const workers = workersPrefOf(row)
   return {
     id: row.id,
     groupId: row.groupId,
     name: row.name,
     mode: row.mode,
     workerLimit: row.workerLimit,
-    model: legacyWorkersModel(workers),
-    workers,
+    workers: workersPrefOf(row),
     brainModel: row.brainModel,
     brainRunningOn: brainRunningOn(row, status, chain),
     autoApprove: row.autoApprove,

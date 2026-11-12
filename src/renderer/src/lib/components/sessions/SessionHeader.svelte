@@ -99,12 +99,7 @@
     })
   )
 
-  const workers = $derived<WorkersPref>(
-    header.workers ??
-      (header.model === 'auto'
-        ? { mode: 'auto' }
-        : { mode: 'model', model: { provider: 'claude', model: header.model } })
-  )
+  const workers = $derived<WorkersPref>(header.workers)
   const workerOptions = $derived(workersEntries(models.lists, ready, workers))
 
   async function removeRule(ruleId: string): Promise<void> {

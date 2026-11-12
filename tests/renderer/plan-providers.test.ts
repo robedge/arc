@@ -71,8 +71,8 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-const open = (workers?: WorkersPref): void => {
-  render(PlanCard, { plan: plan(), workerModel: 'auto', workers })
+const open = (workers: WorkersPref = { mode: 'auto' }): void => {
+  render(PlanCard, { plan: plan(), workers })
 }
 
 it('changing the provider resets the model to that provider default', async () => {

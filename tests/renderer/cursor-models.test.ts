@@ -172,7 +172,6 @@ const header: Header = {
   name: 'N',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
@@ -417,7 +416,7 @@ function plan(): PlanView {
 }
 
 it('PlanCard picks Cursor, a base model and an effort, and approves with the full id', async () => {
-  render(PlanCard, { plan: plan(), workerModel: 'auto' })
+  render(PlanCard, { plan: plan(), workers: { mode: 'auto' } })
   await fireEvent.change(screen.getByLabelText('Provider for api-retry'), {
     target: { value: 'cursor' }
   })

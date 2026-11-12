@@ -44,7 +44,6 @@ const header: Header = {
   name: 'N',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,

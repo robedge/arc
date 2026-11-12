@@ -14,7 +14,6 @@ const base: SessionHeader = {
   name: 'Fix sync',
   mode: 'autonomous',
   workerLimit: 4,
-  model: 'auto',
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   brainRunningOn: { provider: 'claude', model: 'sonnet' },

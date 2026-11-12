@@ -76,7 +76,7 @@ function snapshot(): SessionSnapshot {
       name: 'S',
       mode: 'autonomous',
       workerLimit: 4,
-      model: 'auto',
+      workers: { mode: 'auto' },
       brainModel: 'sonnet',
       autoApprove: false,
       allowRules: [],

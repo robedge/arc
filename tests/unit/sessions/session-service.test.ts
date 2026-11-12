@@ -61,7 +61,7 @@ describe('create', () => {
       name: 'New session',
       mode: 'plan_first',
       workerLimit: 3,
-      model: 'auto',
+      workers: { mode: 'auto' },
       status: 'active'
     })
     expect(snapshot.messages.map((m) => [m.role, m.content, m.state])).toEqual([
@@ -811,7 +811,6 @@ describe('set-config and the brain model', () => {
     expect(header).toMatchObject({
       mode: 'autonomous',
       workerLimit: 5,
-      model: 'Haiku',
       workers: { mode: 'model', model: { provider: 'claude', model: 'Haiku' } },
       brainModel: 'opus'
     })
@@ -828,10 +827,12 @@ describe('set-config and the brain model', () => {
     expect(rig.eventsRepo.latest(sessionId, 20).map((e) => e.text)).toContain(
       'Brain model set to Claude · Opus'
     )
-    expect(rig.service.setConfig(sessionId, { workers: { mode: 'auto' } }).model).toBe('auto')
+    expect(rig.service.setConfig(sessionId, { workers: { mode: 'auto' } }).workers).toEqual({
+      mode: 'auto'
+    })
     expect(
       rig.service.setConfig(sessionId, { workers: { mode: 'provider', provider: 'codex' } })
-    ).toMatchObject({ model: 'auto', workers: { mode: 'provider', provider: 'codex' } })
+    ).toMatchObject({ workers: { mode: 'provider', provider: 'codex' } })
   })
 
   it('rejects unknown models and an out-of-range limit', async () => {

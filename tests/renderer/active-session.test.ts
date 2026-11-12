@@ -25,7 +25,7 @@ function snapshot(over: Partial<SessionSnapshot> = {}): SessionSnapshot {
       name: 'S',
       mode: 'plan_first',
       workerLimit: 3,
-      model: 'auto',
+      workers: { mode: 'auto' },
       brainModel: 'sonnet',
       autoApprove: false,
       allowRules: [],

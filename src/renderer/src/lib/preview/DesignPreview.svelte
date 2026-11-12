@@ -42,7 +42,7 @@
   import type { SessionEventEntry, SessionMessage } from '@shared/types/session'
   import HeaderMenu from '../components/sessions/HeaderMenu.svelte'
   import { workersEntries } from '../model-options'
-  import type { AppSettings, ProviderModels } from '@shared/types/provider'
+  import type { AppSettings, ProviderModels, WorkersPref } from '@shared/types/provider'
   import type { LoadItem } from '@shared/types/agent-load'
   import PlanCard from '../components/sessions/PlanCard.svelte'
   import EventLog from '../components/sessions/EventLog.svelte'
@@ -310,7 +310,7 @@
     name: 'Fix order sync',
     mode: 'plan_first' as const,
     workerLimit: 3,
-    model: 'auto',
+    workers: { mode: 'auto' } as WorkersPref,
     brainModel: 'sonnet',
     autoApprove: false,
     allowRules: [],
@@ -1113,10 +1113,13 @@
           {/each}
         </div>
         {#each planStatuses as status (status)}
-          <PlanCard plan={samplePlan(status)} workerModel="auto" />
+          <PlanCard plan={samplePlan(status)} workers={{ mode: 'auto' }} />
         {/each}
-        <PlanCard plan={samplePlan('proposed', true)} workerModel="auto" />
-        <PlanCard plan={samplePlan('proposed')} workerModel="haiku" />
+        <PlanCard plan={samplePlan('proposed', true)} workers={{ mode: 'auto' }} />
+        <PlanCard
+          plan={samplePlan('proposed')}
+          workers={{ mode: 'model', model: { provider: 'claude', model: 'haiku' } }}
+        />
         <div class="grid grid-cols-2 gap-3">
           {#each workerStatuses as status, i (status)}
             <WorkerCard

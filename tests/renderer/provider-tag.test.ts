@@ -129,7 +129,7 @@ it('PlanCard renders each planned worker label from runningOn', () => {
     createdAt: 1,
     resolvedAt: null
   }
-  render(PlanCard, { plan, workerModel: 'auto' })
+  render(PlanCard, { plan, workers: { mode: 'auto' } })
   const labels = [...document.querySelectorAll('[data-plan-provider]')].map((e) => e.textContent)
   expect(labels[0]).toBe('Codex · gpt-5.5')
   expect(labels[1]).toContain('Claude (Codex unavailable)')

@@ -64,7 +64,7 @@ const header: Header = {
   name: 'S',
   mode: 'plan_first',
   workerLimit: 3,
-  model: 'auto',
+  workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
   allowRules: [],
@@ -82,7 +82,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 it('Approve sends the edited models', async () => {
-  render(PlanCard, { plan: plan(), workerModel: 'auto' })
+  render(PlanCard, { plan: plan(), workers: { mode: 'auto' } })
   await fireEvent.change(screen.getByLabelText('Model for web-status'), {
     target: { value: 'sonnet' }
   })
@@ -101,7 +101,10 @@ it('Approve sends the edited models', async () => {
 })
 
 it('shows the forced worker model and disables the selects', () => {
-  render(PlanCard, { plan: plan(), workerModel: 'haiku' })
+  render(PlanCard, {
+    plan: plan(),
+    workers: { mode: 'model', model: { provider: 'claude', model: 'haiku' } }
+  })
   const select = screen.getByLabelText('Model for api-retry') as HTMLSelectElement
   expect(select.value).toBe('haiku')
   expect(select.disabled).toBe(true)
@@ -110,7 +113,7 @@ it('shows the forced worker model and disables the selects', () => {
 it('Ask for changes focuses the composer and the card waits', async () => {
   activeSession.sessionId = 's1'
   render(Composer, { sessionId: 's1', brainState: 'idle' })
-  const view = render(PlanCard, { plan: plan(), workerModel: 'auto' })
+  const view = render(PlanCard, { plan: plan(), workers: { mode: 'auto' } })
   await fireEvent.click(screen.getByRole('button', { name: 'Ask for changes' }))
   await waitFor(() =>
     expect(document.activeElement).toBe(screen.getByLabelText('Message to the brain'))
@@ -120,7 +123,10 @@ it('Ask for changes focuses the composer and the card waits', async () => {
     expect.objectContaining({ decision: 'ask-changes' })
   )
   view.unmount()
-  render(PlanCard, { plan: plan('proposed', { changesRequested: true }), workerModel: 'auto' })
+  render(PlanCard, {
+    plan: plan('proposed', { changesRequested: true }),
+    workers: { mode: 'auto' }
+  })
   expect(screen.getByText('Waiting for your changes')).toBeTruthy()
 })
 
@@ -129,7 +135,7 @@ it.each([
   ['rejected', 'Rejected'],
   ['approved', 'Approved']
 ] as const)('a %s plan shows its tag and disables the buttons', (status, tag) => {
-  render(PlanCard, { plan: plan(status), workerModel: 'auto' })
+  render(PlanCard, { plan: plan(status), workers: { mode: 'auto' } })
   expect(screen.getByText(tag)).toBeTruthy()
   for (const name of ['Approve', 'Ask for changes', 'Reject']) {
     expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
@@ -321,7 +327,7 @@ it('WorkerDetails shows the full command text with its arguments', () => {
 it('a plan entry shows a command chip before the task text', () => {
   const p = plan('proposed')
   p.workers[0] = { ...p.workers[0]!, command: '/awos:spec retry settings' }
-  render(PlanCard, { plan: p, workerModel: 'auto' })
+  render(PlanCard, { plan: p, workers: { mode: 'auto' } })
   const chips = document.querySelectorAll('[data-plan-command]')
   expect(chips).toHaveLength(1)
   expect(chips[0]!.textContent).toBe('/awos:spec')
