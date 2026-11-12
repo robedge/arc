@@ -211,7 +211,7 @@ export class CommandProbe {
   }
 
   /** Built-ins are already dropped. Rejects on timeout, an early exit or an error answer. */
-  async run(
+  async listCommands(
     cwd: string,
     pluginViewDir: string | undefined,
     personal?: ProbePersonalFiles
@@ -327,7 +327,7 @@ export interface CatalogueRequest {
 }
 
 export interface CommandCatalogueDeps {
-  probe: Pick<CommandProbe, 'run'>
+  probe: Pick<CommandProbe, 'listCommands'>
   /** The plugin view folder (`undefined` when it could not be built); `refresh` rebuilds it first. */
   getViewDir: (repoPaths: readonly string[], refresh: boolean) => Promise<string | undefined>
   /**
@@ -532,7 +532,7 @@ export class CommandCatalogue {
     const running = this.inflight.get(key)
     if (running && !refresh) return running
     const task = this.deps.probe
-      .run(cwd, viewDir, personal)
+      .listCommands(cwd, viewDir, personal)
       .then((commands) => {
         this.cache.set(cwd, { hash, mtime, at: this.now(), commands })
         return commands

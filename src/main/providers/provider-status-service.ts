@@ -85,7 +85,7 @@ export class ProviderStatusService {
   ): Promise<ProviderStatusMap> {
     this.checker.resetPath()
     const ids = provider ? [provider] : PROVIDER_IDS
-    await Promise.all(ids.map((id) => this.run(id, options.forceLatest === true)))
+    await Promise.all(ids.map((id) => this.checkOne(id, options.forceLatest === true)))
     return this.get()
   }
 
@@ -98,7 +98,7 @@ export class ProviderStatusService {
     if (cached && cached.state === 'ok' && this.now() - cached.checkedAt < this.ttlMs) {
       return cached
     }
-    return this.run(provider, false)
+    return this.checkOne(provider, false)
   }
 
   /** The brain hit an auth error at runtime: record Claude as signed out and publish. */
@@ -193,7 +193,7 @@ export class ProviderStatusService {
     }
   }
 
-  private runChecker(provider: ProviderId): Promise<ProviderStatus> {
+  private probeProvider(provider: ProviderId): Promise<ProviderStatus> {
     switch (provider) {
       case 'claude':
         return this.checker.checkClaude()
@@ -206,12 +206,12 @@ export class ProviderStatusService {
     }
   }
 
-  private run(provider: ProviderId, forceLatest: boolean): Promise<ProviderStatus> {
+  private checkOne(provider: ProviderId, forceLatest: boolean): Promise<ProviderStatus> {
     const running = this.inflight.get(provider)
     if (running) return running
     const task = (async (): Promise<ProviderStatus> => {
       try {
-        const raw = await this.runChecker(provider)
+        const raw = await this.probeProvider(provider)
         const previous = this.cache.get(provider)
         // Publish the status at once, with the last known update info; the registry lookup follows.
         let status = this.decorate(raw, previous)

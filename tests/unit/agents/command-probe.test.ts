@@ -192,7 +192,7 @@ describe('CommandProbe', () => {
 
   it('returns the commands when hook lines come first and drops built-ins', async () => {
     const { probe, supervisor } = probeFor('hooks')
-    const commands = await probe.run(dir(), undefined)
+    const commands = await probe.listCommands(dir(), undefined)
     expect(commands.map((c: RawCommand) => c.name)).toEqual(['awos:spec', 'no-hint'])
     expect(supervisor.liveCount).toBe(0)
   })
@@ -224,7 +224,7 @@ describe('CommandProbe', () => {
       resolvePath: () => Promise.resolve(process.env['PATH'] ?? ''),
       extraEnv: { ELECTRON_RUN_AS_NODE: '1' }
     })
-    const commands = await probe.run(dir(), '/view/abc')
+    const commands = await probe.listCommands(dir(), '/view/abc')
     expect(commands).toEqual([
       {
         name: 'awos:spec',
@@ -246,25 +246,27 @@ describe('CommandProbe', () => {
       env: { HARNESS_E2E: '1', FAKE_CLAUDE_COMMANDS_JSON: file },
       extraEnv: { ELECTRON_RUN_AS_NODE: '1' }
     })
-    expect(await probe.run(dir(), undefined)).toEqual([{ name: 'user:x', description: 'X' }])
+    expect(await probe.listCommands(dir(), undefined)).toEqual([
+      { name: 'user:x', description: 'X' }
+    ])
   })
 
   it('kills a CLI that does not answer in time', async () => {
     const { probe, supervisor } = probeFor('hang', raw, { timeoutMs: 150, stopGraceMs: 50 })
-    await expect(probe.run(dir(), undefined)).rejects.toThrow('did not answer in time')
+    await expect(probe.listCommands(dir(), undefined)).rejects.toThrow('did not answer in time')
     expect(supervisor.liveCount).toBe(0)
   })
 
   it('kills the process group of a CLI that stays alive after answering', async () => {
     const { probe, supervisor } = probeFor('linger', raw, { stopGraceMs: 50 })
-    const commands = await probe.run(dir(), undefined)
+    const commands = await probe.listCommands(dir(), undefined)
     expect(commands).toHaveLength(2)
     expect(supervisor.liveCount).toBe(0)
   })
 
   it('rejects with the CLI error or its stderr', async () => {
-    await expect(probeFor('error').probe.run(dir(), undefined)).rejects.toThrow('nope')
-    await expect(probeFor('exit1').probe.run(dir(), undefined)).rejects.toThrow(
+    await expect(probeFor('error').probe.listCommands(dir(), undefined)).rejects.toThrow('nope')
+    await expect(probeFor('exit1').probe.listCommands(dir(), undefined)).rejects.toThrow(
       'probe child failed'
     )
   })
@@ -291,7 +293,7 @@ describe('CommandProbe', () => {
       extraEnv: { ELECTRON_RUN_AS_NODE: '1', PROBE_COMMANDS: '[]' },
       maxParallel: 2
     })
-    await Promise.all([1, 2, 3, 4, 5].map(() => probe.run(dir(), undefined)))
+    await Promise.all([1, 2, 3, 4, 5].map(() => probe.listCommands(dir(), undefined)))
     expect(peak).toBe(2)
   })
 })

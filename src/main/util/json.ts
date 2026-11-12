@@ -20,6 +20,15 @@ export function recordOrUndefined(value: unknown): Record<string, unknown> | und
   return isRecord(value) ? value : undefined
 }
 
+/** The parsed text when it is a JSON object, else `undefined` (invalid JSON, an array or a scalar). */
+export function parseJsonObject(text: string): Record<string, unknown> | undefined {
+  try {
+    return recordOrUndefined(JSON.parse(text))
+  } catch {
+    return undefined
+  }
+}
+
 /** The value when it is a non-empty string, else `undefined`. */
 export function nonEmptyString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined

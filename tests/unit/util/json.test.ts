@@ -8,6 +8,7 @@ import {
   nonBlankString,
   nonEmptyString,
   oneLine,
+  parseJsonObject,
   readJsonFile,
   recordOrUndefined,
   stringArray
@@ -41,6 +42,16 @@ describe('guards', () => {
   it('stringArray keeps the strings of an array', () => {
     expect(stringArray(['a', 1, 'b', null])).toEqual(['a', 'b'])
     expect(stringArray('a')).toEqual([])
+  })
+})
+
+describe('parseJsonObject', () => {
+  it('returns objects and nothing else', () => {
+    expect(parseJsonObject('{"a":1}')).toEqual({ a: 1 })
+    expect(parseJsonObject('[1]')).toBeUndefined()
+    expect(parseJsonObject('3')).toBeUndefined()
+    expect(parseJsonObject('null')).toBeUndefined()
+    expect(parseJsonObject('not json')).toBeUndefined()
   })
 })
 
