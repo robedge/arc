@@ -127,6 +127,16 @@ describe('delete', () => {
     expect(env.itemsRepo.getById(item.id)).toBeUndefined()
     expect((await env.metaStore.read(env.root)).items['Notes/Plan.md']).toBeUndefined()
   })
+
+  it('reports an unknown item id as ITEM_NOT_FOUND', async () => {
+    expect(await codeOf(env.service.delete('01ARZ3NDEKTSV4RRFFQ69G5FAV'))).toBe('ITEM_NOT_FOUND')
+  })
+})
+
+describe('unknown section', () => {
+  it('reports an unknown section id as SECTION_NOT_FOUND', async () => {
+    expect(await codeOf(env.service.list('01ARZ3NDEKTSV4RRFFQ69G5FAV'))).toBe('SECTION_NOT_FOUND')
+  })
 })
 
 describe('sections and traversal', () => {

@@ -163,7 +163,7 @@ describe('GroupService.rename', () => {
   it('fails for an unknown id', async () => {
     expect(
       await codeOf(Promise.resolve().then(() => service.rename('01ARZ3NDEKTSV4RRFFQ69G5FAV', 'X')))
-    ).toBe('INTERNAL')
+    ).toBe('GROUP_NOT_FOUND')
   })
 })
 

@@ -218,7 +218,7 @@ export class SectionService {
 
   private requireCustom(sectionId: string): SectionRow {
     const row = this.repo.getById(sectionId)
-    if (!row) throw new AppErrorException('INTERNAL')
+    if (!row) throw new AppErrorException('SECTION_NOT_FOUND')
     if (row.kind !== 'custom' || !row.folderName) throw new AppErrorException('VALIDATION_FAILED')
     return row
   }

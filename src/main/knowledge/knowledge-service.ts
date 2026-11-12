@@ -370,7 +370,7 @@ export class KnowledgeService {
 
   private requireSection(sectionId: string): SectionRow {
     const section = this.deps.sectionsRepo.getById(sectionId)
-    if (!section) throw new AppErrorException('INTERNAL')
+    if (!section) throw new AppErrorException('SECTION_NOT_FOUND')
     return section
   }
 
@@ -381,7 +381,7 @@ export class KnowledgeService {
     path: string
   }> {
     const row = this.deps.itemsRepo.getById(itemId)
-    if (!row) throw new AppErrorException('INTERNAL')
+    if (!row) throw new AppErrorException('ITEM_NOT_FOUND')
     const section = this.requireSection(row.sectionId)
     const root = this.deps.getKnowledgeRoot(row.groupId)
     const path = await resolveInRoot(root, row.relPath.split('/'))

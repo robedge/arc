@@ -142,7 +142,7 @@ export class GroupService {
   rename(groupId: string, rawName: string): Group {
     const name = this.validName(rawName)
     const existing = this.repo.getById(groupId)
-    if (!existing) throw new AppErrorException('INTERNAL')
+    if (!existing) throw new AppErrorException('GROUP_NOT_FOUND')
 
     const nameKey = groupNameKey(name)
     const clash = this.repo.getByNameKey(nameKey)
@@ -165,7 +165,7 @@ export class GroupService {
    */
   async delete(groupId: string, exportTo?: string): Promise<void> {
     const existing = this.repo.getById(groupId)
-    if (!existing) throw new AppErrorException('INTERNAL')
+    if (!existing) throw new AppErrorException('GROUP_NOT_FOUND')
     if (exportTo !== undefined) {
       if (!this.exportKnowledge) throw new AppErrorException('INTERNAL')
       await this.exportKnowledge(groupId, exportTo)
