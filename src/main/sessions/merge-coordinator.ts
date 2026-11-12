@@ -10,12 +10,12 @@ import type {
   SessionProjectRow,
   SessionProjectsRepo
 } from '../db/repositories/session-projects-repo'
-import type { WorkerRow, WorkersRepo } from '../db/repositories/workers-repo'
+import { isResolverRow, type WorkerRow, type WorkersRepo } from '../db/repositories/workers-repo'
 import type { WorkerWorktreeRow, WorktreesRepo } from '../db/repositories/worktrees-repo'
 import type { MergeGit, PublishOutcome, SessionTip } from '../git/merge'
 import type { MergeQueue } from '../git/merge-queue'
 import type { WorktreeGit } from '../git/worktrees'
-import { isResolverRow, workerLabel } from './worker-label'
+import { workerLabel } from './worker-label'
 import { dropMergeWorktree, freshMergeWorktree, mergeWorktreePath } from './merge-worktree'
 import { pruneEmptyFolders } from './working-copy'
 import type { ResolverRequest, ResolverRun } from './worker-manager'

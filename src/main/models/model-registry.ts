@@ -13,7 +13,7 @@ import type {
 } from '@shared/types/provider'
 import type { CodexModelInfo, CodexModelSource } from '../agents/codex/codex-probe'
 import type { CursorModelInfo, CursorModelSource } from '../agents/cursor/cursor-probe'
-import { MODEL_ALIASES, normalizeModel } from '../sessions/worker-model'
+import { MODEL_ALIASES, normalizeModel } from './claude-aliases'
 import { type ClaudeModelInfo, type ClaudeModelSource, claudeTier } from './claude-models'
 import { codexTier } from './codex-tiers'
 import { cursorTier } from './cursor-tiers'

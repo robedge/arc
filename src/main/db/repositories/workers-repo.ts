@@ -6,6 +6,21 @@ import type { NewWorkerRow, UserControl, WorkerRow, WorkerStatus } from '../sche
 
 export type { NewWorkerRow, WorkerRow }
 
+/**
+ * A merge resolver is a worker row like any other (it needs an id for its tokens and questions), marked
+ * by this entry in `depends_on_json`. The brain can never produce it: it is not a worker id.
+ */
+export const RESOLVER_MARKER = 'arc:merge-resolver'
+
+export function isResolverRow(row: Pick<WorkerRow, 'dependsOnJson'>): boolean {
+  try {
+    const parsed: unknown = JSON.parse(row.dependsOnJson)
+    return Array.isArray(parsed) && parsed.includes(RESOLVER_MARKER)
+  } catch {
+    return false
+  }
+}
+
 const activeStatuses: WorkerStatus[] = ['starting', 'working', 'needs_approval', 'has_question']
 
 export class WorkersRepo {

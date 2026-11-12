@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import type { ModelTier } from '@shared/types/provider'
 import type { CommandProbe, RawModel } from '../agents/command-probe'
-import { DEFAULT_WORKER_MODEL } from '../sessions/worker-model'
+import { DEFAULT_WORKER_MODEL } from './claude-aliases'
 
 /**
  * The Claude models come from the CLI's answer to `initialize` (the same no-model exchange the command

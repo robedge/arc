@@ -54,7 +54,12 @@ import type {
   SessionProjectsRepo
 } from '../db/repositories/session-projects-repo'
 import type { SessionsRepo } from '../db/repositories/sessions-repo'
-import type { WorkerRow, WorkersRepo } from '../db/repositories/workers-repo'
+import {
+  RESOLVER_MARKER,
+  isResolverRow,
+  type WorkerRow,
+  type WorkersRepo
+} from '../db/repositories/workers-repo'
 import { rootOf } from '../usage/read-paths'
 import { usageAgentKey } from '../usage/usage-recorder'
 import type { UsageRecorder, UsageRun, UsageTracker } from '../usage/usage-recorder'
@@ -69,7 +74,7 @@ import type { WorktreeGit } from '../git/worktrees'
 import { answerNote } from './attention-coordinator'
 import type { RateLimitGate } from './rate-limit-gate'
 import { classifyWorkerExit } from './worker-exit'
-import { RESOLVER_MARKER, commandName, isResolverRow, workerLabel as labelOf } from './worker-label'
+import { commandName, workerLabel as labelOf } from './worker-label'
 import type { ModelRegistry } from '../models/model-registry'
 import { reasonOf, resolveWorkerTarget, standInFor } from '../models/provider-resolution'
 import type { FallbackReason, WorkerTarget } from '../models/provider-resolution'

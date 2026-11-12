@@ -82,7 +82,7 @@ import type { UsageRecorder } from '../usage/usage-recorder'
 import type { PlanUsageService } from '../usage/plan-usage-service'
 import type { TokenTotals } from '../../shared/types/usage'
 import type { WorkerManagerDeps } from './worker-manager'
-import { normalizeModel } from './worker-model'
+import { normalizeModel } from '../models/claude-aliases'
 import type {
   ModelRef,
   ProviderId,

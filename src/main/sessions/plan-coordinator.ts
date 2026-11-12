@@ -6,7 +6,7 @@ import { BridgeToolError } from '../bridge/types'
 import type { PlanDecisionResult, ProposePlanInput } from '../bridge/types'
 import type { MessagesRepo } from '../db/repositories/messages-repo'
 import type { PlanRow, PlansRepo } from '../db/repositories/plans-repo'
-import { DEFAULT_WORKER_MODEL } from './worker-model'
+import { DEFAULT_WORKER_MODEL } from '../models/claude-aliases'
 import type { GatePlan } from './plan-gate'
 
 export type PlanDecision = 'approve' | 'ask-changes' | 'reject'
