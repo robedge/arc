@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { toolsForRole } from '../bridge/tools/registry'
+import { modelToolsForRole } from '../bridge/tools/registry'
 import type { BridgeRole } from '../bridge/types'
 
 export interface SetupEstimate {
@@ -26,14 +26,11 @@ export function estimateSetup(input: SetupEstimateInput): SetupEstimate {
 
 /**
  * The Arc bridge tools an agent of this role is shown, as the text a model receives for each:
- * name, description and input schema. `request_permission` is left out: the CLI calls it itself and
- * the model is not given it as a tool.
+ * name, description and input schema.
  */
 export function bridgeToolDescriptions(role: BridgeRole): string[] {
-  return toolsForRole(role)
-    .filter((tool) => tool.name !== 'request_permission')
-    .map((tool) => {
-      const schema = JSON.stringify(z.toJSONSchema(z.object(tool.inputShape)))
-      return `${tool.name}\n${tool.description}\n${schema}`
-    })
+  return modelToolsForRole(role).map((tool) => {
+    const schema = JSON.stringify(z.toJSONSchema(z.object(tool.inputShape)))
+    return `${tool.name}\n${tool.description}\n${schema}`
+  })
 }

@@ -15,7 +15,8 @@ import { EventQueue } from '../event-queue'
 import {
   buildAgentEnv,
   type ProcessSupervisor,
-  type SupervisedProcess
+  type SupervisedProcess,
+  stopGracefully
 } from '../process-supervisor'
 import { RpcError, type JsonRpcId, type RpcServerRequest } from '../rpc/json-rpc-peer'
 import { MIN_CURSOR_VERSION } from '../../../shared/types/provider'
@@ -491,21 +492,10 @@ export class CursorHandle implements AgentHandle {
     this.queuedSends.length = 0
     if (this.busy && this.promptSent) this.client.cancel(this.sessionId)
     this.cancelPendingApprovals()
-    this.proc.expectExit()
-    this.proc.endStdin()
-    let timer: NodeJS.Timeout | undefined
-    const exited = await Promise.race([
-      this.proc.exited,
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), this.timings.stopGraceMs)
-      })
-    ])
-    clearTimeout(timer)
-    if (exited) return
-    await this.proc.killLadder([
-      { signal: 'SIGTERM', waitMs: this.timings.stopTermMs },
-      { signal: 'SIGKILL', waitMs: this.timings.stopTermMs }
-    ])
+    await stopGracefully(this.proc, {
+      graceMs: this.timings.stopGraceMs,
+      termMs: this.timings.stopTermMs
+    })
   }
 
   // ---- server requests -------------------------------------------------------------------

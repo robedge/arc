@@ -204,6 +204,37 @@ export interface SupervisedProcess {
   hasExited(): boolean
 }
 
+export interface StopTimings {
+  /** How long to wait after closing stdin before the first signal. */
+  graceMs: number
+  /** How long to wait after each of SIGTERM and SIGKILL. */
+  termMs: number
+}
+
+/**
+ * The shared stop sequence: mark the exit as expected, close stdin, give the process `graceMs` to
+ * leave on its own, then SIGTERM and SIGKILL the group. Resolves once it has exited (or the ladder
+ * gave up).
+ */
+export async function stopGracefully(proc: SupervisedProcess, timings: StopTimings): Promise<void> {
+  proc.expectExit()
+  proc.endStdin()
+  if (proc.hasExited()) return
+  let timer: NodeJS.Timeout | undefined
+  await Promise.race([
+    proc.exited,
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, timings.graceMs)
+    })
+  ])
+  clearTimeout(timer)
+  if (proc.hasExited()) return
+  await proc.killLadder([
+    { signal: 'SIGTERM', waitMs: timings.termMs },
+    { signal: 'SIGKILL', waitMs: timings.termMs }
+  ])
+}
+
 function isErrno(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code
 }

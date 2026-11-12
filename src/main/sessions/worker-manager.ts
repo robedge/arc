@@ -41,7 +41,7 @@ import type {
   WorkerStatusEntry
 } from '../bridge/types'
 import type { BridgeRegistry } from '../bridge/bridge-server'
-import { toolsForRole } from '../bridge/tools/registry'
+import { modelToolsForRole } from '../bridge/tools/registry'
 import { assertNever } from '@shared/assert-never'
 import { planRefusedText, providerName, runningOnLabel } from '@shared/provider-label'
 import { PROVIDER_IDS } from '@shared/types/provider'
@@ -1451,10 +1451,7 @@ export class WorkerManager {
         )
       }
       common.extraEnv = { MCP_TOOL_TIMEOUT: WORKER_MCP_TOOL_TIMEOUT_MS }
-      // The CLI calls request_permission itself; the model is not given it as a tool to call.
-      common.bridgeTools = toolsForRole('worker')
-        .filter((t) => t.name !== 'request_permission')
-        .map((t) => t.name)
+      common.bridgeTools = modelToolsForRole('worker').map((t) => t.name)
     }
     // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
     const codex: CodexStartOptions = {
@@ -2135,7 +2132,11 @@ export class WorkerManager {
     if (run.resolver) return run.recordChain
     run.recordChain = run.recordChain
       .then(() => this.doRecordHeads(run.workerId))
-      .catch(() => undefined)
+      // Per-worktree git errors are logged inside; this catches a failing repo write so the chain
+      // stays usable for the next record.
+      .catch((error: unknown) => {
+        this.deps.log.warn(`could not record the commits of worker ${run.workerId}`, error)
+      })
     return run.recordChain
   }
 

@@ -6,18 +6,10 @@ import {
   type CodexApprovalDecision,
   type CodexApprovalRequest
 } from '../agents/codex/codex-types'
-import { ACTION_WITHDRAWN, describeAction } from './attention-coordinator'
+import { ACTION_WITHDRAWN, describeAction, type RequestAction } from './attention-coordinator'
 import type { McpToolCatalogue } from '../personal/mcp-tool-catalogue'
 import { toStoredCall } from '../policy/normalized-action'
-import type { ActionDecision, ActionMeta, NormalizedAction } from '../policy/normalized-action'
-
-/** How the handler reaches the coordinator: the worker's `requestAction`, or the brain's. */
-export type RequestAction = (
-  agent: BridgeAgent,
-  action: NormalizedAction,
-  meta: ActionMeta,
-  call: { signal: AbortSignal }
-) => Promise<ActionDecision>
+import type { NormalizedAction } from '../policy/normalized-action'
 
 const DECLINE_ON_ERROR: CodexApprovalDecision = { decision: 'decline' }
 

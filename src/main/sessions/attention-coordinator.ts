@@ -46,6 +46,17 @@ const NOTE_COMMAND_MAX = 200
  */
 export const ACTION_WITHDRAWN = 'withdrawn'
 
+/**
+ * How a provider's approval handler (Codex, Cursor) reaches the coordinator: the worker's
+ * `requestAction`, or the brain's.
+ */
+export type RequestAction = (
+  agent: BridgeAgent,
+  action: NormalizedAction,
+  meta: ActionMeta,
+  call: { signal: AbortSignal }
+) => Promise<ActionDecision>
+
 /** What the user's answer is: approve or deny a permission, or text for a question. */
 export type AttentionAnswer =
   | { approve: boolean; always?: boolean }

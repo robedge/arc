@@ -14,7 +14,8 @@ import { parseClaudeMcpStatus } from '../mcp-status'
 import {
   buildAgentEnv,
   type ProcessSupervisor,
-  type SupervisedProcess
+  type SupervisedProcess,
+  stopGracefully
 } from '../process-supervisor'
 import { bridgeToolNamer } from '../tool-namer'
 
@@ -386,20 +387,9 @@ class ClaudeHandle implements AgentHandle {
   async stop(): Promise<void> {
     if (this.exitSeen) return
     if (this.turnActive) this.writeInterrupt()
-    this.proc.expectExit()
-    this.proc.endStdin()
-    let timer: NodeJS.Timeout | undefined
-    const exited = await Promise.race([
-      this.proc.exited,
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), this.timings.stopGraceMs)
-      })
-    ])
-    clearTimeout(timer)
-    if (exited) return
-    await this.proc.killLadder([
-      { signal: 'SIGTERM', waitMs: this.timings.stopTermMs },
-      { signal: 'SIGKILL', waitMs: this.timings.stopTermMs }
-    ])
+    await stopGracefully(this.proc, {
+      graceMs: this.timings.stopGraceMs,
+      termMs: this.timings.stopTermMs
+    })
   }
 }

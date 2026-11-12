@@ -24,7 +24,7 @@ import {
   DEGRADED_MCP_NOTE,
   reportHasBypass
 } from '../personal/personal-notes'
-import { toolsForRole } from '../bridge/tools/registry'
+import { modelToolsForRole } from '../bridge/tools/registry'
 import { BridgeToolError, MCP_SERVER_NAME } from '../bridge/types'
 import type {
   BridgeAgent,
@@ -1912,10 +1912,7 @@ export class Orchestrator {
     if (bridge) {
       const registration = bridge.registerAgent(brainAgent, this.bridgeServices())
       options.bridge = { url: registration.url, token: registration.token }
-      // The CLI calls request_permission itself; the model is not given it as a tool to call.
-      options.bridgeTools = toolsForRole('brain')
-        .filter((t) => t.name !== 'request_permission')
-        .map((t) => t.name)
+      options.bridgeTools = modelToolsForRole('brain').map((t) => t.name)
       if (options.provider === 'claude') {
         claude.mcpConfigPath = registration.configPath
         // Only awaited when the dependency exists, so launches without it keep their timing.

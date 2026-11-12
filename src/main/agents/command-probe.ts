@@ -3,7 +3,7 @@ import { readdir, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { AppErrorException } from '../../shared/errors'
 import { commandId, type CommandInfo } from '../../shared/types/commands'
-import { buildAgentEnv, type ProcessSupervisor } from './process-supervisor'
+import { buildAgentEnv, stopGracefully, type ProcessSupervisor } from './process-supervisor'
 import { isRecord } from '../util/json'
 
 /**
@@ -292,22 +292,10 @@ export class CommandProbe {
 
   /** Closes stdin, then signals the process group if the CLI is still there. */
   private async stop(proc: ReturnType<ProcessSupervisor['spawn']>): Promise<void> {
-    proc.expectExit()
-    proc.endStdin()
-    if (proc.hasExited()) return
-    let timer: NodeJS.Timeout | undefined
-    await Promise.race([
-      proc.exited,
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, this.deps.stopGraceMs ?? STOP_GRACE_MS)
-      })
-    ])
-    clearTimeout(timer)
-    if (proc.hasExited()) return
-    await proc.killLadder([
-      { signal: 'SIGTERM', waitMs: KILL_STEP_MS },
-      { signal: 'SIGKILL', waitMs: KILL_STEP_MS }
-    ])
+    await stopGracefully(proc, {
+      graceMs: this.deps.stopGraceMs ?? STOP_GRACE_MS,
+      termMs: KILL_STEP_MS
+    })
   }
 }
 

@@ -11,6 +11,7 @@ import { ListToolsRequestSchema, type CallToolResult } from '@modelcontextprotoc
 import { PROGRESS_INTERVAL_MS, startKeepalive } from './keepalive'
 import { CURSOR_POLL_MS, pollsLongCalls, waitForTool, WaitRegistry } from './polling'
 import type { PollOutcome } from './polling'
+import { requestPermissionTool } from './tools/request-permission'
 import { toolsForRole } from './tools/registry'
 import { BridgeToolError, MCP_SERVER_NAME } from './types'
 import type { AnyBridgeTool, BridgeAgent, BridgeServices } from './types'
@@ -290,7 +291,7 @@ export class BridgeServer implements BridgeRegistry {
     const mcp = new McpServer({ name: MCP_SERVER_NAME, version: '1.0.0' })
     // Claude's CLI calls request_permission itself; a Cursor agent asks through ACP and is not offered it.
     const tools = toolsForRole(entry.agent.role).filter(
-      (t) => !(entry.agent.provider === 'cursor' && t.name === 'request_permission')
+      (t) => !(entry.agent.provider === 'cursor' && t.name === requestPermissionTool.name)
     )
     // Only a Cursor agent can be handed a pending reply, so only it is shown the tool to follow one up.
     if (entry.waits) tools.push(waitForTool)

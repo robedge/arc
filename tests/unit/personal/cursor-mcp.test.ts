@@ -14,7 +14,7 @@ import type { CursorApprovalRequest } from '../../../src/main/agents/cursor/curs
 import { LoadCatalogue, type LoadCatalogueDeps } from '../../../src/main/personal/load-catalogue'
 import { McpToolCatalogue } from '../../../src/main/personal/mcp-tool-catalogue'
 import { applyCursorMcp, PersonalConfigService } from '../../../src/main/personal/personal-config'
-import type { RequestAction } from '../../../src/main/sessions/codex-approvals'
+import type { RequestAction } from '../../../src/main/sessions/attention-coordinator'
 import { createCursorApprovalHandler } from '../../../src/main/sessions/cursor-approvals'
 import { loadKey, type AgentLoadOff } from '../../../src/shared/types/agent-load'
 import { createLoadSelection } from '../../../src/main/personal/load-selection'

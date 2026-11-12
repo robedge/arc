@@ -16,7 +16,8 @@ import { EventQueue } from '../event-queue'
 import {
   buildAgentEnv,
   type ProcessSupervisor,
-  type SupervisedProcess
+  type SupervisedProcess,
+  stopGracefully
 } from '../process-supervisor'
 import { MIN_CODEX_VERSION } from '../../../shared/types/provider'
 import {
@@ -592,21 +593,10 @@ class CodexHandle implements AgentHandle {
         .catch(() => undefined)
     }
     this.abortApprovals()
-    this.proc.expectExit()
-    this.proc.endStdin()
-    let timer: NodeJS.Timeout | undefined
-    const exited = await Promise.race([
-      this.proc.exited,
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), this.timings.stopGraceMs)
-      })
-    ])
-    clearTimeout(timer)
-    if (exited) return
-    await this.proc.killLadder([
-      { signal: 'SIGTERM', waitMs: this.timings.stopTermMs },
-      { signal: 'SIGKILL', waitMs: this.timings.stopTermMs }
-    ])
+    await stopGracefully(this.proc, {
+      graceMs: this.timings.stopGraceMs,
+      termMs: this.timings.stopTermMs
+    })
   }
 
   // ---- server requests -------------------------------------------------------------------
