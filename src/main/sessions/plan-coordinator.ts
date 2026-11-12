@@ -36,13 +36,16 @@ function normalizeProvider(value: unknown): ProviderId {
   return isProviderId(value) ? value : 'claude'
 }
 
-/** One stored plan worker. Legacy rows lack `provider`, and an unknown one reads as `claude`. */
+/**
+ * One stored plan worker; only `name` is required, a missing or malformed field reads as empty. Legacy
+ * rows lack `provider`, and an unknown one reads as `claude`.
+ */
 const storedPlanWorkerSchema = z.object({
   name: z.string(),
-  task: z.string(),
-  repos: z.array(z.string()),
-  model: z.string().nullable(),
-  rationale: z.string(),
+  task: z.string().catch(''),
+  repos: z.array(z.string()).catch([]),
+  model: z.string().nullable().catch(null),
+  rationale: z.string().catch(''),
   command: z.string().optional(),
   approvedModel: z.string().optional(),
   provider: z.unknown().optional(),
