@@ -57,6 +57,35 @@ describe('parseProbeLine', () => {
       commands: [
         { name: 'awos:spec', description: 'Creates the spec (project)', argumentHint: '[x]' },
         { name: 'no-hint', description: 'Plain' }
+      ],
+      models: []
+    })
+  })
+
+  it('reads the models of the answer and skips entries without a value', () => {
+    const line = JSON.stringify({
+      type: 'control_response',
+      response: {
+        subtype: 'success',
+        request_id: 'r1',
+        response: {
+          commands: [],
+          models: [
+            { value: 'fable', displayName: 'Fable 5.2', description: 'Toughest' },
+            { value: ' haiku ', displayName: 'Haiku 5.5' },
+            { value: '', displayName: 'Empty' },
+            { displayName: 'No value' },
+            'not an object'
+          ]
+        }
+      }
+    })
+    expect(parseProbeLine(line, 'r1')).toEqual({
+      kind: 'commands',
+      commands: [],
+      models: [
+        { value: 'fable', displayName: 'Fable 5.2', description: 'Toughest' },
+        { value: 'haiku', displayName: 'Haiku 5.5', description: '' }
       ]
     })
   })
@@ -165,6 +194,24 @@ describe('CommandProbe', () => {
     const { probe, supervisor } = probeFor('hooks')
     const commands = await probe.run(dir(), undefined)
     expect(commands.map((c: RawCommand) => c.name)).toEqual(['awos:spec', 'no-hint'])
+    expect(supervisor.liveCount).toBe(0)
+  })
+
+  it('lists the models of the answer without a plugin view', async () => {
+    const supervisor = new ProcessSupervisor()
+    const probe = new CommandProbe({
+      supervisor,
+      binary: process.execPath,
+      binaryArgs: [child, 'hooks'],
+      resolvePath: () => Promise.resolve(process.env['PATH'] ?? ''),
+      extraEnv: {
+        ELECTRON_RUN_AS_NODE: '1',
+        PROBE_MODELS: JSON.stringify([{ value: 'opus', displayName: 'Opus 5.5' }])
+      }
+    })
+    expect(await probe.listModels(dir())).toEqual([
+      { value: 'opus', displayName: 'Opus 5.5', description: '' }
+    ])
     expect(supervisor.liveCount).toBe(0)
   })
 

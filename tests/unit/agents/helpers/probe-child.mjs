@@ -1,4 +1,5 @@
-// Stand-in CLI for the command probe tests. Mode is argv[2]; the commands come from PROBE_COMMANDS.
+// Stand-in CLI for the command probe tests. Mode is argv[2]; the commands come from PROBE_COMMANDS
+// and the models, when set, from PROBE_MODELS.
 //   hooks    prints hook lines, a stray line, then the control_response; exits when stdin closes
 //   hang     reads stdin, never answers
 //   linger   answers, then ignores stdin closing and stays until a signal
@@ -9,6 +10,7 @@ import { createInterface } from 'node:readline'
 const mode = process.argv[2]
 const out = (obj) => process.stdout.write(JSON.stringify(obj) + '\n')
 const commands = JSON.parse(process.env.PROBE_COMMANDS ?? '[]')
+const models = process.env.PROBE_MODELS ? JSON.parse(process.env.PROBE_MODELS) : undefined
 
 if (mode === 'exit1') {
   process.stderr.write('probe child failed\n')
@@ -35,7 +37,11 @@ rl.on('line', (raw) => {
   })
   out({
     type: 'control_response',
-    response: { subtype: 'success', request_id: msg.request_id, response: { commands } }
+    response: {
+      subtype: 'success',
+      request_id: msg.request_id,
+      response: models ? { commands, models } : { commands }
+    }
   })
 })
 if (mode === 'linger') {

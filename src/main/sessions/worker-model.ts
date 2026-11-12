@@ -1,5 +1,5 @@
 /** The Claude model aliases the CLI accepts. Full ids come from the CLI's `init` event. */
-export const MODEL_ALIASES: readonly string[] = ['opus', 'sonnet', 'haiku']
+export const MODEL_ALIASES: readonly string[] = ['opus', 'fable', 'sonnet', 'haiku']
 export const DEFAULT_WORKER_MODEL = 'sonnet'
 
 /** Aliases in lower case; a full model id is kept as given. */

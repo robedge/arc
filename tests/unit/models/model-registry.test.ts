@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CodexModelInfo, CodexModelSource } from '../../../src/main/agents/codex/codex-probe'
+import type { ClaudeModelInfo } from '../../../src/main/models/claude-models'
 import { codexTier } from '../../../src/main/models/codex-tiers'
 import {
   MODEL_CACHE_TTL_MS,
@@ -57,10 +58,11 @@ function rig(options: { state?: ProviderState; list?: CodexModelInfo[]; cache?: 
 }
 
 describe('Claude models', () => {
-  it('lists opus, sonnet and haiku with sonnet as the default, whatever Codex does', () => {
+  it('lists the built-in aliases with sonnet as the default when there is no Claude probe', () => {
     const { registry } = rig({ state: 'missing' })
     expect(registry.list('claude').map((m) => [m.ref.model, m.tier, m.isDefault])).toEqual([
       ['opus', 'deep', false],
+      ['fable', 'deep', false],
       ['sonnet', 'balanced', true],
       ['haiku', 'fast', false]
     ])
@@ -74,6 +76,110 @@ describe('Claude models', () => {
     registry.learn({ provider: 'claude', model: 'claude-opus-5-1' })
     expect(registry.has({ provider: 'claude', model: 'claude-opus-5-1' })).toBe(true)
     expect(registry.has({ provider: 'claude', model: 'gpt-6-sol' })).toBe(false)
+  })
+})
+
+describe('Claude models from the CLI', () => {
+  const CLAUDE: ClaudeModelInfo[] = [
+    { model: 'opus', displayName: 'Opus 5.5', isDefault: false },
+    { model: 'fable', displayName: 'Fable 5.2', isDefault: false },
+    { model: 'sonnet', displayName: 'Sonnet 5.5', isDefault: true },
+    { model: 'haiku', displayName: 'Haiku 5.5', isDefault: false }
+  ]
+
+  function claudeRig(state: ProviderState = 'ok'): {
+    registry: ModelRegistry
+    source: {
+      calls: number
+      result: ClaudeModelInfo[] | Error
+      listModels(): Promise<ClaudeModelInfo[]>
+    }
+    cachePath: string
+  } {
+    const source = {
+      calls: 0,
+      result: CLAUDE as ClaudeModelInfo[] | Error,
+      listModels(): Promise<ClaudeModelInfo[]> {
+        source.calls += 1
+        return source.result instanceof Error
+          ? Promise.reject(source.result)
+          : Promise.resolve(source.result)
+      }
+    }
+    const cachePath = join(dir, 'provider-cache.json')
+    const registry = new ModelRegistry({
+      claude: source,
+      status: () => ({ claude: { provider: 'claude', state, message: '', checkedAt: 1 } }),
+      cachePath,
+      log: { warn: vi.fn() }
+    })
+    return { registry, source, cachePath }
+  }
+
+  it('lists what the CLI reports, with its names, tiered by family', async () => {
+    const { registry, cachePath } = claudeRig()
+    await registry.refresh()
+    expect(registry.list('claude').map((m) => [m.ref.model, m.label, m.tier, m.isDefault])).toEqual(
+      [
+        ['opus', 'Opus 5.5', 'deep', false],
+        ['fable', 'Fable 5.2', 'deep', false],
+        ['sonnet', 'Sonnet 5.5', 'balanced', true],
+        ['haiku', 'Haiku 5.5', 'fast', false]
+      ]
+    )
+    expect(registry.has({ provider: 'claude', model: 'Fable' })).toBe(true)
+    expect(registry.fastFor('claude')).toEqual({ provider: 'claude', model: 'haiku' })
+    const stored = JSON.parse(readFileSync(cachePath, 'utf8')) as { claude: { models: unknown } }
+    expect(stored.claude.models).toEqual(CLAUDE)
+  })
+
+  it('lists a new alias the CLI reports without any change to Arc', async () => {
+    const { registry, source } = claudeRig()
+    source.result = [...CLAUDE, { model: 'nova', displayName: 'Nova 1', isDefault: false }]
+    await registry.refresh()
+    expect(registry.has({ provider: 'claude', model: 'nova' })).toBe(true)
+    expect(registry.tierOf({ provider: 'claude', model: 'nova' })).toBe('balanced')
+  })
+
+  it('keeps the built-in aliases when the probe fails or the CLI reports no models', async () => {
+    const failing = claudeRig()
+    failing.source.result = new Error('no answer')
+    await failing.registry.refresh()
+    expect(failing.registry.list('claude').map((m) => m.ref.model)).toEqual([
+      'opus',
+      'fable',
+      'sonnet',
+      'haiku'
+    ])
+    const empty = claudeRig()
+    empty.source.result = []
+    await empty.registry.refresh()
+    expect(empty.registry.list('claude').map((m) => m.label)).toEqual([
+      'Opus',
+      'Fable',
+      'Sonnet',
+      'Haiku'
+    ])
+  })
+
+  it('does not probe while Claude is not ok, and still lists the built-in aliases', async () => {
+    const { registry, source } = claudeRig('signed_out')
+    await registry.refresh({ force: true })
+    expect(source.calls).toBe(0)
+    expect(registry.list('claude')).toHaveLength(4)
+  })
+
+  it('reads the cached Claude list in a second registry without probing', async () => {
+    const first = claudeRig()
+    await first.registry.refresh()
+    const second = new ModelRegistry({
+      claude: first.source,
+      status: () => ({ claude: { provider: 'claude', state: 'ok', message: '', checkedAt: 1 } }),
+      cachePath: first.cachePath
+    })
+    await second.refresh()
+    expect(first.source.calls).toBe(1)
+    expect(second.list('claude').map((m) => m.label)).toContain('Fable 5.2')
   })
 })
 

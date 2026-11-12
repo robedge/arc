@@ -2,7 +2,7 @@ import { PROVIDER_TRAITS } from './provider-traits'
 import { PROVIDER_IDS, type ModelRef, type ProviderId, type RunningOn } from './types/provider'
 
 /** The Claude model aliases the CLI accepts; shown capitalised. Everything else is shown as is. */
-const CLAUDE_ALIASES: readonly string[] = ['opus', 'sonnet', 'haiku']
+const CLAUDE_ALIASES: readonly string[] = ['opus', 'fable', 'sonnet', 'haiku']
 
 /** Between a provider and its model, in every label. */
 const SEPARATOR = ' · '

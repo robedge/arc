@@ -4,6 +4,7 @@ import type { ProviderModels } from '@shared/types/provider'
 const FALLBACK: ProviderModels = {
   claude: [
     { ref: { provider: 'claude', model: 'opus' }, label: 'Opus', tier: 'deep', isDefault: false },
+    { ref: { provider: 'claude', model: 'fable' }, label: 'Fable', tier: 'deep', isDefault: false },
     {
       ref: { provider: 'claude', model: 'sonnet' },
       label: 'Sonnet',

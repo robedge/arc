@@ -53,6 +53,7 @@ import { CursorCommands } from '../agents/cursor/cursor-commands'
 import { CodexProbe } from '../agents/codex/codex-probe'
 import { CursorAdapter } from '../agents/cursor/cursor-adapter'
 import { CursorProbe } from '../agents/cursor/cursor-probe'
+import { ClaudeModelProbe } from '../models/claude-models'
 import { ModelRegistry } from '../models/model-registry'
 import { LatestVersions } from '../providers/provider-versions'
 import { AppSettingsRepo } from '../db/repositories/app-settings-repo'
@@ -625,6 +626,14 @@ function registerHandlers(): void {
     status: () => getProviderStatus().get()
   })
   const models = new ModelRegistry({
+    claude: new ClaudeModelProbe({
+      probe: new CommandProbe({
+        supervisor,
+        binary: resolver.claudeBinary(),
+        resolvePath: () => resolver.resolvePath()
+      }),
+      dir: join(app.getPath('userData'), 'claude-probe')
+    }),
     codex: codexProbe,
     cursor: cursorProbe,
     status: () => getProviderStatus().get(),
@@ -633,10 +642,10 @@ function registerHandlers(): void {
   })
   modelRegistry = models
   handle('providers:models', async () => {
-    // Before the first check has finished there is no Codex or Cursor status, and no list: wait for that
-    // check (it shares the one already running) instead of answering with an empty list.
+    // Before the first check has finished there is no provider status, and no probed list: wait for
+    // that check (it shares the one already running) instead of answering with a missing list.
     const providers = getProviderStatus()
-    for (const provider of ['codex', 'cursor'] as const) {
+    for (const provider of ['claude', 'codex', 'cursor'] as const) {
       if (!providers.getStatus(provider))
         await providers.ensureFresh(provider).catch(() => undefined)
     }

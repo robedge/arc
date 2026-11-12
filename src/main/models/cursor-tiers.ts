@@ -20,7 +20,7 @@ const FAST_WORDS: ReadonlySet<string> = new Set([
 ])
 
 /** A model whose name has one of these as a whole word (`claude-opus-5`, `gemini-3.1-pro`) is a deep one. */
-const DEEP_WORDS: ReadonlySet<string> = new Set(['opus', 'pro', 'max'])
+const DEEP_WORDS: ReadonlySet<string> = new Set(['opus', 'fable', 'pro', 'max'])
 
 /** The fields of a Cursor model that decide the tier. */
 export interface CursorTierInput {

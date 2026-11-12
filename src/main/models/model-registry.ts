@@ -14,15 +14,17 @@ import type {
 import type { CodexModelInfo, CodexModelSource } from '../agents/codex/codex-probe'
 import type { CursorModelInfo, CursorModelSource } from '../agents/cursor/cursor-probe'
 import { MODEL_ALIASES, normalizeModel } from '../sessions/worker-model'
+import { type ClaudeModelInfo, type ClaudeModelSource, claudeTier } from './claude-models'
 import { codexTier } from './codex-tiers'
 import { cursorTier } from './cursor-tiers'
 
 /** How long a provider's model list stays fresh. */
 export const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
-/** The Claude models Arc offers by alias. */
+/** The Claude aliases Arc offers until the CLI has listed its own (or when it cannot). */
 const CLAUDE_MODELS: readonly ModelInfo[] = [
   { ref: { provider: 'claude', model: 'opus' }, label: 'Opus', tier: 'deep', isDefault: false },
+  { ref: { provider: 'claude', model: 'fable' }, label: 'Fable', tier: 'deep', isDefault: false },
   {
     ref: { provider: 'claude', model: 'sonnet' },
     label: 'Sonnet',
@@ -41,12 +43,15 @@ const cachedListSchema = z.looseObject({
 
 /** `provider-cache.json`: one `{ fetchedAt, models }` entry per provider; unknown keys are kept. */
 export const cacheSchema = z.looseObject({
+  claude: cachedListSchema.optional(),
   codex: cachedListSchema.optional(),
   /** Entries may carry `group`, `base` and `variant`. */
   cursor: cachedListSchema.optional()
 })
 
 export interface ModelRegistryDeps {
+  /** Where the Claude models come from; left out, Claude lists its built-in aliases. */
+  claude?: ClaudeModelSource | undefined
   /** Where the Codex models come from; left out, Codex lists nothing. */
   codex?: CodexModelSource | undefined
   /** Where the Cursor models come from; left out, Cursor lists nothing. */
@@ -61,8 +66,8 @@ export interface ModelRegistryDeps {
 }
 
 /** The providers whose model list is probed and cached. */
-type ProbedProvider = 'codex' | 'cursor'
-const PROBED: readonly ProbedProvider[] = ['codex', 'cursor']
+type ProbedProvider = 'claude' | 'codex' | 'cursor'
+const PROBED: readonly ProbedProvider[] = ['claude', 'codex', 'cursor']
 
 interface CachedModels<T> {
   fetchedAt: number
@@ -74,13 +79,14 @@ type CachedCursorModel = Pick<CursorModelInfo, 'model' | 'displayName' | 'isDefa
   Partial<Pick<CursorModelInfo, 'group' | 'base' | 'variant'>>
 
 interface ModelCaches {
+  claude?: CachedModels<ClaudeModelInfo>
   codex?: CachedModels<CodexModelInfo>
   cursor?: CachedModels<CachedCursorModel>
 }
 
 /**
- * What models each provider offers. Claude's are the static aliases; Codex's come from `model/list`
- * and Cursor's from the `session/new` of a probe session, each through its probe, cached in memory
+ * What models each provider offers. Claude's come from the CLI's `initialize` answer (the built-in
+ * aliases until then), Codex's from `model/list` and Cursor's from the `session/new` of a probe session, each through its probe, cached in memory
  * and in `provider-cache.json` for 24 hours. The lists depend on the signed-in account (spike S11),
  * so a provider's models are listed only while it is `ok`.
  */
@@ -108,7 +114,7 @@ export class ModelRegistry {
   list(provider: ProviderId): ModelInfo[] {
     switch (provider) {
       case 'claude':
-        return [...CLAUDE_MODELS]
+        return this.claudeList()
       case 'codex':
         return this.codexList()
       case 'cursor':
@@ -116,6 +122,18 @@ export class ModelRegistry {
       default:
         return assertNever(provider)
     }
+  }
+
+  /** The CLI's aliases when it has listed them, else the built-in ones; Claude is never empty. */
+  private claudeList(): ModelInfo[] {
+    const models = this.caches.claude?.models ?? []
+    if (models.length === 0) return [...CLAUDE_MODELS]
+    return models.map((m) => ({
+      ref: { provider: 'claude', model: m.model } satisfies ModelRef,
+      label: m.displayName === '' ? m.model : m.displayName,
+      tier: claudeTier(m.model),
+      isDefault: m.isDefault
+    }))
   }
 
   private cursorList(): ModelInfo[] {
@@ -191,7 +209,7 @@ export class ModelRegistry {
 
   /**
    * The tier of a model. An unlisted Codex or Cursor model (the provider is down, so nothing is
-   * listed) is tiered by its name alone; an unknown Claude full id counts as balanced.
+   * listed) is tiered by its name alone, and so is an unlisted Claude full id.
    */
   tierOf(ref: ModelRef): ModelTier {
     const listed = this.list(ref.provider).find((m) => m.ref.model === ref.model)
@@ -202,7 +220,7 @@ export class ModelRegistry {
       case 'cursor':
         return cursorTier({ model: ref.model })
       case 'claude':
-        return 'balanced'
+        return claudeTier(ref.model)
       default:
         return assertNever(ref.provider)
     }
@@ -214,7 +232,7 @@ export class ModelRegistry {
   }
 
   /**
-   * Refreshes the Codex and Cursor lists of the providers that are `ok` and whose list is missing,
+   * Refreshes the Claude, Codex and Cursor lists of the providers that are `ok` and whose list is missing,
    * older than 24 hours, or `force` is set. A failed probe keeps the previous list. Never rejects.
    * Resolves true when a list differs from the one before (the cached list on the first refresh).
    */
@@ -249,7 +267,16 @@ export class ModelRegistry {
       const fetchedAt = this.now()
       let before: unknown
       let after: unknown
-      if (provider === 'codex') {
+      if (provider === 'claude') {
+        const source = this.deps.claude
+        if (!source) return false
+        const models = await source.listModels()
+        // An older CLI reports no models: keep the previous list (or the built-in one).
+        if (models.length === 0) return false
+        before = cached?.models ?? []
+        after = models
+        this.caches.claude = { fetchedAt, models }
+      } else if (provider === 'codex') {
         const source = this.deps.codex
         if (!source) return false
         const models = await source.listModels()
@@ -287,6 +314,7 @@ export class ModelRegistry {
     try {
       const parsed = cacheSchema.safeParse(JSON.parse(await readFile(path, 'utf8')))
       if (!parsed.success) return
+      if (parsed.data.claude) this.caches.claude = parsed.data.claude
       if (parsed.data.codex) this.caches.codex = parsed.data.codex
       if (parsed.data.cursor) this.caches.cursor = cursorCache(parsed.data.cursor)
     } catch {
@@ -303,8 +331,8 @@ export class ModelRegistry {
   private async writeCache(): Promise<void> {
     const path = this.deps.cachePath
     if (!path) return
-    const { codex, cursor } = this.caches
-    if (!codex && !cursor) return
+    const { claude, codex, cursor } = this.caches
+    if (!claude && !codex && !cursor) return
     try {
       let existing: Record<string, unknown> = {}
       try {
@@ -319,7 +347,12 @@ export class ModelRegistry {
       const temp = `${path}.tmp`
       await writeFile(
         temp,
-        JSON.stringify({ ...existing, ...(codex ? { codex } : {}), ...(cursor ? { cursor } : {}) }),
+        JSON.stringify({
+          ...existing,
+          ...(claude ? { claude } : {}),
+          ...(codex ? { codex } : {}),
+          ...(cursor ? { cursor } : {})
+        }),
         'utf8'
       )
       await rename(temp, path)

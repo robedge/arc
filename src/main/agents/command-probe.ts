@@ -9,7 +9,7 @@ import { buildAgentEnv, type ProcessSupervisor } from './process-supervisor'
  * The command catalogue (spec 005, tech spec 2.3). Claude Code answers a `control_request`
  * `initialize` on stdin with its slash commands and skills without a model call, so Arc lists them
  * by starting the CLI the way agents start (same plugin view, same setting sources), asking once
- * and closing it. Note: the CLI runs the repository's SessionStart hooks for that probe (spike S2).
+ * and closing it. The same answer carries the account's models, which the model registry reads. Note: the CLI runs the repository's SessionStart hooks for that probe (spike S2).
  */
 
 export const PROBE_TIMEOUT_MS = 10_000
@@ -23,6 +23,13 @@ export interface RawCommand {
   name: string
   description: string
   argumentHint?: string
+}
+
+/** A model exactly as the CLI's `initialize` answer reports it (`value` is what `--model` takes). */
+export interface RawModel {
+  value: string
+  displayName: string
+  description: string
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -48,8 +55,32 @@ function parseCommandList(value: unknown): RawCommand[] {
   return out
 }
 
-export type ProbeLine =
-  { kind: 'commands'; commands: RawCommand[] } | { kind: 'error'; message: string }
+/** The `models` of the CLI's answer to `initialize`; an older CLI sends none. */
+function parseModelList(value: unknown): RawModel[] {
+  if (!Array.isArray(value)) return []
+  const out: RawModel[] = []
+  for (const entry of value as unknown[]) {
+    if (!isRecord(entry)) continue
+    const model = entry['value']
+    if (typeof model !== 'string' || model.trim() === '') continue
+    const displayName = entry['displayName']
+    const description = entry['description']
+    out.push({
+      value: model.trim(),
+      displayName: typeof displayName === 'string' ? displayName : '',
+      description: typeof description === 'string' ? description : ''
+    })
+  }
+  return out
+}
+
+/** What the CLI answered to `initialize`. */
+export interface ProbeAnswer {
+  commands: RawCommand[]
+  models: RawModel[]
+}
+
+export type ProbeLine = ({ kind: 'commands' } & ProbeAnswer) | { kind: 'error'; message: string }
 
 /**
  * Reads one stdout line of the probe. Only the `control_response` for `requestId` counts; every
@@ -69,8 +100,12 @@ export function parseProbeLine(line: string, requestId: string): ProbeLine | und
     const message = response['error']
     return { kind: 'error', message: typeof message === 'string' ? message : 'initialize failed' }
   }
-  const body = response['response']
-  return { kind: 'commands', commands: parseCommandList(isRecord(body) ? body['commands'] : []) }
+  const body = isRecord(response['response']) ? response['response'] : {}
+  return {
+    kind: 'commands',
+    commands: parseCommandList(body['commands']),
+    models: parseModelList(body['models'])
+  }
 }
 
 /** Source of one raw command. `undefined` drops it (a repo command with no repository to run in). */
@@ -184,6 +219,22 @@ export class CommandProbe {
     pluginViewDir: string | undefined,
     personal?: ProbePersonalFiles
   ): Promise<RawCommand[]> {
+    return (await this.ask(cwd, pluginViewDir, personal)).commands
+  }
+
+  /**
+   * The models the CLI offers the signed-in account, asked in `cwd` without plugins or personal
+   * files (the list does not depend on them). Empty when the CLI reports none.
+   */
+  async listModels(cwd: string): Promise<RawModel[]> {
+    return (await this.ask(cwd, undefined, undefined)).models
+  }
+
+  private async ask(
+    cwd: string,
+    pluginViewDir: string | undefined,
+    personal: ProbePersonalFiles | undefined
+  ): Promise<ProbeAnswer> {
     const release = await this.slots.acquire()
     try {
       return await this.exchange(cwd, pluginViewDir, personal)
@@ -196,7 +247,7 @@ export class CommandProbe {
     cwd: string,
     pluginViewDir: string | undefined,
     personal: ProbePersonalFiles | undefined
-  ): Promise<RawCommand[]> {
+  ): Promise<ProbeAnswer> {
     const newId = this.deps.newId ?? randomUUID
     const path = await this.deps.resolvePath()
     const requestId = newId()
@@ -207,11 +258,12 @@ export class CommandProbe {
       env: buildAgentEnv(this.deps.env ?? process.env, path, this.deps.extraEnv),
       agentId: `command-probe-${requestId}`
     })
-    const answer = new Promise<RawCommand[]>((resolve, reject) => {
+    const answer = new Promise<ProbeAnswer>((resolve, reject) => {
       proc.onLine((line) => {
         const result = parseProbeLine(line, requestId)
         if (!result) return
-        if (result.kind === 'commands') resolve(result.commands)
+        if (result.kind === 'commands')
+          resolve({ commands: result.commands, models: result.models })
         else reject(new Error(result.message))
       })
       void proc.exited.then((info) => {
