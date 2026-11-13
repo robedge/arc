@@ -606,8 +606,7 @@ describe('the worker and resolver prompts', () => {
     number: 2,
     slug: 'api-retry',
     task: 'Add retries',
-    branchName: 'arc/retry',
-    worktrees: [{ projectName: 'api', path: '/w/api' }]
+    worktrees: [{ projectName: 'api', path: '/w/api', branchName: 'arc/retry' }]
   }
 
   it('tell a Cursor worker to call the arc tools directly and to follow pending with wait_for', () => {

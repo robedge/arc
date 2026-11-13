@@ -1,0 +1,17 @@
+# Names the session and answers a question, then starts a worker in api and later one in web when asked.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nThe orders report is slow because of one query."}
+{"result":true}
+{"waitForStdin":"Start the api worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-note","task":"Look at the API client","repos":["api"]}}}
+{"say":"The api worker is running."}
+{"result":true}
+{"waitForStdin":"Start the web worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"web-note","task":"Look at the web client","repos":["web"]}}}
+{"say":"The web worker is running."}
+{"result":true}
+{"waitForStdin":"The user chose not to start work in web"}
+{"say":"The web worker was not started, as you chose to leave web as it is."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

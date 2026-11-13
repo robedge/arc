@@ -1,0 +1,10 @@
+# Plan-first: proposes one worker in api, and starts it only once the plan is approved.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nI will propose a plan first."}
+{"mcp":{"tool":"propose_plan","args":{"workers":[{"name":"api-note","task":"Look at the API client","repos":["api"],"model":"sonnet","rationale":"Only api is involved."}]}},"saveAs":"plan"}
+{"waitForMcpResult":"plan"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-note","task":"Look at the API client","repos":["api"],"model":"sonnet"}}}
+{"say":"The api worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

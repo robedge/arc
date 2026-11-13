@@ -123,18 +123,28 @@ it('a renamed event entry updates the header name', () => {
   expect(activeSession.header?.name).toBe('Fix login')
 })
 
-it('a project that joined with unsaved changes opens the question, and answering it does not reopen the session', () => {
+it('answering the reopen question for the open session does not reopen it', () => {
   const invoke = mockArc(() => ({ ok: true, data: snapshot() }))
-  activeSession.applyDirtyQuestion({
-    sessionId: 's1',
-    needsDirtyChoice: {
-      token: 't1',
-      repos: [{ projectId: 'infra', name: 'infra', files: ['a.txt'], fileCount: 1 }]
-    }
-  })
+  activeSession.dirtyChoice = {
+    token: 't1',
+    repos: [{ projectId: 'infra', name: 'infra', files: ['a.txt'], fileCount: 1 }]
+  }
   expect(activeSession.dirtyChoice?.token).toBe('t1')
   activeSession.resolveDirty({ status: 'ready', sessionId: 's1' })
   expect(activeSession.dirtyChoice).toBeNull()
   expect(invoke).not.toHaveBeenCalled()
   expect(activeSession.sessionId).toBe('s1')
+})
+
+it('answerBranchQuestion sends the channel and maps the result to an error text', async () => {
+  const invoke = mockArc(() => ({ ok: true, data: { status: 'ok' } }))
+  expect(await activeSession.answerBranchQuestion('bq1', 'stash')).toBeNull()
+  expect(invoke).toHaveBeenCalledWith('sessions:answer-branch-question', {
+    questionId: 'bq1',
+    choice: 'stash'
+  })
+  mockArc(() => ({ ok: true, data: { status: 'not-open' } }))
+  expect(await activeSession.answerBranchQuestion('bq1', 'stash')).toBeNull()
+  mockArc(() => ({ ok: true, data: { status: 'failed', reason: 'Clash.' } }))
+  expect(await activeSession.answerBranchQuestion('bq1', 'carry')).toBe('Clash.')
 })

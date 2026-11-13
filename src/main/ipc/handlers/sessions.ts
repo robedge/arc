@@ -24,6 +24,9 @@ export function registerSessionHandlers(services: SessionHandlerServices): void 
   handle('commands:list', ({ sessionId }) => sessions.listCommands(sessionId, false))
   handle('commands:refresh', ({ sessionId }) => sessions.listCommands(sessionId, true))
   handle('sessions:resolve-dirty', ({ token, choices }) => sessions.resolveDirty(token, choices))
+  handle('sessions:answer-branch-question', ({ questionId, choice }) =>
+    attention.answerBranchQuestion(questionId, choice)
+  )
   handle('sessions:rename', ({ sessionId, name }) => sessions.rename(sessionId, name))
   handle('sessions:set-config', ({ sessionId, ...patch }) => sessions.setConfig(sessionId, patch))
   handle('sessions:remove-allow-rule', ({ sessionId, ruleId }) =>

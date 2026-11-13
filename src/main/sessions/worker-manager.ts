@@ -105,6 +105,7 @@ import { createCodexApprovalHandler, McpCoverage } from './codex-approvals'
 import { writeCursorDeny } from '../agents/cursor/cursor-deny'
 import { classifyUnaskedCall, cursorBlockedText } from '../agents/cursor/cursor-unasked'
 import type { CursorToolCall } from '../agents/cursor/cursor-types'
+import type { EnsureResult } from './branch-on-demand'
 import { createCursorApprovalHandler } from './cursor-approvals'
 import { TerminalLog } from './terminal-log'
 import { BRAIN_MESSAGE_PREFIX, CODEX_SLASH_LINE, typedSlashName } from './typed-slash'
@@ -117,6 +118,19 @@ export const RESOLVER_SLUG = 'merge-conflict'
 function waitingActivity(provider: ProviderId): string {
   return `Waiting for ${providerName(provider)} limit`
 }
+
+/** The card line of a queued worker that waits for the user's choice about unsaved changes. */
+function branchWaitActivity(projectNames: readonly string[]): string {
+  return `Waiting for your choice about unsaved changes in ${projectNames.join(', ')}`
+}
+
+/** What the brain is told when its spawn is queued for that choice. */
+function branchWaitNote(projectNames: readonly string[]): string {
+  return `Waiting for the user's choice about unsaved changes in ${projectNames.join(', ')}. Do not spawn it again; Arc sends a message when it starts or is not started.`
+}
+
+/** What `withBranches` found: the project rows to start with, or the projects the worker waits on. */
+type BranchOutcome = { rows: SessionProjectRow[] } | { waiting: string[] }
 
 /** A worker's blocking calls (permission, questions) wait as long as the user takes. */
 export const WORKER_MCP_TOOL_TIMEOUT_MS = '43200000'
@@ -228,6 +242,12 @@ export interface WorkerManagerDeps {
   commitsRepo: CommitsRepo
   sessionProjectsRepo: SessionProjectsRepo
   worktreeGit: WorktreeGit
+  /** Makes sure the session branch exists in these projects before a worker starts there (`BranchOnDemand.ensure`). */
+  ensureBranches: (projectIds: readonly string[], workerId: string) => Promise<EnsureResult>
+  /** Names of the projects among these that have an open unsaved-changes question (`BranchOnDemand.waitingOn`). */
+  branchWaits: (projectIds: readonly string[]) => string[]
+  /** Closes the unsaved-changes questions no worker waits on (`BranchOnDemand.cancelOrphans`). */
+  cancelBranchOrphans?: (() => Promise<void>) | undefined
   bridge?: BridgeRegistry | undefined
   /** The session behind the tools (its orchestrator); handed to the bridge for each worker. */
   services: BridgeServices
@@ -487,8 +507,8 @@ export interface WorkerPromptInput {
   task: string
   /** The slash command the worker's first message runs; the task is then only a description. */
   command?: string | null | undefined
-  branchName: string
-  worktrees: readonly { projectName: string; path: string }[]
+  /** One working copy per project; each is detached at the session branch of its own project. */
+  worktrees: readonly { projectName: string; path: string; branchName: string }[]
   /** The provider that runs the worker; Cursor is told how its tools are reached and about `wait_for`. */
   provider?: ProviderId | undefined
   /**
@@ -510,7 +530,9 @@ function toolRules(provider: ProviderId | undefined): string[] {
 
 /** The worker's system prompt. `[arc-role:worker]` and `[arc-worker:<slug>]` are read by the fake CLI. */
 export function buildWorkerPrompt(input: WorkerPromptInput): string {
-  const copies = input.worktrees.map((w) => `- ${w.projectName}: ${w.path}`).join('\n')
+  const copies = input.worktrees
+    .map((w) => `- ${w.projectName}: ${w.path} (session branch ${w.branchName})`)
+    .join('\n')
   return [
     '[arc-role:worker]',
     `[arc-worker:${input.slug}]`,
@@ -526,7 +548,7 @@ export function buildWorkerPrompt(input: WorkerPromptInput): string {
       ? ['', attachmentBlock(input.attachments)]
       : []),
     '',
-    `Your working copies (git worktrees detached at the session branch ${input.branchName}):`,
+    'Your working copies (git worktrees, each detached at the session branch of its project):',
     copies,
     '',
     'Rules:',
@@ -574,6 +596,8 @@ export function buildResolverPrompt(input: ResolverPromptInput): string {
 /** Starts, watches and finishes the workers of one session (tech spec 2.3, 2.5 and 2.7). */
 export class WorkerManager {
   private readonly running = new Map<string, Running>()
+  /** Workers that waited for an unsaved-changes answer; the brain is told when one of them starts. */
+  private readonly branchWaiters = new Set<string>()
   /** The working copies of each Cursor worker started, to refresh their deny files when another worker's copy appears. */
   private readonly cursorTrees = new Map<string, string[]>()
   /** The user MCP servers switched off for each Cursor worker; its deny file lists them. */
@@ -730,6 +754,10 @@ export class WorkerManager {
           }
     const heldBy = this.host.rateLimit.isProviderWaiting(provider) ? provider : null
     const queued = overLimit || heldBy !== null
+    // A worker held for the limit can already wait for the user's answer about one of its projects.
+    const branchWaits = queued
+      ? this.deps.branchWaits(projects.map((p) => p.projectId as string))
+      : []
     const workerId = this.deps.newId()
     const now = this.deps.now()
     const number = this.deps.workersRepo.nextNumber(this.deps.sessionId)
@@ -750,7 +778,13 @@ export class WorkerManager {
       model,
       ...this.fallbackColumns(fallback),
       status: queued ? 'queued' : 'starting',
-      activity: !queued ? 'Starting' : heldBy !== null ? waitingActivity(heldBy) : 'Queued',
+      activity: !queued
+        ? 'Starting'
+        : branchWaits.length > 0
+          ? branchWaitActivity(branchWaits)
+          : heldBy !== null
+            ? waitingActivity(heldBy)
+            : 'Queued',
       failureReason: null,
       summary: null,
       providerSessionId: null,
@@ -788,7 +822,18 @@ export class WorkerManager {
       )
       return { workerId, status: 'queued', ...echo }
     }
-    await this.startRow(row, projects)
+    // The limit and usage holds are past, so this worker really starts: its branches are made now.
+    const started = await this.withBranches(row, projects, true)
+    if ('waiting' in started) {
+      const waitNote = branchWaitNote(started.waiting)
+      return {
+        workerId,
+        status: 'queued',
+        ...echo,
+        note: echo.note === null ? waitNote : `${echo.note} ${waitNote}`
+      }
+    }
+    await this.startRow(row, started.rows)
     return { workerId, status: 'started', ...echo }
   }
 
@@ -1160,15 +1205,26 @@ export class WorkerManager {
           row = this.fallBack(row, 'limit', to)
         }
       }
-      // The card says why it waits: its provider's limit first, else the worker limit.
-      const activity = this.host.rateLimit.isProviderWaiting(row.provider)
-        ? waitingActivity(row.provider)
-        : 'Queued'
+      // Held while the user has an open question about one of its projects (derived, never stored).
+      const branchWaits = this.deps.branchWaits(parseIds(row.projectIdsJson))
+      // The card says why it waits: the user's choice, else its provider's limit, else the worker limit.
+      const activity =
+        branchWaits.length > 0
+          ? branchWaitActivity(branchWaits)
+          : this.host.rateLimit.isProviderWaiting(row.provider)
+            ? waitingActivity(row.provider)
+            : 'Queued'
       if (row.activity !== activity) {
         this.deps.workersRepo.setActivity(row.id, activity, this.deps.now())
         this.pushNow(row.id)
       }
-      if (this.host.rateLimit.isProviderWaiting(row.provider) || active >= limit) continue
+      if (
+        branchWaits.length > 0 ||
+        this.host.rateLimit.isProviderWaiting(row.provider) ||
+        active >= limit
+      ) {
+        continue
+      }
       active += 1
       this.deps.workersRepo.setStatus(row.id, 'starting', this.deps.now())
       this.deps.workersRepo.setActivity(row.id, 'Starting', this.deps.now())
@@ -1184,16 +1240,25 @@ export class WorkerManager {
       const projects = this.deps.sessionProjectsRepo
         .listBySession(this.deps.sessionId)
         .filter((p) => p.projectId !== null && wanted.has(p.projectId))
-      if (projects.length !== wanted.size || projects.some((p) => p.branchName === null)) {
+      if (projects.length !== wanted.size) {
         throw new BridgeToolError(
           'unknown_repo',
           'A project of this worker is no longer available.'
         )
       }
-      await this.startRow(this.deps.workersRepo.get(row.id) ?? row, projects)
+      const started = await this.withBranches(row, projects, false)
+      if ('waiting' in started) return
+      await this.startRow(this.deps.workersRepo.get(row.id) ?? row, started.rows)
+      // A worker that waited for the user's answer starts without the brain asking: say so.
+      if (this.branchWaiters.delete(row.id)) {
+        this.host.notifyBrain(
+          `[Arc] ${label} has started: the user chose how to handle the unsaved changes it was waiting on.`
+        )
+      }
     } catch (error: unknown) {
       if (this.disposed) return
       const reason = error instanceof BridgeToolError ? error.message : String(error)
+      this.branchWaiters.delete(row.id)
       const current = this.deps.workersRepo.get(row.id)
       if (current && current.status !== 'failed') {
         this.deps.workersRepo.setFailure(row.id, reason, this.deps.now())
@@ -1205,6 +1270,58 @@ export class WorkerManager {
         `[Arc] Worker W${row.number} failed: ${reason.replace(/\.$/, '')}. Decide how to continue and tell the user.`
       )
       this.drain()
+    }
+  }
+
+  /**
+   * Makes the session branch in the projects of a worker that is about to start, then returns the
+   * project rows read again, so they carry the branches. A refusal stores the worker as failed and
+   * throws `branch_failed`, like a failed working copy. When the user still has to answer a question
+   * about unsaved changes, the worker is put back to `queued` (it uses no slot) and this returns the
+   * projects it waits on: it must not start. `announce` writes the "queued" event, once, at the spawn.
+   */
+  private async withBranches(
+    row: WorkerRow,
+    projects: readonly SessionProjectRow[],
+    announce: boolean
+  ): Promise<BranchOutcome> {
+    const ids = projects.map((p) => p.projectId as string)
+    const result = await this.deps.ensureBranches(ids, row.id)
+    if (result.status === 'waiting') {
+      const now = this.deps.now()
+      this.branchWaiters.add(row.id)
+      this.deps.workersRepo.setStatus(row.id, 'queued', now)
+      this.deps.workersRepo.setActivity(row.id, branchWaitActivity(result.projectNames), now)
+      if (announce) {
+        this.host.logEvent(
+          'worker-queued',
+          `${labelOf(row)} queued: ${branchWaitActivity(result.projectNames)}`,
+          { waitingFor: result.projectNames },
+          row.id
+        )
+      }
+      this.pushNow(row.id)
+      this.host.onChange()
+      // Its slot is free again: a worker that was held by the limit meanwhile can start.
+      this.drain()
+      return { waiting: result.projectNames }
+    }
+    if (result.status === 'failed') {
+      const reason = `Could not create the session branch: ${result.reason}`
+      this.deps.log.error(`worker ${labelOf(row)}: ${reason}`)
+      this.deps.workersRepo.setFailure(row.id, reason, this.deps.now())
+      this.host.logEvent('worker-failed', `${labelOf(row)} failed: ${reason}`, undefined, row.id)
+      this.pushNow(row.id)
+      this.host.onChange()
+      this.drain()
+      throw new BridgeToolError('branch_failed', reason)
+    }
+    const all = this.deps.sessionProjectsRepo.listBySession(this.deps.sessionId)
+    return {
+      rows: ids.flatMap((id) => {
+        const fresh = all.find((p) => p.projectId === id)
+        return fresh ? [fresh] : []
+      })
     }
   }
 
@@ -1295,7 +1412,7 @@ export class WorkerManager {
   }
 
   /** Session projects by name; the error names the problem so the brain can fix its call. */
-  resolveRepos(names: readonly string[], requireBranch = true): SessionProjectRow[] {
+  resolveRepos(names: readonly string[]): SessionProjectRow[] {
     const all = this.deps.sessionProjectsRepo.listBySession(this.deps.sessionId)
     const picked: SessionProjectRow[] = []
     for (const name of names) {
@@ -1326,12 +1443,6 @@ export class WorkerManager {
         throw new BridgeToolError(
           'unknown_repo',
           `"${project.projectName}" is read only (not a git repository); workers cannot change it.`
-        )
-      }
-      if (requireBranch && project.branchName === null) {
-        throw new BridgeToolError(
-          'branch_not_ready',
-          `The session branch for "${project.projectName}" is not created yet. Try again in a moment.`
         )
       }
       if (!picked.includes(project)) picked.push(project)
@@ -1514,8 +1625,11 @@ export class WorkerManager {
           slug: row.slug,
           task: row.task,
           command: row.command,
-          branchName: first.project.branchName ?? `arc/${sessionSlug ?? 'session'}`,
-          worktrees: trees.map((t) => ({ projectName: t.project.projectName, path: t.path })),
+          worktrees: trees.map((t) => ({
+            projectName: t.project.projectName,
+            path: t.path,
+            branchName: t.project.branchName ?? `arc/${sessionSlug ?? 'session'}`
+          })),
           provider: row.provider,
           ...(refsViaPrompt && attachmentRefs.length > 0 ? { attachments: attachmentRefs } : {})
         })
@@ -2924,6 +3038,8 @@ export class WorkerManager {
       this.stopQueued(workerId, by)
       await this.stopWaitingForLimit(workerId, by)
       await this.stopPausedControlled(workerId, by)
+      // A queued worker may have been the last one waiting on a question.
+      await this.deps.cancelBranchOrphans?.()
       return
     }
     run.stopRequestedBy = by
@@ -2988,6 +3104,17 @@ export class WorkerManager {
       workerId
     )
     this.host.onChange()
+    await this.deps.cancelBranchOrphans?.()
+  }
+
+  /** Workers that were stored as failed elsewhere (`BranchOnDemand`): they no longer wait, and their cards are pushed. */
+  refreshWorkers(workerIds: readonly string[]): void {
+    for (const id of workerIds) {
+      this.branchWaiters.delete(id)
+      this.pushNow(id)
+    }
+    this.host.onChange()
+    this.drain()
   }
 
   /**
@@ -3063,7 +3190,11 @@ export class WorkerManager {
   async stopAll(by: WorkerStoppedBy): Promise<void> {
     this.stopping = true
     for (const row of this.deps.workersRepo.listBySession(this.deps.sessionId)) {
-      if (row.status === 'queued') this.stopQueued(row.id, by)
+      if (row.status !== 'queued') continue
+      // A worker that waits for the user's choice about unsaved changes keeps waiting across a
+      // quit: its card is stored and still open after the restart.
+      if (by === 'quit' && this.deps.branchWaits(parseIds(row.projectIdsJson)).length > 0) continue
+      this.stopQueued(row.id, by)
     }
     await Promise.all([...this.running.keys()].map((id) => this.stop(id, by)))
   }

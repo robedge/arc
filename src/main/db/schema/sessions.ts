@@ -36,7 +36,7 @@ export const sessions = sqliteTable(
       .notNull()
       .references(() => groups.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    /** Null until the session's branch is named. */
+    /** The branch name chosen for the session (`arc/<slug>`). Null until it is named. Choosing the name creates no branch; a repository gets it when a worker first starts there. */
     slug: text('slug'),
     mode: text('mode', { enum: ['plan_first', 'autonomous'] }).notNull(),
     workerLimit: integer('worker_limit').notNull(),
@@ -131,7 +131,7 @@ export const sessionProjects = sqliteTable(
       .notNull()
       .references(() => sessions.id, { onDelete: 'cascade' }),
     projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
-    /** Null until the session's branch is named. */
+    /** The session branch in this repository. Null until a worker first starts here (and always for read-only projects). */
     branchName: text('branch_name'),
     baseBranch: text('base_branch'),
     /** The branch the user's checkout was on before the switch (Cancel rollback). */

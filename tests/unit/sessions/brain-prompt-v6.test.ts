@@ -8,6 +8,7 @@ import {
   PROMPT_UPDATE_NOTE_V6,
   PROMPT_UPDATE_NOTE_V7,
   PROMPT_UPDATE_NOTE_V8,
+  PROMPT_UPDATE_NOTE_V9,
   buildBrainPrompt,
   promptUpdateNote
 } from '../../../src/main/sessions/orchestrator'
@@ -210,10 +211,10 @@ describe('the version 6 update note', () => {
 
   it('gives a version 5 session the note and the current block once', () => {
     expect(promptUpdateNote(5, undefined, section)).toBe(
-      `${PROMPT_UPDATE_NOTE_V6}\n${section}\n\n${PROMPT_UPDATE_NOTE_V7}\n\n${PROMPT_UPDATE_NOTE_V8}`
+      `${PROMPT_UPDATE_NOTE_V6}\n${section}\n\n${PROMPT_UPDATE_NOTE_V7}\n\n${PROMPT_UPDATE_NOTE_V8}\n\n${PROMPT_UPDATE_NOTE_V9}`
     )
     expect(promptUpdateNote(5, undefined, section)).not.toContain(PROMPT_UPDATE_NOTE_V5)
-    expect(promptUpdateNote(8, undefined, section)).toBeUndefined()
+    expect(promptUpdateNote(9, undefined, section)).toBeUndefined()
     expect(promptUpdateNote(5, undefined, undefined)).toBeUndefined()
   })
 })

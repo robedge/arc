@@ -23,4 +23,15 @@ export interface QuestionRequest extends AttentionBase {
   questions?: AttentionQuestion[]
 }
 
-export type AttentionRequest = PermissionRequest | QuestionRequest
+/** Arc's question about unsaved changes (spec 013); shown by BranchQuestionCard. */
+export interface BranchRequest extends AttentionBase {
+  kind: 'branch'
+  projectId: string
+  projectName: string
+  files: string[]
+  moreFiles: number
+  workers: string[]
+  message?: string
+}
+
+export type AttentionRequest = PermissionRequest | QuestionRequest | BranchRequest

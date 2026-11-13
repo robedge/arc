@@ -13,7 +13,14 @@ import { git, gitFixtureEnv } from '../helpers/git-fixtures'
 const FAKE_CLAUDE = resolve('tests/e2e/fixtures/fake-claude.mjs')
 const SCENARIOS = resolve('tests/e2e/fixtures/claude-scenarios')
 
-export type RepoKind = 'clean' | 'dirty' | 'no-dev' | 'plain'
+export type RepoKind =
+  | 'clean'
+  | 'dirty'
+  | 'no-dev'
+  | 'dirty-no-dev'
+  /** On a side branch whose README differs from main, with more edits on top: carrying them onto main clashes. */
+  | 'dirty-clash'
+  | 'plain'
 
 export interface RepoSpec {
   name: string
@@ -58,11 +65,16 @@ function makeRepo(root: string, spec: RepoSpec): string {
     execFileSync('sh', ['-c', `echo "not a repo" > note.txt`], { cwd: path })
     return path
   }
-  git(path, 'init', '-b', kind === 'no-dev' ? 'main' : 'dev')
+  git(
+    path,
+    'init',
+    '-b',
+    kind === 'no-dev' || kind === 'dirty-no-dev' || kind === 'dirty-clash' ? 'main' : 'dev'
+  )
   execFileSync('sh', ['-c', `printf 'hello\\n' > README.md`], { cwd: path })
   git(path, 'add', 'README.md')
   git(path, 'commit', '-m', 'Initial commit')
-  if (kind === 'dirty') {
+  if (kind === 'dirty' || kind === 'dirty-no-dev') {
     execFileSync(
       'sh',
       ['-c', `printf 'hello\\nchanged\\n' > README.md; echo new > untracked.txt`],
@@ -71,13 +83,20 @@ function makeRepo(root: string, spec: RepoSpec): string {
       }
     )
   }
+  if (kind === 'dirty-clash') {
+    git(path, 'checkout', '-b', 'side')
+    execFileSync('sh', ['-c', `printf 'side\\n' > README.md`], { cwd: path })
+    git(path, 'commit', '-am', 'Side change')
+    execFileSync('sh', ['-c', `printf 'side\\nmore\\n' > README.md`], { cwd: path })
+  }
   return path
 }
 
 function launchEnv(
   userDataDir: string,
   options: RigOptions,
-  logPath: string
+  logPath: string,
+  repos: Record<string, string>
 ): Record<string, string> {
   const scenario = options.scenario
   const isFile = scenario.endsWith('.jsonl')
@@ -86,6 +105,10 @@ function launchEnv(
     HARNESS_CLAUDE_BIN: FAKE_CLAUDE,
     FAKE_CLAUDE_AUTH: options.auth ?? 'ok',
     FAKE_CLAUDE_LOG: logPath,
+    // The path of each fixture project, for scenario steps that read a repository: FAKE_CLAUDE_REPO_API.
+    ...Object.fromEntries(
+      Object.entries(repos).map(([name, path]) => [`FAKE_CLAUDE_REPO_${name.toUpperCase()}`, path])
+    ),
     GIT_AUTHOR_NAME: gitFixtureEnv['GIT_AUTHOR_NAME'] ?? 'Arc Test',
     GIT_AUTHOR_EMAIL: gitFixtureEnv['GIT_AUTHOR_EMAIL'] ?? 'arc-test@example.com',
     GIT_COMMITTER_NAME: gitFixtureEnv['GIT_COMMITTER_NAME'] ?? 'Arc Test',
@@ -151,7 +174,7 @@ export async function launchRig(options: RigOptions): Promise<Rig> {
   const start = async (): Promise<void> => {
     rig.app = await electron.launch({
       args: ['out/main/index.js'],
-      env: launchEnv(userDataDir, current, logPath)
+      env: launchEnv(userDataDir, current, logPath, repos)
     })
     rig.page = await mainWindow(rig.app)
   }
@@ -221,6 +244,25 @@ export function eventLog(page: Page) {
 
 export function workerCard(page: Page, title: string) {
   return page.locator('[data-worker-card]').filter({ hasText: title })
+}
+
+/** The branch a repository is on right now. */
+export function branchOf(path: string): string {
+  return git(path, 'rev-parse', '--abbrev-ref', 'HEAD').trim()
+}
+
+/** Every session branch (`arc/...`) a repository holds. */
+export function arcBranches(path: string): string[] {
+  return git(path, 'branch', '--list', 'arc/*', '--format=%(refname:short)')
+    .split('\n')
+    .filter((b) => b.trim() !== '')
+}
+
+/** Types a message to the brain and sends it. */
+export async function sendToBrain(page: Page, text: string): Promise<void> {
+  const box = page.getByPlaceholder('Message the brain')
+  await box.fill(text)
+  await box.press('Enter')
 }
 
 export { git }

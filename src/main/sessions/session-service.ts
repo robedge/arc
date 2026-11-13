@@ -21,7 +21,9 @@ import type {
   SessionMode,
   SessionSnapshot,
   SessionSummary,
-  WorkerDetails
+  WorkerDetails,
+  AttentionView,
+  BranchChoiceValue
 } from '@shared/types/session'
 import { PLACEHOLDER_SESSION_NAME } from '@shared/types/session'
 import type { InterruptOutcome, ProviderUnavailableReason } from '../agents/agent-adapter'
@@ -36,6 +38,7 @@ import { toKnowledgeSuggestionView } from '../knowledge/knowledge-suggestion-vie
 import type { CommitsRepo } from '../db/repositories/commits-repo'
 import type { PlansRepo } from '../db/repositories/plans-repo'
 import type { WorkersRepo } from '../db/repositories/workers-repo'
+import type { BranchQuestionsRepo } from '../db/repositories/branch-questions-repo'
 import type { HeldMessagesRepo } from '../db/repositories/held-messages-repo'
 import type { WorktreesRepo } from '../db/repositories/worktrees-repo'
 import type { WorktreeGit } from '../git/worktrees'
@@ -57,15 +60,11 @@ import type { SessionRow } from '../db/repositories/sessions-repo'
 import { SessionProjectsRepo } from '../db/repositories/session-projects-repo'
 import type { SessionProjectRow } from '../db/repositories/session-projects-repo'
 import { SESSION_BRANCH_PREFIX, slugify } from '../git/session-git'
-import type {
-  DirtyChoice,
-  SessionBranchResult,
-  SessionGit,
-  SessionGitProject,
-  SessionStartOutcome,
-  SessionStartPlan
-} from '../git/session-git'
+import type { SessionGit, SessionGitProject, SessionStartPlan } from '../git/session-git'
 import { ulid } from '../db/ids'
+import { BranchOnDemand } from './branch-on-demand'
+import type { AnswerResult } from './branch-on-demand'
+import { branchQuestionViews } from './branch-question-views'
 import { deriveListStatus } from './list-status'
 import { messageRowDto } from './message-prompt'
 import type { MessageAttachmentsRepo } from '../db/repositories/message-attachments-repo'
@@ -151,6 +150,10 @@ export interface SessionServiceDeps {
   projectsRepo: Pick<ProjectsRepo, 'listByGroup'>
   sessionProjectsRepo: SessionProjectsRepo
   sessionGit: SessionGit
+  /** Questions about unsaved changes, asked before a repository gets its session branch. */
+  branchQuestionsRepo: BranchQuestionsRepo
+  /** A branch question opened, was answered or closed; the attention view is refreshed from this. */
+  onBranchQuestionsChanged?: ((sessionId: string) => void) | undefined
   plansRepo: PlansRepo
   workersRepo: WorkersRepo
   worktreesRepo: WorktreesRepo
@@ -327,35 +330,16 @@ interface CreateParams {
 }
 
 /** What a `needsDirtyChoice` token stands for. */
-type PendingDirty =
-  | { kind: 'create'; params: CreateParams; plan: SessionStartPlan; expiresAt: number }
-  | {
-      kind: 'open'
-      sessionId: string
-      /** Repos that must move to the session branch; `dirty` ones need a choice. */
-      repos: { projectId: string; name: string; path: string; branch: string; dirty: boolean }[]
-      expiresAt: number
-    }
-  /** Projects that joined the group while the session was open and have unsaved changes. */
-  | { kind: 'add'; sessionId: string; projects: SessionGitProject[]; expiresAt: number }
+type PendingDirty = {
+  kind: 'open'
+  sessionId: string
+  /** Repos that must move to the session branch; `dirty` ones need a choice. */
+  repos: { projectId: string; name: string; path: string; branch: string; dirty: boolean }[]
+  expiresAt: number
+}
 
 /** What changed in a group (functional spec 2.11). */
 export type GroupChange = { kind: 'projects' } | { kind: 'knowledge' }
-
-function gitProjectOf(row: SessionProjectRow): SessionGitProject {
-  return {
-    projectId: row.projectId as string,
-    name: row.projectName,
-    path: row.projectPath,
-    isGit: true
-  }
-}
-
-interface JoinResult {
-  status: 'started' | 'failed' | 'carry-failed'
-  /** What the brain is told. */
-  line: string
-}
 
 function summaryDto(
   row: SessionRow,
@@ -386,8 +370,6 @@ export class SessionService {
   private readonly lastSummaryKey = new Map<string, string>()
   private closed = false
   private readonly pendingDirty = new Map<string, PendingDirty>()
-  /** Choices made before the session existed, used when the brain's title arrives and the branches are created. */
-  private readonly startChoices = new Map<string, Record<string, DirtyChoiceValue>>()
   private readonly branchStarts = new Map<string, Promise<void>>()
   /** Group changes of one session run one at a time. */
   private readonly groupSyncs = new Map<string, Promise<unknown>>()
@@ -395,6 +377,8 @@ export class SessionService {
   private readonly knownKnowledge = new Map<string, string>()
   /** One queue for every session: merges of a repository run one at a time. */
   private readonly mergeQueue: MergeQueue
+  /** Creates a session branch in a repository when a worker first needs it; the worker manager calls `ensure`. */
+  readonly branchOnDemand: BranchOnDemand
 
   /** The models providers offer; shared by every session's workers and the pickers. */
   private readonly models: ModelRegistry
@@ -403,7 +387,56 @@ export class SessionService {
     this.models = deps.models ?? new ModelRegistry({ status: () => deps.providers?.get() ?? {} })
     this.mergeQueue = deps.mergeQueue ?? new MergeQueue()
     this.now = deps.now ?? Date.now
+    this.branchOnDemand = new BranchOnDemand({
+      sessionsRepo: deps.sessionsRepo,
+      sessionProjectsRepo: deps.sessionProjectsRepo,
+      workersRepo: deps.workersRepo,
+      branchQuestionsRepo: deps.branchQuestionsRepo,
+      sessionGit: deps.sessionGit,
+      logEvent: (sessionId, kind, text, data, workerId) =>
+        this.logSessionEvent(sessionId, kind, text, data, workerId),
+      pushHeader: (sessionId) => this.pushHeader(sessionId),
+      drain: (sessionId) => this.orchestrators.get(sessionId)?.drainWorkers(),
+      onWorkersChanged: (sessionId, workerIds) =>
+        this.orchestrators.get(sessionId)?.workersChanged(workerIds),
+      notifyBrain: (sessionId, text) => this.orchestrators.get(sessionId)?.sendNote(text),
+      onQuestionsChanged: (sessionId) => {
+        // The badge on the session list counts these questions.
+        this.scheduleSummary(sessionId)
+        this.deps.onBranchQuestionsChanged?.(sessionId)
+      },
+      now: () => this.now(),
+      log: deps.log
+    })
     this.newId = deps.newId ?? (() => ulid(this.now()))
+  }
+
+  /** The user's answer to an unsaved-changes question (`sessions:answer-branch-question`). */
+  answerBranchQuestion(questionId: string, choice: BranchChoiceValue): Promise<AnswerResult> {
+    return this.branchOnDemand.answer(questionId, choice)
+  }
+
+  /** Closes the questions no worker waits on (a worker was stopped or removed, a project left, a session opened). */
+  private async cancelBranchOrphans(sessionId: string): Promise<void> {
+    try {
+      await this.branchOnDemand.cancelOrphans(sessionId)
+    } catch (error: unknown) {
+      this.deps.log.warn('could not close the unsaved-changes questions nobody waits on', error)
+    }
+  }
+
+  /** The cards of the session's open unsaved-changes questions, with the changed files read now. */
+  branchQuestionViews(sessionId: string): Promise<AttentionView[]> {
+    return branchQuestionViews(
+      {
+        branchQuestionsRepo: this.deps.branchQuestionsRepo,
+        sessionProjectsRepo: this.deps.sessionProjectsRepo,
+        workersRepo: this.deps.workersRepo,
+        sessionGit: this.deps.sessionGit,
+        log: this.deps.log
+      },
+      sessionId
+    )
   }
 
   list(groupId: string): SessionSummary[] {
@@ -414,7 +447,8 @@ export class SessionService {
     return summaryDto(
       row,
       this.orchestrators.get(row.id)?.brainState ?? 'idle',
-      this.deps.attentionRepo.countPendingEscalatedBySession(row.id)
+      this.deps.attentionRepo.countPendingEscalatedBySession(row.id) +
+        this.deps.branchQuestionsRepo.countPending(row.id)
     )
   }
 
@@ -425,6 +459,10 @@ export class SessionService {
       this.summaryTimers.delete(sessionId)
       const row = this.deps.sessionsRepo.getById(sessionId)
       if (!row) return
+      // A card lists the workers that wait on it, and those change after the card opens.
+      if (this.deps.branchQuestionsRepo.countPending(sessionId) > 0) {
+        this.deps.onBranchQuestionsChanged?.(sessionId)
+      }
       const summary = this.summaryOf(row)
       const key = summaryKey(summary)
       if (this.lastSummaryKey.get(sessionId) === key) return
@@ -435,10 +473,9 @@ export class SessionService {
   }
 
   /**
-   * Starts a session. The dirty-tree question is asked first, before anything exists: when a git
-   * project has unsaved changes the result is `needsDirtyChoice` and no row is written and no brain
-   * is started until `sessions:resolve-dirty`. The branch itself is created later, when the brain's
-   * title (or the fallback name) arrives (`startBranches`).
+   * Starts a session. No repository is touched and nothing is asked about unsaved changes: the
+   * brain's title (or the fallback name) only chooses the branch name (`startBranches`), and a
+   * repository gets its session branch when a worker first needs it.
    */
   async create(
     groupId: string,
@@ -470,11 +507,7 @@ export class SessionService {
       ...(brainModel ? { brainModel } : {}),
       ...(hasFiles ? { files } : {})
     }
-    const plan = await this.planFor(this.gitProjects(groupId))
-    if (plan.dirtyRepos.length > 0) {
-      return this.askDirty({ kind: 'create', params, plan, expiresAt: 0 }, plan.dirtyRepos)
-    }
-    return { sessionId: await this.startSession(params, plan, {}) }
+    return { sessionId: await this.startSession(params, this.gitProjects(groupId)) }
   }
 
   private async planFor(projects: SessionGitProject[]): Promise<SessionStartPlan> {
@@ -525,11 +558,7 @@ export class SessionService {
    * attachments the staged files are copied first and everything is written in one transaction;
    * on a failure nothing remains but the staged files, so the user can retry.
    */
-  private async startSession(
-    params: CreateParams,
-    plan: SessionStartPlan,
-    choices: Record<string, DirtyChoiceValue>
-  ): Promise<string> {
+  private async startSession(params: CreateParams, projects: SessionGitProject[]): Promise<string> {
     const now = this.now()
     const sessionId = this.newId()
     // A new session copies the Settings defaults; changing Settings later never touches it.
@@ -557,8 +586,8 @@ export class SessionService {
       createdAt: now,
       lastActiveAt: now
     } as const
-    // Non-git projects are read only from the start; git projects get their branch after the title.
-    const projectRows = plan.projects.map((p) => ({
+    // Non-git projects are read only from the start; git projects get a branch when a worker first needs one.
+    const projectRows = projects.map((p) => ({
       sessionId,
       projectId: p.projectId,
       readOnly: !p.isGit,
@@ -599,7 +628,6 @@ export class SessionService {
       this.deps.sessionProjectsRepo.insertMany(projectRows)
     }
     this.attachmentsDirOf(sessionId)
-    if (Object.keys(choices).length > 0) this.startChoices.set(sessionId, choices)
     // The pick is remembered: the next New session dialog and the Providers page show it.
     if (picked && this.deps.appSettings) {
       this.deps.appSettings.set('providers.brain', picked, now)
@@ -613,9 +641,8 @@ export class SessionService {
   }
 
   /**
-   * The brain named the session: create `arc/<slug>` in every git project (tech spec 2.7). The
-   * dirty check runs again here because time has passed since the question was asked; a repo that
-   * became dirty meanwhile has no choice and aborts the start with an explanation.
+   * The brain named the session: choose the branch name (tech spec 2.1). No repository is changed;
+   * `sessions.slug` only means "the name is chosen".
    */
   private startBranches(sessionId: string, name: string): Promise<void> {
     const running = this.branchStarts.get(sessionId)
@@ -625,12 +652,11 @@ export class SessionService {
         this.deps.log.error('could not create the session branches', error)
         this.reportBranchFailure(
           sessionId,
-          "Arc couldn't create the working branch for this session. Your repositories were not changed."
+          "Arc couldn't choose a working branch name for this session. Your repositories were not changed."
         )
       })
       .finally(() => {
         this.branchStarts.delete(sessionId)
-        this.startChoices.delete(sessionId)
       })
     this.branchStarts.set(sessionId, task)
     return task
@@ -639,97 +665,17 @@ export class SessionService {
   private async runBranchStart(sessionId: string, name: string): Promise<void> {
     const row = this.deps.sessionsRepo.getById(sessionId)
     if (!row || row.slug !== null) return
-    const rows = this.deps.sessionProjectsRepo.listBySession(sessionId)
-    const gitRows = rows.filter(
-      (r) => !r.readOnly && r.projectId !== null && r.membership === 'active'
-    )
-    const projects: SessionGitProject[] = gitRows.map((r) => ({
-      projectId: r.projectId as string,
-      name: r.projectName,
-      path: r.projectPath,
-      isGit: true
-    }))
-    const slug = slugify(name)
-    if (projects.length === 0) {
-      this.deps.sessionsRepo.setSlug(sessionId, slug)
-      return
-    }
-    const plan = await this.deps.sessionGit.planSessionStart(projects)
-    const outcome = await this.deps.sessionGit.applySessionStart(plan, {
-      sessionName: name,
-      slug,
-      choices: this.startChoices.get(sessionId) ?? {}
-    })
+    const paths = this.deps.sessionProjectsRepo
+      .listBySession(sessionId)
+      .filter((r) => !r.readOnly && r.projectId !== null && r.membership === 'active')
+      .map((r) => r.projectPath)
+    // Read only: the name avoids a branch an older session left in any repository.
+    const branchName =
+      paths.length === 0
+        ? SESSION_BRANCH_PREFIX + slugify(name)
+        : await this.deps.sessionGit.uniqueBranch(paths, slugify(name))
     if (!this.deps.sessionsRepo.getById(sessionId)) return
-    if (outcome.status === 'started') {
-      this.recordStarted(sessionId, outcome)
-    } else {
-      this.deps.log.warn(`session branch start aborted: ${outcome.reason}: ${outcome.message}`)
-      this.reportBranchFailure(sessionId, this.abortText(plan, outcome))
-    }
-  }
-
-  private recordStarted(
-    sessionId: string,
-    outcome: Extract<SessionStartOutcome, { status: 'started' }>
-  ): void {
-    this.recordResults(sessionId, outcome.results)
-    this.deps.sessionsRepo.setSlug(
-      sessionId,
-      outcome.branchName.slice(SESSION_BRANCH_PREFIX.length)
-    )
-    const bases = [
-      ...new Set(outcome.results.flatMap((r) => (r.baseBranch === null ? [] : [r.baseBranch])))
-    ]
-    const orchestrator = this.orchestrators.get(sessionId)
-    orchestrator?.logEvent(
-      'branch',
-      `Working on ${outcome.branchName}${bases.length > 0 ? ` (from ${bases.join(', ')})` : ''}`,
-      { branchName: outcome.branchName }
-    )
-    this.pushHeader(sessionId)
-  }
-
-  private recordResults(sessionId: string, results: readonly SessionBranchResult[]): void {
-    const repo = this.deps.sessionProjectsRepo
-    for (const r of results) {
-      if (r.readOnly || r.branchName === null) continue
-      repo.setBranch(sessionId, r.projectId, r.branchName, r.baseBranch, r.previousBranch)
-      if (r.baseSha !== null) {
-        const row = repo.listBySession(sessionId).find((p) => p.projectId === r.projectId)
-        if (row) repo.setBaseSha(row.id, r.baseSha)
-      }
-      if (r.dirtyHandling !== 'none') {
-        repo.setDirtyHandling(sessionId, r.projectId, r.dirtyHandling, r.stashRef)
-      }
-    }
-  }
-
-  private abortText(
-    plan: SessionStartPlan,
-    outcome: Extract<SessionStartOutcome, { status: 'aborted' }>
-  ): string {
-    const nameOf = (id: string): string =>
-      plan.projects.find((p) => p.projectId === id)?.name ?? 'a project'
-    const list = (ids: string[]): string => ids.map(nameOf).join(', ')
-    let text: string
-    if (outcome.reason === 'carry-failed') {
-      text = `Arc couldn't bring your unsaved changes in ${list(outcome.carryFailed.map((c) => c.projectId))} onto the new session branch, so no branch was created.`
-    } else if (outcome.reason === 'cancelled') {
-      text =
-        "Some repositories have unsaved changes that Arc wasn't told how to handle, so no branch was created."
-    } else {
-      text = "Arc couldn't create the working branch for this session."
-    }
-    if (outcome.keptStashes.length > 0) {
-      text += ` Changes set aside in ${list(outcome.keptStashes.map((k) => k.projectId))} are kept in a git stash.`
-    }
-    if (outcome.rollbackFailures.length > 0) {
-      text += ` ${list(outcome.rollbackFailures.map((f) => f.projectId))} could not be put back on its original branch.`
-    } else {
-      text += ' Your other repositories are on the branches they were on.'
-    }
-    return text
+    this.deps.sessionsRepo.setSlug(sessionId, branchName.slice(SESSION_BRANCH_PREFIX.length))
   }
 
   private reportBranchFailure(sessionId: string, text: string): void {
@@ -765,20 +711,7 @@ export class SessionService {
     token: string,
     choices: Record<string, DirtyChoiceValue>
   ): Promise<ResolveDirtyResult> {
-    const pending = this.takeToken(token)
-    if (pending.kind === 'create') {
-      const answered = pending.plan.dirtyRepos.every(
-        (d) => (choices[d.projectId] ?? 'cancel') !== 'cancel'
-      )
-      if (!answered) return { status: 'cancelled' }
-      await this.ensureCli()
-      const sessionId = await this.startSession(pending.params, pending.plan, choices)
-      return { status: 'ready', sessionId }
-    }
-    if (pending.kind === 'add') {
-      return this.serial(pending.sessionId, () => this.resolveAdd(pending, choices))
-    }
-    return this.resolveOpen(pending, choices)
+    return this.resolveOpen(this.takeToken(token), choices)
   }
 
   private async resolveOpen(
@@ -903,7 +836,7 @@ export class SessionService {
     )
     await Promise.all(
       ids.map((id) =>
-        this.serial(id, () => this.applyGroupChange(id, change, true)).catch((error: unknown) =>
+        this.serial(id, () => this.applyGroupChange(id, change)).catch((error: unknown) =>
           this.deps.log.error('could not apply the group change to a session', error)
         )
       )
@@ -921,16 +854,12 @@ export class SessionService {
     return next
   }
 
-  private async applyGroupChange(
-    sessionId: string,
-    change: GroupChange,
-    switchBack: boolean
-  ): Promise<void> {
+  private async applyGroupChange(sessionId: string, change: GroupChange): Promise<void> {
     const session = this.deps.sessionsRepo.getById(sessionId)
     if (!session || this.closed) return
     const lines: string[] = []
     if (change.kind === 'projects') {
-      lines.push(...(await this.syncProjects(sessionId, switchBack)))
+      lines.push(...(await this.syncProjects(sessionId)))
     } else {
       const root = this.deps.getKnowledgeRoot(session.groupId)
       const before = this.knownKnowledge.get(sessionId)
@@ -1005,10 +934,16 @@ export class SessionService {
     for (const orchestrator of this.orchestrators.values()) orchestrator.suggestSettingChanged()
   }
 
-  private logSessionEvent(sessionId: string, kind: string, text: string, data?: unknown): void {
+  private logSessionEvent(
+    sessionId: string,
+    kind: string,
+    text: string,
+    data?: unknown,
+    workerId?: string
+  ): void {
     const orchestrator = this.orchestrators.get(sessionId)
     if (orchestrator) {
-      orchestrator.logEvent(kind, text, data)
+      orchestrator.logEvent(kind, text, data, workerId ?? null)
       return
     }
     this.deps.eventsRepo.append({
@@ -1016,7 +951,7 @@ export class SessionService {
       at: this.now(),
       kind,
       text,
-      workerId: null,
+      workerId: workerId ?? null,
       dataJson: data === undefined ? null : JSON.stringify(data)
     })
   }
@@ -1025,7 +960,7 @@ export class SessionService {
    * Brings the session's project rows in line with the group. Returns what the brain should be told.
    * A removed project keeps its row (history and review stay); a moved one gets its new path.
    */
-  private async syncProjects(sessionId: string, switchBack: boolean): Promise<string[]> {
+  private async syncProjects(sessionId: string): Promise<string[]> {
     // The first branch start reads the rows once; wait for it so no project is missed.
     const running = this.branchStarts.get(sessionId)
     if (running) await running
@@ -1037,7 +972,6 @@ export class SessionService {
     const inGroup = new Map(group.map((p) => [p.id, p]))
     const lines: string[] = []
     let rowsChanged = false
-    let reactivated = false
 
     for (const row of repo.listBySession(sessionId)) {
       const project = row.projectId === null ? undefined : inGroup.get(row.projectId)
@@ -1062,7 +996,6 @@ export class SessionService {
       if (row.membership === 'removed') {
         repo.setMembership(row.id, 'active')
         rowsChanged = true
-        reactivated = true
         lines.push(`"${project.displayName}" is part of the group again`)
         this.logSessionEvent(
           sessionId,
@@ -1100,7 +1033,18 @@ export class SessionService {
         }))
       )
       rowsChanged = true
-      for (const p of fresh.filter((x) => !x.isGit)) {
+      for (const p of fresh) {
+        if (p.isGit) {
+          lines.push(
+            `"${p.displayName}" joined the group (${p.path}); it gets the session branch when a worker first starts there`
+          )
+          this.logSessionEvent(
+            sessionId,
+            'project-added',
+            `${p.displayName} joined the group; it gets the session branch when a worker first starts there`
+          )
+          continue
+        }
         lines.push(
           `"${p.displayName}" joined the group (${p.path}); it is read only, not a git repository`
         )
@@ -1112,219 +1056,24 @@ export class SessionService {
       }
     }
     if (rowsChanged) this.pushHeader(sessionId)
+    // A project that left the group takes its unsaved-changes question with it. Opening a session
+    // runs this too, so a card whose workers are gone while Arc was closed disappears on open.
+    await this.cancelBranchOrphans(sessionId)
 
-    // Git projects of an open session that still have no branch: new ones, and any whose earlier
-    // attempt failed or whose question was never answered.
-    if (session.slug !== null) {
-      const awaiting = this.awaitingAddQuestion(sessionId)
-      const pending = repo
-        .listBySession(sessionId)
-        .filter(
-          (r) =>
-            r.membership === 'active' &&
-            !r.readOnly &&
-            r.projectId !== null &&
-            r.branchName === null &&
-            !awaiting.has(r.projectId) &&
-            exists(r.projectPath)
-        )
-      if (pending.length > 0) lines.push(...(await this.joinBranches(sessionId, pending)))
-    }
-
-    if (reactivated && switchBack) {
-      const question = await this.prepareOpen(sessionId)
-      if (question) {
-        this.deps.emit('session:dirty-question', {
-          sessionId,
-          needsDirtyChoice: question.needsDirtyChoice
-        })
-      }
-    }
     return lines
-  }
-
-  private awaitingAddQuestion(sessionId: string): Set<string> {
-    const now = this.now()
-    const ids = new Set<string>()
-    for (const pending of this.pendingDirty.values()) {
-      if (pending.kind !== 'add' || pending.sessionId !== sessionId || pending.expiresAt <= now) {
-        continue
-      }
-      for (const p of pending.projects) ids.add(p.projectId)
-    }
-    return ids
-  }
-
-  /**
-   * Creates the session branch in projects that joined after the session started. A repository with
-   * unsaved changes is asked about first (one question for all of them); the rest start right away.
-   */
-  private async joinBranches(sessionId: string, rows: SessionProjectRow[]): Promise<string[]> {
-    const lines: string[] = []
-    const asking: SessionGitProject[] = []
-    const infos: { projectId: string; name: string; files: string[] }[] = []
-    for (const row of rows) {
-      const project = gitProjectOf(row)
-      const plan = await this.planFor([project])
-      const dirty = plan.dirtyRepos[0]
-      if (dirty) {
-        asking.push(project)
-        infos.push(dirty)
-        lines.push(
-          `"${project.name}" joined the group but the user is still deciding what to do with its unsaved changes, so no workers there yet`
-        )
-        continue
-      }
-      lines.push((await this.createAddedBranch(sessionId, project)).line)
-    }
-    if (asking.length > 0) this.askAdd(sessionId, asking, infos)
-    return lines
-  }
-
-  private askAdd(
-    sessionId: string,
-    projects: SessionGitProject[],
-    infos: { projectId: string; name: string; files: string[] }[]
-  ): void {
-    const question = this.askDirty({ kind: 'add', sessionId, projects, expiresAt: 0 }, infos)
-    this.logSessionEvent(
-      sessionId,
-      'project-added',
-      `${projects.map((p) => p.name).join(', ')} joined the group and has unsaved changes; waiting for your choice`
-    )
-    this.deps.emit('session:dirty-question', {
-      sessionId,
-      needsDirtyChoice: question.needsDirtyChoice
-    })
-  }
-
-  /** The same branch the session has everywhere else (or the next free name in this repository). */
-  private async createAddedBranch(
-    sessionId: string,
-    project: SessionGitProject,
-    choice?: DirtyChoice
-  ): Promise<JoinResult> {
-    const session = this.deps.sessionsRepo.getById(sessionId)
-    if (!session || session.slug === null) {
-      return { status: 'failed', line: `"${project.name}" joined the group` }
-    }
-    try {
-      const branchName = await this.deps.sessionGit.uniqueBranch([project.path], session.slug)
-      const plan = await this.deps.sessionGit.planSessionStart([project])
-      const outcome = await this.deps.sessionGit.applySessionStart(plan, {
-        sessionName: session.name,
-        slug: session.slug,
-        branchName,
-        choices: choice === undefined ? {} : { [project.projectId]: choice }
-      })
-      if (!this.deps.sessionsRepo.getById(sessionId)) {
-        return { status: 'failed', line: `"${project.name}" joined the group` }
-      }
-      if (outcome.status === 'started') {
-        this.recordResults(sessionId, outcome.results)
-        const base = outcome.results.find((r) => r.projectId === project.projectId)?.baseBranch
-        this.logSessionEvent(
-          sessionId,
-          'branch',
-          `Working on ${branchName} in ${project.name}${base ? ` (from ${base})` : ''}`,
-          { branchName, projectName: project.name }
-        )
-        this.pushHeader(sessionId)
-        return {
-          status: 'started',
-          line: `"${project.name}" joined the group (${project.path}) and is on branch ${branchName}; you can read it and start workers there`
-        }
-      }
-      if (outcome.reason === 'carry-failed') {
-        return { status: 'carry-failed', line: `"${project.name}" joined the group` }
-      }
-      this.deps.log.warn(`could not create the branch in ${project.name}: ${outcome.message}`)
-      this.reportBranchFailure(
-        sessionId,
-        `Arc couldn't create the session branch in ${project.name}, which joined the group. ${project.name} was not changed.`
-      )
-      return {
-        status: 'failed',
-        line: `"${project.name}" joined the group but its session branch could not be created, so no workers there yet`
-      }
-    } catch (error: unknown) {
-      this.deps.log.error(`could not create the branch in ${project.name}`, error)
-      this.reportBranchFailure(
-        sessionId,
-        `Arc couldn't create the session branch in ${project.name}, which joined the group. ${project.name} was not changed.`
-      )
-      return {
-        status: 'failed',
-        line: `"${project.name}" joined the group but its session branch could not be created, so no workers there yet`
-      }
-    }
-  }
-
-  /** The user answered the question about a project that joined the group with unsaved changes. */
-  private async resolveAdd(
-    pending: Extract<PendingDirty, { kind: 'add' }>,
-    choices: Record<string, DirtyChoiceValue>
-  ): Promise<ResolveDirtyResult> {
-    const { sessionId } = pending
-    if (!this.deps.sessionsRepo.getById(sessionId)) return { status: 'cancelled' }
-    const repo = this.deps.sessionProjectsRepo
-    const lines: string[] = []
-    const retry: SessionGitProject[] = []
-    let kept = 0
-    for (const project of pending.projects) {
-      const row = repo
-        .listBySession(sessionId)
-        .find((r) => r.projectId === project.projectId && r.membership === 'active')
-      if (!row) continue
-      const choice = choices[project.projectId] ?? 'cancel'
-      if (choice === 'cancel') {
-        repo.setMembership(row.id, 'left_out')
-        lines.push(
-          `"${project.name}" joined the group but the user kept it out of this session (it has unsaved changes); you may read it, but no workers can start there`
-        )
-        this.logSessionEvent(
-          sessionId,
-          'project-left-out',
-          `${project.name} was left out of this session`,
-          { projectName: project.name }
-        )
-        continue
-      }
-      kept += 1
-      const result = await this.createAddedBranch(sessionId, project, choice)
-      if (result.status === 'carry-failed') retry.push(project)
-      else lines.push(result.line)
-    }
-    this.pushHeader(sessionId)
-    if (retry.length > 0) {
-      const infos: { projectId: string; name: string; files: string[] }[] = []
-      for (const project of retry) {
-        const plan = await this.planFor([project])
-        if (plan.dirtyRepos[0]) infos.push(plan.dirtyRepos[0])
-      }
-      if (lines.length > 0) this.tellBrain(sessionId, lines)
-      const question = this.askDirty(
-        { kind: 'add', sessionId, projects: retry, expiresAt: 0 },
-        infos
-      )
-      return {
-        status: 'carry-failed',
-        message: `Arc couldn't bring your unsaved changes in ${retry.map((p) => p.name).join(', ')} onto the session branch. Choose another way to handle them.`,
-        ...question
-      }
-    }
-    this.tellBrain(sessionId, lines)
-    return kept === 0 ? { status: 'cancelled' } : { status: 'ready', sessionId }
   }
 
   async open(sessionId: string): Promise<OpenSessionResult> {
     this.requireSession(sessionId)
     // The group may have changed while this session was not open.
-    await this.serial(sessionId, () =>
-      this.applyGroupChange(sessionId, { kind: 'projects' }, false)
-    )
+    await this.serial(sessionId, () => this.applyGroupChange(sessionId, { kind: 'projects' }))
     const question = await this.prepareOpen(sessionId)
     if (question) return question
+    // A session whose name was never turned into a branch name (an aborted start) gets one now.
+    const named = this.requireSession(sessionId)
+    if (named.slug === null && named.name !== PLACEHOLDER_SESSION_NAME) {
+      void this.startBranches(sessionId, named.name)
+    }
     // A fast-forward that waited for a clean checkout may be possible now. Opening never waits for
     // it: the retry runs in the background and its result arrives as a normal session event.
     this.orchestratorFor(sessionId, null).offerContinue()
@@ -1337,8 +1086,10 @@ export class SessionService {
     void this.listCommands(sessionId, false).catch((error: unknown) =>
       this.deps.log.warn('could not warm the command list', error)
     )
+    const snapshot = this.snapshot(sessionId)
     return {
-      ...this.snapshot(sessionId),
+      ...snapshot,
+      attention: [...snapshot.attention, ...(await this.branchQuestionViews(sessionId))],
       changedFileCount: await this.changedFileCountOf(sessionId)
     }
   }
@@ -1681,7 +1432,6 @@ export class SessionService {
     if (timer) clearTimeout(timer)
     this.summaryTimers.delete(sessionId)
     this.lastSummaryKey.delete(sessionId)
-    this.startChoices.delete(sessionId)
     this.knownKnowledge.delete(sessionId)
     const orchestrator = this.orchestrators.get(sessionId)
     this.orchestrators.delete(sessionId)
@@ -2094,6 +1844,10 @@ export class SessionService {
         attachmentsRepo: this.deps.messageAttachmentsRepo,
         groupName: () => this.deps.groupsRepo.getById(row.groupId)?.name ?? 'group',
         branchesReady: () => this.branchStarts.get(sessionId) ?? Promise.resolve(),
+        ensureBranches: (projectIds, workerId) =>
+          this.branchOnDemand.ensure(sessionId, projectIds, workerId),
+        branchWaits: (projectIds) => this.branchOnDemand.waitingOn(sessionId, projectIds),
+        cancelBranchOrphans: () => this.cancelBranchOrphans(sessionId),
         autoMerge: this.deps.autoMergeDone ?? true
       },
       newId: this.newId,

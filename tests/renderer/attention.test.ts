@@ -1,3 +1,4 @@
+// @spec: 013-session-branches-on-demand
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte'
 import { readFileSync } from 'node:fs'
@@ -6,6 +7,7 @@ import AttentionDialog from '../../src/renderer/src/lib/components/ui/attention/
 import PermissionCard from '../../src/renderer/src/lib/components/ui/attention/PermissionCard.svelte'
 import QuestionCard from '../../src/renderer/src/lib/components/ui/attention/QuestionCard.svelte'
 import StructuredQuestionCard from '../../src/renderer/src/lib/components/ui/attention/StructuredQuestionCard.svelte'
+import BranchQuestionCard from '../../src/renderer/src/lib/components/ui/attention/BranchQuestionCard.svelte'
 import { motion } from '../../src/renderer/src/lib/stores/motion.svelte'
 import type { AttentionRequest } from '../../src/renderer/src/lib/components/ui/attention/types'
 
@@ -292,4 +294,113 @@ it('structured: the submitted answers can cross the IPC bridge (structured clone
   await fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
   const payload = onSubmit.mock.calls[0]![1] as Record<string, string[]>
   expect(structuredClone(payload)).toEqual({ 'Which colors?': ['Red'] })
+})
+
+// ---- Unsaved changes card (spec 013) ----
+
+const branchProps = {
+  id: 'bq1',
+  from: 'Arc',
+  projectName: 'web',
+  files: ['src/a.ts', 'src/b.ts'],
+  moreFiles: 0,
+  workers: ['W3 web-fix']
+}
+
+it('branch card names the project, the files and the waiting workers', () => {
+  render(BranchQuestionCard, { ...branchProps, onAnswer: () => {} })
+  expect(screen.getByText('Unsaved changes in web')).toBeTruthy()
+  expect(screen.getByText('src/a.ts')).toBeTruthy()
+  expect(screen.getByText(/W3 web-fix/)).toBeTruthy()
+  expect(document.querySelector('[data-branch-card]')).toBeTruthy()
+  // No free text, no Decline.
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Decline' })).toBeNull()
+})
+
+it('branch card says "and N more" when files are left out', () => {
+  render(BranchQuestionCard, { ...branchProps, moreFiles: 7, onAnswer: () => {} })
+  expect(screen.getByText('and 7 more')).toBeTruthy()
+})
+
+it('branch card offers four choices with descriptions and no default', () => {
+  render(BranchQuestionCard, { ...branchProps, onAnswer: () => {} })
+  const radios = screen.getAllByRole('radio') as HTMLInputElement[]
+  expect(
+    [...document.querySelectorAll('[data-branch-choice]')].map((e) =>
+      e.getAttribute('data-branch-choice')
+    )
+  ).toEqual(['stash', 'commit', 'carry', 'skip'])
+  expect(radios.some((r) => r.checked)).toBe(false)
+  expect(screen.getByRole('radiogroup', { name: /what to do with these changes/i })).toBeTruthy()
+  expect(screen.getByText('Takes the changes onto the session branch.')).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(
+    true
+  )
+})
+
+it('Continue sends the chosen answer', async () => {
+  const onAnswer = vi.fn().mockResolvedValue(null)
+  render(BranchQuestionCard, { ...branchProps, onAnswer })
+  await fireEvent.click(screen.getByRole('radio', { name: /Commit them first/ }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement)
+  expect(onAnswer).toHaveBeenCalledWith('bq1', 'commit')
+})
+
+it('Continue is busy while the answer runs and a failure shows on the card', async () => {
+  let finish: (v: string | null) => void = () => {}
+  const onAnswer = vi.fn(() => new Promise<string | null>((r) => (finish = r)))
+  render(BranchQuestionCard, { ...branchProps, onAnswer })
+  await fireEvent.click(screen.getByRole('radio', { name: /Bring them along/ }))
+  const cont = screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement
+  await fireEvent.click(cont)
+  expect(cont.disabled).toBe(true)
+  finish('Git could not switch branches.')
+  await vi.waitFor(() => expect(screen.getByText('Git could not switch branches.')).toBeTruthy())
+  expect(cont.disabled).toBe(false)
+})
+
+it('the dialog renders the branch card and routes its answer', async () => {
+  const onAnswerBranch = vi.fn().mockResolvedValue(null)
+  const branch: AttentionRequest = { ...branchProps, kind: 'branch', projectId: 'web' }
+  render(AttentionDialog, {
+    open: true,
+    requests: [branch],
+    onApprove: () => {},
+    onDeny: () => {},
+    onAlwaysAllow: () => {},
+    onAnswer: () => {},
+    onAnswerBranch,
+    onClose: () => {}
+  })
+  await fireEvent.click(screen.getByRole('radio', { name: /Set aside/ }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement)
+  expect(onAnswerBranch).toHaveBeenCalledWith('bq1', 'stash')
+})
+
+it("Don't start sends skip", async () => {
+  const onAnswer = vi.fn().mockResolvedValue(null)
+  render(BranchQuestionCard, { ...branchProps, onAnswer })
+  expect(screen.getByText('The worker is not started and web is left as it is.')).toBeTruthy()
+  await fireEvent.click(screen.getByRole('radio', { name: /Don't start/ }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement)
+  expect(onAnswer).toHaveBeenCalledWith('bq1', 'skip')
+})
+
+it('a failed carry shows the warning and does not offer Bring them along', async () => {
+  const message = 'Could not bring the changes along. Pick another choice.'
+  const { rerender } = render(BranchQuestionCard, { ...branchProps, onAnswer: () => {} })
+  await fireEvent.click(screen.getByRole('radio', { name: /Bring them along/ }))
+  await rerender({ ...branchProps, message, onAnswer: () => {} })
+  const alert = screen.getByRole('alert')
+  expect(alert.textContent).toContain(message)
+  expect(screen.queryByRole('radio', { name: /Bring them along/ })).toBeNull()
+  expect(
+    [...document.querySelectorAll('[data-branch-choice]')].map((e) =>
+      e.getAttribute('data-branch-choice')
+    )
+  ).toEqual(['stash', 'commit', 'skip'])
+  expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(
+    true
+  )
 })

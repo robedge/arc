@@ -1,3 +1,4 @@
+// @spec: 013-session-branches-on-demand
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -197,6 +198,27 @@ describe('review:push', () => {
     })
     expect(git(remote!.remote, 'branch', '--list', branch).trim()).toBe('')
     expect(await apiRepo(r).then((x) => x?.push)).toEqual({ state: 'waiting' })
+  })
+
+  it('offers only repositories that have a session branch', async () => {
+    const r = await start()
+    // Before any worker starts nothing has a branch: no repository is listed and none can be pushed.
+    expect((await r.rig.service.getReview(sessionId)).repos).toEqual([])
+    expect(await errorOf(r.rig.service.pushPreview(sessionId, 'p-api'))).toEqual({
+      code: 'SESSION_NOT_FOUND'
+    })
+    // A worker in api gives api its branch; web, with none, is still not offered.
+    await mergeFile(r, 'one', 'W1')
+    const branch = branchOf(r, sessionId)
+    const repos = (await r.rig.service.getReview(sessionId)).repos
+    expect(repos.map((x) => x.projectId)).toEqual(['p-api'])
+    expect(await r.rig.service.pushPreview(sessionId, 'p-api')).toEqual({
+      command: `git push -u origin ${branch}`,
+      remote: 'origin'
+    })
+    expect(await errorOf(r.rig.service.pushPreview(sessionId, 'p-web'))).toEqual({
+      code: 'SESSION_NOT_FOUND'
+    })
   })
 
   it('errors SESSION_NOT_FOUND for an unknown project', async () => {

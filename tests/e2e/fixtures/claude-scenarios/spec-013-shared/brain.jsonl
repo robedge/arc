@@ -1,0 +1,10 @@
+# Names the session, then starts one worker that works in both api and web.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nReady."}
+{"result":true}
+{"waitForStdin":"Start the shared worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"shared-note","task":"Look at the API client and the web client","repos":["api","web"]}}}
+{"say":"The shared worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

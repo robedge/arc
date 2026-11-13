@@ -1,3 +1,5 @@
+// @spec: 013-session-branches-on-demand
+// @regression
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { SessionService } from '../../../src/main/sessions/session-service'
@@ -68,8 +70,13 @@ function endTurn(rig: EngineRig): void {
   rig.rig.adapter.last.emit({ type: 'turn-result', ok: true, interrupted: false, durationMs: 1 })
 }
 
+const branchesIn = (repo: string): string[] =>
+  git(repo, 'branch', '--list', 'arc/*', '--format=%(refname:short)')
+    .split('\n')
+    .filter((l) => l.trim() !== '')
+
 describe('a project added to the group', () => {
-  it('joins the open session: row, branch, header, note, and the brain restarts with it after its turn', async () => {
+  it('joins the open session with no branch and no question, and the brain restarts with it after its turn', async () => {
     e = await makeEngineRig(dir())
     const sessionId = await e.startSession('autonomous')
     const infra = addProject(e, 'infra')
@@ -82,21 +89,22 @@ describe('a project added to the group', () => {
 
     const row = rows(e, sessionId).find((r) => r.projectId === 'infra')
     expect(row).toMatchObject({
-      branchName: BRANCH,
-      baseBranch: 'dev',
+      branchName: null,
+      baseBranch: null,
       readOnly: false,
       membership: 'active',
       projectPath: infra.fixture.path
     })
-    expect(row?.baseSha).toBe(git(infra.fixture.path, 'rev-parse', `refs/heads/${BRANCH}`).trim())
-    expect(branchOf(infra.fixture.path)).toBe(BRANCH)
+    // The repository is exactly as it was: same branch, no session branch.
+    expect(branchOf(infra.fixture.path)).toBe('dev')
+    expect(branchesIn(infra.fixture.path)).toEqual([])
     const pushed = e.rig.of('session:header').at(-1)
     expect(pushed?.header.branches.find((b) => b.projectId === 'infra')).toMatchObject({
-      branchName: BRANCH,
-      baseBranch: 'dev'
+      branchName: null,
+      readOnly: false
     })
     expect(
-      e.rig.eventsRepo.latest(sessionId, 50).some((x) => x.text.includes(`${BRANCH} in infra`))
+      e.rig.eventsRepo.latest(sessionId, 50).some((x) => x.text.includes('infra joined the group'))
     ).toBe(true)
 
     // Mid-turn: nothing was stopped or restarted.
@@ -113,17 +121,19 @@ describe('a project added to the group', () => {
     expect(second?.resume?.threadId).toBe('brain-claude-1')
     const message = e.rig.adapter.last.sent[0] ?? ''
     expect(message).toContain('[Arc] The group changed')
-    expect(message).toContain('"infra" joined the group')
-    expect(message).toContain(BRANCH)
-    expect(message).toContain(infra.fixture.path)
+    expect(message).toContain(
+      `"infra" joined the group (${infra.fixture.path}); it gets the session branch when a worker first starts there`
+    )
     expect(message).toContain('now change infra')
   })
 
-  it('lets the brain start a worker in it', async () => {
+  it('gets the session branch when a worker first starts there, and only there', async () => {
     e = await makeEngineRig(dir())
     const sessionId = await e.startSession('autonomous')
     const infra = addProject(e, 'infra')
     await infra.groupChanged()
+    expect(branchesIn(infra.fixture.path)).toEqual([])
+
     const result = await e.call(e.brain(), 'spawn_worker', {
       name: 'infra-fix',
       task: 'Fix infra',
@@ -136,7 +146,17 @@ describe('a project added to the group', () => {
       .listByWorker(String(result.value['workerId']))
       .find((t) => t.projectId === 'infra')
     expect(tree).toBeDefined()
-    expect(rows(e, sessionId).find((r) => r.projectId === 'infra')?.branchName).toBe(BRANCH)
+    expect(rows(e, sessionId).find((r) => r.projectId === 'infra')).toMatchObject({
+      branchName: BRANCH,
+      baseBranch: 'dev'
+    })
+    expect(branchOf(infra.fixture.path)).toBe(BRANCH)
+    expect(
+      e.rig.eventsRepo.latest(sessionId, 50).some((x) => x.text.includes(`${BRANCH} in infra`))
+    ).toBe(true)
+    // The other projects were not touched by this worker.
+    expect(rows(e, sessionId).find((r) => r.projectId === 'p-web')?.branchName).toBeNull()
+    expect(branchesIn(e.web.path)).toEqual([])
   })
 
   it('joins a non-git folder as read only', async () => {
@@ -153,37 +173,51 @@ describe('a project added to the group', () => {
     )
   })
 
-  it('asks about unsaved changes, and Cancel leaves the project out without asking again', async () => {
+  it('raises nothing for a project with unsaved changes and leaves it as it is', async () => {
     e = await makeEngineRig(dir())
     const sessionId = await e.startSession('autonomous')
     const infra = addProject(e, 'infra', 'dirty')
     await infra.groupChanged()
-
-    const asked = e.rig.of('session:dirty-question')
-    expect(asked).toHaveLength(1)
-    expect(asked[0]?.sessionId).toBe(sessionId)
-    expect(asked[0]?.needsDirtyChoice.repos).toEqual([
-      expect.objectContaining({ projectId: 'infra', name: 'infra', fileCount: 2 })
-    ])
-    expect(asked[0]?.needsDirtyChoice.repos[0]?.files).toContain(trackedFile)
-    // Nothing happened to the repository yet.
-    expect(branchOf(infra.fixture.path)).toBe('dev')
-    // A second change while the question is open does not ask again.
+    // A second change of the group does not do anything either.
     await infra.groupChanged()
-    expect(e.rig.of('session:dirty-question')).toHaveLength(1)
 
-    const token = asked[0]?.needsDirtyChoice.token ?? ''
-    const resolved = await e.rig.service.resolveDirty(token, { infra: 'cancel' })
-    expect(resolved).toEqual({ status: 'cancelled' })
+    expect(rows(e, sessionId).find((r) => r.projectId === 'infra')).toMatchObject({
+      branchName: null,
+      membership: 'active',
+      dirtyHandling: 'none'
+    })
     expect(branchOf(infra.fixture.path)).toBe('dev')
+    expect(branchesIn(infra.fixture.path)).toEqual([])
     expect(git(infra.fixture.path, 'status', '--porcelain')).toContain(trackedFile)
+    expect(git(infra.fixture.path, 'stash', 'list')).toBe('')
+    expect(e.rig.service.snapshot(sessionId).header.branches.map((b) => b.projectId)).toContain(
+      'infra'
+    )
+    // Only the worker start decides what happens to the changes; until then the brain may read it.
+    expect(
+      e.rig.deps.sessionProjectsRepo
+        .listBySession(sessionId)
+        .some((r) => r.membership === 'left_out')
+    ).toBe(false)
+  })
+})
+
+describe('a project that an older session left out', () => {
+  it('is still read as kept out: no workers there, and no branch', async () => {
+    e = await makeEngineRig(dir())
+    const sessionId = await e.startSession('autonomous')
+    const infra = addProject(e, 'infra', 'dirty')
+    await infra.groupChanged()
+    const infraRow = rows(e, sessionId).find((r) => r.projectId === 'infra')
+    // Older versions wrote this when the user cancelled the unsaved-changes question.
+    new SessionProjectsRepo(e.rig.opened.db).setMembership(infraRow?.id ?? 0, 'left_out')
+
+    await infra.groupChanged()
+
     expect(rows(e, sessionId).find((r) => r.projectId === 'infra')?.membership).toBe('left_out')
     expect(e.rig.service.snapshot(sessionId).header.branches.map((b) => b.projectId)).not.toContain(
       'infra'
     )
-
-    await infra.groupChanged()
-    expect(e.rig.of('session:dirty-question')).toHaveLength(1)
     const refused = await e.call(e.brain(), 'spawn_worker', {
       name: 'infra-fix',
       task: 'Fix infra',
@@ -191,31 +225,13 @@ describe('a project added to the group', () => {
       model: 'sonnet'
     })
     expect(refused.value['error']).toBe('unknown_repo')
-  })
-
-  it('Set aside puts the changes in a stash and creates the branch', async () => {
-    e = await makeEngineRig(dir())
-    const sessionId = await e.startSession('autonomous')
-    const infra = addProject(e, 'infra', 'dirty')
-    await infra.groupChanged()
-    const token = e.rig.of('session:dirty-question')[0]?.needsDirtyChoice.token ?? ''
-    const resolved = await e.rig.service.resolveDirty(token, { infra: 'stash' })
-    expect(resolved).toEqual({ status: 'ready', sessionId })
-    expect(branchOf(infra.fixture.path)).toBe(BRANCH)
-    expect(git(infra.fixture.path, 'status', '--porcelain')).toBe('')
-    expect(git(infra.fixture.path, 'stash', 'list')).toContain('arc:')
-    expect(rows(e, sessionId).find((r) => r.projectId === 'infra')).toMatchObject({
-      branchName: BRANCH,
-      dirtyHandling: 'stashed'
-    })
-    expect(e.rig.of('session:header').at(-1)?.header.branches).toContainEqual(
-      expect.objectContaining({ projectId: 'infra', branchName: BRANCH })
-    )
+    expect(branchOf(infra.fixture.path)).toBe('dev')
+    expect(branchesIn(infra.fixture.path)).toEqual([])
   })
 })
 
 describe('a session that was not open when the group changed', () => {
-  it('takes the added project when it is opened', async () => {
+  it('takes the added project when it is opened, with no branch', async () => {
     e = await makeEngineRig(dir())
     const sessionId = await e.startSession('autonomous')
     const infra = addProject(e, 'infra')
@@ -224,9 +240,10 @@ describe('a session that was not open when the group changed', () => {
     const result = await reopened.open(sessionId)
     if ('needsDirtyChoice' in result) throw new Error('expected a snapshot')
     expect(result.header.branches).toContainEqual(
-      expect.objectContaining({ projectId: 'infra', branchName: BRANCH })
+      expect.objectContaining({ projectId: 'infra', branchName: null, readOnly: false })
     )
-    expect(branchOf(infra.fixture.path)).toBe(BRANCH)
+    expect(branchOf(infra.fixture.path)).toBe('dev')
+    expect(branchesIn(infra.fixture.path)).toEqual([])
     await reopened.shutdown()
   })
 })

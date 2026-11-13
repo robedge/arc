@@ -1,3 +1,4 @@
+// @spec: 013-session-branches-on-demand
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -194,6 +195,29 @@ describe('ReviewService', () => {
       files: [expect.objectContaining({ path: 'a.txt', status: 'A', added: 1 })]
     })
     expect(await svc.changedFileCount('s1')).toBe(1)
+  })
+
+  it('lists only the repository with a session branch, out of three git projects', async () => {
+    const { repo, base } = startSession()
+    commitFile(repo, 'a.txt', 'a\n')
+    const { svc } = service([
+      row(repo, base),
+      row(repo, null, { id: 2, projectId: 'web', projectName: 'web', branchName: null }),
+      row(repo, null, { id: 3, projectId: 'infra', projectName: 'infra', branchName: null })
+    ])
+    const review = await svc.getReview('s1')
+    expect(review.repos.map((r) => r.projectId)).toEqual(['api'])
+    expect(await svc.changedFileCount('s1')).toBe(1)
+  })
+
+  it('shows no changes, and no error, when no repository has a session branch', async () => {
+    const { repo } = startSession()
+    const { svc } = service([
+      row(repo, null, { branchName: null }),
+      row(repo, null, { id: 2, projectId: 'web', projectName: 'web', branchName: null })
+    ])
+    expect(await svc.getReview('s1')).toEqual({ sessionId: 's1', repos: [], workers: [] })
+    expect(await svc.changedFileCount('s1')).toBe(0)
   })
 
   it('counts files across repositories', async () => {

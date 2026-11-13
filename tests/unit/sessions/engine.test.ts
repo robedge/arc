@@ -264,10 +264,13 @@ describe('starting a worker', () => {
     expect(apiTree?.headSha).toBe(tip)
     for (const t of trees) expect(existsSync(t.path)).toBe(true)
 
-    // Detached: HEAD is not a branch, and no branch was added to the user's repository.
+    // Detached: HEAD is not a branch. The only branch added to the user's repository is the
+    // session branch, made when this worker started.
     expect(gitFails(apiTree?.path ?? '', 'symbolic-ref', '-q', 'HEAD')).toBe(true)
     expect(gitIn(apiTree?.path ?? '', 'rev-parse', 'HEAD')).toBe(tip)
-    expect(gitIn(e.api.path, 'branch', '--format=%(refname:short)')).toBe(branchesBefore)
+    expect(gitIn(e.api.path, 'branch', '--format=%(refname:short)').split('\n').sort()).toEqual(
+      [branchesBefore, 'arc/retry-work'].sort()
+    )
 
     const start = e.rig.adapter.starts.find((s) => s.agentId === `worker-${workerId}`)
     expect(start).toMatchObject({ role: 'worker', cwd: apiTree?.path, model: 'haiku' })

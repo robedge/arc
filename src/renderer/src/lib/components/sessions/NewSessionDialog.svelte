@@ -1,13 +1,12 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
   import type { ModelRef } from '@shared/types/provider'
-  import type { DirtyRepo, ResolveDirtyResult, SessionMode } from '@shared/types/session'
+  import type { SessionMode } from '@shared/types/session'
   import { messageFor } from '../../ipc/messages'
   import { attachments } from '../../stores/attachments.svelte'
   import { settings } from '../../stores/settings.svelte'
   import AttachField from './AttachField.svelte'
   import BrainPicker from './BrainPicker.svelte'
-  import DirtyTreeDialog from './DirtyTreeDialog.svelte'
   import Button from '../ui/Button.svelte'
   import ErrorText from '../ui/ErrorText.svelte'
   import Modal from '../ui/Modal.svelte'
@@ -43,8 +42,6 @@
   let attempted = $state(false)
   let busy = $state(false)
   let serverError = $state<string | null>(null)
-  /** A repository has unsaved changes: nothing exists yet; the answer decides whether it starts. */
-  let dirty = $state<{ token: string; repos: DirtyRepo[]; message?: string } | null>(null)
 
   const requestError = $derived(
     attempted && request.trim() === '' && readyFiles.length === 0
@@ -95,86 +92,66 @@
         if (res.error.code === 'ATTACHMENT_UNREADABLE' && res.error.details?.name) {
           attachments.markUnreadable(attachKey, res.error.details.name)
         }
-      } else if ('sessionId' in res.data) {
-        created(res.data.sessionId)
-      } else if ('needsDirtyChoice' in res.data) {
-        dirty = res.data.needsDirtyChoice
       } else {
-        serverError = "Couldn't start the session. Please try again."
+        created(res.data.sessionId)
       }
     } finally {
       busy = false
     }
   }
-
-  function onresolved(result: ResolveDirtyResult): void {
-    if (result.status === 'ready') created(result.sessionId)
-    else if (result.status === 'carry-failed') {
-      dirty = { ...result.needsDirtyChoice, message: result.message }
-    } else dirty = null
-  }
 </script>
 
-{#if dirty}
-  <DirtyTreeDialog
-    token={dirty.token}
-    repos={dirty.repos}
-    {...dirty.message ? { message: dirty.message } : {}}
-    {onresolved}
-  />
-{:else}
-  <Modal title="New session" {onsubmit} oncancel={cancel} {busy}>
-    <AttachField
-      {attachKey}
-      provider={brain.provider}
-      disabled={busy}
-      onerror={(message) => (serverError = message)}
-    >
-      <div class="min-w-0 flex-1">
-        <TextArea
-          id="new-session-request"
-          label="Request"
-          bind:value={request}
-          error={requestError}
-          oninput={() => (serverError = null)}
-        />
-      </div>
-      {#snippet actions()}{/snippet}
-    </AttachField>
-    <fieldset class="flex flex-col">
-      <legend class="text-sm font-medium text-text">Mode</legend>
-      <Radio
-        id="new-session-mode-plan"
-        name="new-session-mode"
-        label="Plan-first"
-        description="The brain proposes a plan and waits for your approval."
-        value="plan_first"
-        bind:group={mode}
+<Modal title="New session" {onsubmit} oncancel={cancel} {busy}>
+  <AttachField
+    {attachKey}
+    provider={brain.provider}
+    disabled={busy}
+    onerror={(message) => (serverError = message)}
+  >
+    <div class="min-w-0 flex-1">
+      <TextArea
+        id="new-session-request"
+        label="Request"
+        bind:value={request}
+        error={requestError}
+        oninput={() => (serverError = null)}
       />
-      <Radio
-        id="new-session-mode-auto"
-        name="new-session-mode"
-        label="Autonomous"
-        description="The brain starts workers without asking."
-        value="autonomous"
-        bind:group={mode}
-      />
-    </fieldset>
-    <BrainPicker id="new-session-brain" value={brain} onchange={(ref) => (picked = ref)} />
-    <Select id="new-session-limit" label="Worker limit" bind:value={limit} options={LIMITS} />
-    {#if serverError}<ErrorText message={serverError} />{/if}
-    <div class="flex justify-end gap-2">
-      <Button onclick={cancel}>Cancel</Button>
-      <Button
-        type="submit"
-        variant="primary"
-        {busy}
-        disabled={staging}
-        ariaDescribedby={staging ? 'new-session-staging-hint' : undefined}>Start</Button
-      >
-      {#if staging}
-        <span id="new-session-staging-hint" class="sr-only">Waiting for attachments</span>
-      {/if}
     </div>
-  </Modal>
-{/if}
+    {#snippet actions()}{/snippet}
+  </AttachField>
+  <fieldset class="flex flex-col">
+    <legend class="text-sm font-medium text-text">Mode</legend>
+    <Radio
+      id="new-session-mode-plan"
+      name="new-session-mode"
+      label="Plan-first"
+      description="The brain proposes a plan and waits for your approval."
+      value="plan_first"
+      bind:group={mode}
+    />
+    <Radio
+      id="new-session-mode-auto"
+      name="new-session-mode"
+      label="Autonomous"
+      description="The brain starts workers without asking."
+      value="autonomous"
+      bind:group={mode}
+    />
+  </fieldset>
+  <BrainPicker id="new-session-brain" value={brain} onchange={(ref) => (picked = ref)} />
+  <Select id="new-session-limit" label="Worker limit" bind:value={limit} options={LIMITS} />
+  {#if serverError}<ErrorText message={serverError} />{/if}
+  <div class="flex justify-end gap-2">
+    <Button onclick={cancel}>Cancel</Button>
+    <Button
+      type="submit"
+      variant="primary"
+      {busy}
+      disabled={staging}
+      ariaDescribedby={staging ? 'new-session-staging-hint' : undefined}>Start</Button
+    >
+    {#if staging}
+      <span id="new-session-staging-hint" class="sr-only">Waiting for attachments</span>
+    {/if}
+  </div>
+</Modal>

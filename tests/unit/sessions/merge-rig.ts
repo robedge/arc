@@ -88,11 +88,17 @@ export async function resolveConflict(
   handle.emit({ type: 'turn-result', ok: true, interrupted: false, durationMs: 1 })
 }
 
+/**
+ * The session branch of a repository: the recorded one, or the name it gets when its first worker
+ * starts there (a repository has no branch before that, so tests can ask before spawning).
+ */
 export function branchOf(e: EngineRig, sessionId: string, repo = 'api'): string {
   const row = e.rig.deps.sessionProjectsRepo
     .listBySession(sessionId)
     .find((p) => p.projectName === repo)
-  return row?.branchName ?? ''
+  if (row?.branchName) return row.branchName
+  const slug = e.rig.deps.sessionsRepo.getById(sessionId)?.slug
+  return slug ? `arc/${slug}` : ''
 }
 
 export function eventTexts(e: EngineRig, sessionId: string): string[] {

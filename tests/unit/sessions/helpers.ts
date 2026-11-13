@@ -18,6 +18,7 @@ import type { CodexInput } from '../../../src/main/agents/codex/codex-types'
 import { EventQueue } from '../../../src/main/agents/event-queue'
 import { openDatabase } from '../../../src/main/db/client'
 import type { OpenedDatabase } from '../../../src/main/db/client'
+import { BranchQuestionsRepo } from '../../../src/main/db/repositories/branch-questions-repo'
 import { EventsRepo } from '../../../src/main/db/repositories/events-repo'
 import { GroupsRepo } from '../../../src/main/db/repositories/groups-repo'
 import { MessagesRepo } from '../../../src/main/db/repositories/messages-repo'
@@ -378,6 +379,7 @@ export async function makeRig(
     projectsRepo,
     sessionProjectsRepo,
     sessionGit,
+    branchQuestionsRepo: new BranchQuestionsRepo(opened.db),
     getKnowledgeRoot: (groupId) => join(work, 'userData', 'groups', groupId, 'knowledge'),
     getSessionDir: (sessionId) => join(work, 'userData', 'sessions', sessionId),
     getCodexBrainDir: (sessionId) => join(work, 'userData', 'codex-brain', sessionId),

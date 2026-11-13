@@ -69,7 +69,12 @@ describe('session:review-changed', () => {
     expect(reviewPushes(e)[0]).toMatchObject({ changedPaths: ['retry.txt'], fileCount: 1 })
 
     git(e.api.path, 'checkout', 'README.md')
-    await e.rig.service.open(sessionId)
+    // Opening retries the waiting update, but leaves a repository alone while its merge is still
+    // finishing. Opening no longer creates branches, so it can run in that short window: open again.
+    for (let i = 0; i < 40 && reviewPushes(rig).length < 2; i += 1) {
+      await e.rig.service.open(sessionId)
+      await new Promise((r) => setTimeout(r, 50))
+    }
     await until(() => reviewPushes(rig).length === 2)
     expect(reviewPushes(e)[1]).toMatchObject({
       sessionId,

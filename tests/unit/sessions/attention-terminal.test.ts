@@ -412,8 +412,9 @@ describe('what the renderer is sent', () => {
     const notices: AttentionNotice[] = []
     const pushes: { count: number; requests: { id: string; route: string }[] }[] = []
     const service = new AttentionService({
-      sessions: { answerAttention: () => undefined },
+      sessions: s.rig.rig.service,
       attentionRepo: repo(s),
+      branchQuestionsRepo: s.rig.rig.deps.branchQuestionsRepo,
       sessionsRepo: s.rig.rig.sessionsRepo,
       workerOf: (id) => s.rig.rig.deps.workersRepo.get(id),
       emit: (_event, payload) => void pushes.push(payload),

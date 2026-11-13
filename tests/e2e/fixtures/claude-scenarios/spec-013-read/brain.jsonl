@@ -1,0 +1,7 @@
+# Names the session and answers a question about api by reading its README (FAKE_CLAUDE_REPO_API).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"cat \"$FAKE_CLAUDE_REPO_API/README.md\""}
+{"say":"Title: Retry work\n\nThe api README says hello."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

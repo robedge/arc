@@ -153,6 +153,24 @@ export interface SessionGit {
     branch: string,
     choice?: DirtyChoice
   ): Promise<CheckoutOutcome>
+  /**
+   * A branch Arc made just before a crash: the checkout is on `branch` and it has no commits beyond
+   * the base branch. Returns what to record for it, or null when the branch is not that.
+   */
+  adoptableBranch(repo: string, branch: string): Promise<AdoptableBranch | null>
+  /** Switches back to `previousBranch` and removes `branch`, but only while it is still at `createdSha`. */
+  undoSessionBranch(
+    repo: string,
+    branch: string,
+    previousBranch: string,
+    createdSha: string
+  ): Promise<void>
+}
+
+export interface AdoptableBranch {
+  baseBranch: string
+  /** The branch tip, used as the review base. */
+  baseSha: string
 }
 
 export function createSessionGit(git: GitRunner): SessionGit {
@@ -429,6 +447,27 @@ export function createSessionGit(git: GitRunner): SessionGit {
     return { status: 'switched', previousBranch, dirtyHandling, stashRef }
   }
 
+  async function adoptableBranch(repo: string, branch: string): Promise<AdoptableBranch | null> {
+    if (!(await branchExists(repo, branch))) return null
+    if ((await tryGit(repo, ['symbolic-ref', '--short', 'HEAD'])) !== branch) return null
+    const baseBranch = await detectBaseBranch(repo)
+    if (baseBranch === branch) return null
+    const ahead = await tryGit(repo, ['rev-list', '--count', `${baseBranch}..${branch}`])
+    if (ahead !== '0') return null
+    return { baseBranch, baseSha: (await git(repo, ['rev-parse', `refs/heads/${branch}`])).trim() }
+  }
+
+  async function undoSessionBranch(
+    repo: string,
+    branch: string,
+    previousBranch: string,
+    createdSha: string
+  ): Promise<void> {
+    await git(repo, ['checkout', previousBranch])
+    // update-ref with the expected old sha only removes the branch if nothing was committed to it.
+    await git(repo, ['update-ref', '-d', `refs/heads/${branch}`, createdSha])
+  }
+
   return {
     detectBaseBranch,
     uniqueBranch,
@@ -436,7 +475,9 @@ export function createSessionGit(git: GitRunner): SessionGit {
     currentBranch: currentRef,
     planSessionStart,
     applySessionStart,
-    checkoutSessionBranch
+    checkoutSessionBranch,
+    adoptableBranch,
+    undoSessionBranch
   }
 }
 
