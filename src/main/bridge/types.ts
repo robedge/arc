@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import type { ProviderId } from '../../shared/types/provider'
+import type { Surface } from '../../shared/surface'
 import type { ActionDecision, ActionMeta, NormalizedAction } from '../policy/normalized-action'
 
 /** Which tool set an agent gets. Tokens map to one role. */
@@ -245,6 +246,8 @@ export interface BridgeServices {
     agent: BridgeAgent,
     input: SuggestKnowledgeInput
   ): Promise<{ id: string; remainingThisRequest: number }>
+  /** SPIKE (A2UI). Brain. Posts the surface into the conversation; does not wait. */
+  showSurface(agent: BridgeAgent, input: Surface): { ok: true; surfaceId: string }
 }
 
 export interface BridgeCallContext {

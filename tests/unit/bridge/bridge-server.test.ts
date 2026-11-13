@@ -49,6 +49,7 @@ function fakeServices(overrides: Partial<BridgeServices> = {}): BridgeServices {
     escalateToUser: vi.fn(() => ({ ok: true as const })),
     askUser: vi.fn(() => Promise.resolve({ answer: 'yes' })),
     suggestKnowledgeUpdate: vi.fn(() => Promise.resolve({ id: 'k1', remainingThisRequest: 4 })),
+    showSurface: vi.fn(() => ({ ok: true as const, surfaceId: 's' })),
     ...overrides
   }
 }
@@ -127,6 +128,7 @@ describe('tools by role', () => {
       'propose_plan',
       'request_permission',
       'resolve_request',
+      'show_surface',
       'spawn_worker',
       'suggest_knowledge_update',
       'sync_worker'

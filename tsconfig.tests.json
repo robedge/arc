@@ -22,6 +22,7 @@
     "src/main/protocol/schemes.ts",
     "src/main/review/**/*",
     "src/main/sessions/**/*",
+    "src/main/surface/**/*",
     "src/main/usage/**/*",
     "src/main/util/**/*",
     "src/main/ipc/**/*",

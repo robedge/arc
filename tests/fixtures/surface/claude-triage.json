@@ -1,0 +1,105 @@
+{
+  "surfaceId": "triage",
+  "components": [
+    {
+      "id": "root",
+      "component": "Card",
+      "child": "col"
+    },
+    {
+      "id": "col",
+      "component": "Column",
+      "children": [
+        "title",
+        "caption",
+        "assignee",
+        "urgent",
+        "div",
+        "buttons"
+      ]
+    },
+    {
+      "id": "title",
+      "component": "Text",
+      "text": "Triage: login timeout",
+      "variant": "h2"
+    },
+    {
+      "id": "caption",
+      "component": "Text",
+      "text": "Reported 3 times this week",
+      "variant": "caption"
+    },
+    {
+      "id": "assignee",
+      "component": "TextField",
+      "label": "Assignee",
+      "value": {
+        "@path": "/assignee"
+      }
+    },
+    {
+      "id": "urgent",
+      "component": "CheckBox",
+      "label": "Mark as urgent",
+      "value": {
+        "@path": "/urgent"
+      }
+    },
+    {
+      "id": "div",
+      "component": "Divider"
+    },
+    {
+      "id": "buttons",
+      "component": "Row",
+      "children": [
+        "create",
+        "skip"
+      ]
+    },
+    {
+      "id": "create",
+      "component": "Button",
+      "child": "create_label",
+      "action": {
+        "event": {
+          "name": "create_issue",
+          "context": {
+            "assignee": {
+              "@path": "/assignee"
+            },
+            "urgent": {
+              "@path": "/urgent"
+            }
+          }
+        }
+      },
+      "variant": "primary"
+    },
+    {
+      "id": "create_label",
+      "component": "Text",
+      "text": "Create issue"
+    },
+    {
+      "id": "skip",
+      "component": "Button",
+      "child": "skip_label",
+      "action": {
+        "event": {
+          "name": "skip"
+        }
+      }
+    },
+    {
+      "id": "skip_label",
+      "component": "Text",
+      "text": "Skip"
+    }
+  ],
+  "dataModel": {
+    "assignee": "dana",
+    "urgent": false
+  }
+}
