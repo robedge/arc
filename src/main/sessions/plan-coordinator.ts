@@ -279,6 +279,11 @@ export class PlanCoordinator {
     return waiter !== undefined
   }
 
+  /** Whether `takeComment` would capture the next message: a plan call is waiting. No side effects. */
+  hasWaiter(): boolean {
+    return this.waiters.size > 0
+  }
+
   /**
    * The user's next chat message answers a plan the brain is blocked on: the comment after "Ask for
    * changes", or, when the user types without pressing a button, an implicit ask-for-changes (the

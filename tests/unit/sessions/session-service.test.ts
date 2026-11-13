@@ -74,7 +74,10 @@ describe('create', () => {
     const start1 = rig.adapter.starts[0]
     expect(start1).toMatchObject({ role: 'brain', model: 'sonnet' })
     expect(start1?.cwd).toBe(`${dir()}/userData/groups/${rig.groupId}/knowledge`)
-    expect(start1?.addDirs).toEqual([`${dir()}/repo-a`])
+    expect(start1?.addDirs).toEqual([
+      `${dir()}/repo-a`,
+      `${dir()}/userData/sessions/${sessionId}/attachments`
+    ])
     expect(start1?.instructions).toContain('[arc-role:brain]')
     expect(start1?.instructions).toContain('Title: <3-6 word title')
     expect(start1?.instructions).toContain('Alpha')
@@ -85,7 +88,9 @@ describe('create', () => {
   it('skips project folders that no longer exist', async () => {
     rig = await makeRig(dir(), { directoryExists: () => false })
     await start()
-    expect(rig.adapter.starts[0]?.addDirs).toEqual([])
+    expect(rig.adapter.starts[0]?.addDirs).toEqual([
+      expect.stringMatching(/\/sessions\/[^/]+\/attachments$/)
+    ])
   })
 
   it('persists nothing and returns CLI_UNAVAILABLE when Claude Code is not ok after a re-check', async () => {
@@ -470,7 +475,7 @@ describe('brain prompt version', () => {
   })
 
   it('tells a session from the web-tools version everything newer, once (version 1 is older)', async () => {
-    expect(BRAIN_PROMPT_VERSION).toBe(7)
+    expect(BRAIN_PROMPT_VERSION).toBe(8)
     expect(PROMPT_UPDATE_NOTE_V2).toContain('read-only shell commands')
     expect(PROMPT_UPDATE_NOTE_V2).toContain('git -C <path> diff')
     expect(PROMPT_UPDATE_NOTE_V2).toContain('goes to the user for approval through Arc')

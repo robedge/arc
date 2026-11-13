@@ -55,6 +55,10 @@ const MESSAGES: Record<ErrorCode, MessageEntry> = {
   NOTE_NOT_FOUND: 'That note no longer exists.',
   NOT_DRAFT: 'This note was already sent.',
   TOO_MANY_NOTES: 'You can send up to 50 notes at a time.',
+  ATTACHMENT_UNREADABLE: (e) =>
+    `${e.details?.name ?? 'An attached file'} could no longer be read. Remove it or attach it again.`,
+  ATTACHMENTS_WITH_COMMAND: "Attachments can't be sent with a command.",
+  ATTACHMENTS_WITH_PLAN_FEEDBACK: "Attachments can't be added to plan feedback.",
   IO_FAILED: GENERIC_FAILURE,
   INTERNAL: GENERIC_FAILURE,
   VALIDATION_FAILED: GENERIC_FAILURE

@@ -2,6 +2,7 @@
   import type { SessionMessage } from '@shared/types/session'
   import MarkdownPreview from '../items/MarkdownPreview.svelte'
   import Button from '../ui/Button.svelte'
+  import AttachmentRow from '../ui/AttachmentRow.svelte'
   import { activeSession } from '../../stores/active-session.svelte'
   import { review } from '../../stores/review.svelte'
   import { knowledgeSuggestions } from '../../stores/knowledge-suggestions.svelte'
@@ -38,9 +39,21 @@
     <!-- the line below carries the sentence -->
   {:else if asMarkdown}
     <MarkdownPreview source={message.content} copyCode />
-  {:else}
+  {:else if message.content !== '' || !message.attachments?.length}
     <!-- prettier-ignore -->
     <p class="[overflow-wrap:anywhere] whitespace-pre-wrap">{#if leadingCommand}<span data-command class="font-mono text-accent">{leadingCommand}</span>{message.content.slice(leadingCommand.length)}{:else}{message.content}{/if}</p>
+  {/if}
+  {#if message.attachments?.length}
+    <AttachmentRow
+      scope="sent"
+      items={message.attachments.map((a) => ({
+        key: a.id,
+        id: a.id,
+        name: a.name,
+        kind: a.kind,
+        size: a.size
+      }))}
+    />
   {/if}
   {#if message.prompt?.kind === 'review-link'}
     {@const noChanges = activeSession.changedFileCount === 0}

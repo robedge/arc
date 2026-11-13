@@ -1,0 +1,9 @@
+# The brain answers the first request, then each later message once (spec 012 attachments).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Attachment check\n\nReady."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Got the files."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

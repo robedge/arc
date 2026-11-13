@@ -74,3 +74,43 @@ it('shows the knowledge suggestions block: chip counts, diff snippet and one car
   expect(block.querySelector('[data-knowledge-suggestion-editor]')).toBeTruthy()
   expect(block.querySelector('[data-too-large]')).toBeTruthy()
 })
+
+it('shows the attachments block: chip states, a long row, notices, the warning and the drop overlay', () => {
+  const { container } = render(DesignPreview)
+  const block = container.querySelector('[data-preview-attachments]') as HTMLElement
+  expect(block).toBeTruthy()
+  expect(
+    within(block.closest('section') ?? container).getAllByText('Attachments').length
+  ).toBeGreaterThan(0)
+
+  const states = (scope: string): string[] =>
+    Array.from(
+      block.querySelectorAll(`[data-preview-attachments-${scope}] [data-attachment-chip]`)
+    ).map((chip) => (chip as HTMLElement).dataset.attachmentState ?? '')
+  const draft = states('chips')
+  expect(draft).toEqual(expect.arrayContaining(['ready', 'staging', 'error']))
+  expect(
+    block.querySelectorAll('[data-preview-attachments-chips] [data-attachment-chip]').length
+  ).toBe(5)
+  expect(block.querySelector('[data-preview-attachments-sent] [data-attachment-remove]')).toBeNull()
+  expect(
+    block.querySelectorAll('[data-preview-attachments-sent] [data-attachment-chip]').length
+  ).toBe(3)
+
+  expect(
+    block.querySelectorAll('[data-preview-attachments-long] [data-attachment-item]').length
+  ).toBe(10)
+
+  for (const text of [
+    "notes.exe can't be attached. Arc accepts images, PDFs and text files.",
+    'huge.png is too large. The limit is 20 MB.',
+    'A message can have at most 10 attachments.',
+    "Folders can't be attached.",
+    "broken.txt couldn't be read.",
+    'and 2 more were refused.',
+    "Codex can't read PDFs. It will be sent as a file the brain may not be able to open."
+  ]) {
+    expect(within(block).getAllByText(text).length).toBeGreaterThan(0)
+  }
+  expect(within(block).getByText('Drop to attach')).toBeTruthy()
+})

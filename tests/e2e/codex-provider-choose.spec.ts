@@ -104,7 +104,7 @@ test('2.1: the brain model choice lists Claude and Codex models, each under its 
   const menu = page.getByRole('menu', { name: 'Brain model' })
   const claude = menu.getByRole('group', { name: 'Claude', exact: true })
   const codex = menu.getByRole('group', { name: 'Codex', exact: true })
-  await expect(claude.getByRole('menuitemradio')).toHaveCount(3)
+  await expect(claude.getByRole('menuitemradio')).toHaveCount(4)
   await expect(claude.getByRole('menuitemradio', { name: 'Sonnet' })).toBeVisible()
   await expect(codex.getByRole('menuitemradio')).toHaveCount(2)
   await expect(codex.getByRole('menuitemradio').first()).toContainText('Fake Deep')

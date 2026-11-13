@@ -15,9 +15,14 @@ export type { JsonObject, JsonRpcId }
 
 // ---- turn input -----------------------------------------------------------------------------
 
-/** One element of `turn/start.input`: plain text, or a skill to run (`path` is its SKILL.md). */
+/**
+ * One element of `turn/start.input`: plain text, a skill to run (`path` is its SKILL.md), or an
+ * image on disk (`localImage`, the stored absolute path; `detail` is left out).
+ */
 export type CodexInput =
-  { type: 'text'; text: string } | { type: 'skill'; name: string; path: string }
+  | { type: 'text'; text: string }
+  | { type: 'skill'; name: string; path: string }
+  | { type: 'localImage'; path: string }
 
 // ---- approvals ------------------------------------------------------------------------------
 

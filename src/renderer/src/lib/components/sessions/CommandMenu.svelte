@@ -69,7 +69,7 @@
     ? 'relative'
     : 'absolute right-0 bottom-full left-0 z-10 mb-1'} flex max-h-64 flex-col overflow-hidden rounded-hud border border-border-strong bg-surface-raised shadow-glow-accent"
 >
-  <span class="sr-only" role="status" aria-live="polite">{count}</span>
+  <span class="sr-only" role="status" aria-label="Command count" aria-live="polite">{count}</span>
   {#if hasList}
     <ul {id} role="listbox" aria-label="Commands" class="m-0 flex flex-col overflow-y-auto p-1">
       {#each commands as command, index (command.id)}

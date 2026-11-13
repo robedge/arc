@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import type { AgentHandle } from '../../../../src/main/agents/agent-adapter'
+import type { AgentHandle, AttachmentRef } from '../../../../src/main/agents/agent-adapter'
 import type { AgentEvent } from '../../../../src/main/agents/agent-events'
 import {
   ClaudeAdapter,
@@ -280,5 +280,90 @@ describe('adapter exits', () => {
     expect(w.events.map((e) => e.type)).toEqual(['error', 'exit'])
     expect(w.events[0]).toMatchObject({ kind: 'not-installed' })
     expect(w.events[1]).toMatchObject({ expected: false })
+  })
+})
+
+describe('ClaudeAdapter attachments (Layer 1)', () => {
+  const ref = (
+    n: number,
+    name: string,
+    kind: AttachmentRef['kind'],
+    size: number
+  ): AttachmentRef => ({
+    id: `01HATT0000000000000000000${n}`,
+    name,
+    kind,
+    mime: kind === 'pdf' ? 'application/pdf' : kind === 'image' ? 'image/png' : 'text/plain',
+    size,
+    path: `/ud/sessions/s1/attachments/01HATT0000000000000000000${n}/${name}`
+  })
+  const two = [ref(1, 'spec.pdf', 'pdf', 2048), ref(2, 'shot.png', 'image', 300)]
+  const block = [
+    '[Attachments for this message]',
+    'Open a listed file when the request depends on it; do not guess from its name.',
+    '- 01HATT00000000000000000001 · spec.pdf · pdf · 2.0 KB · /ud/sessions/s1/attachments/01HATT00000000000000000001/spec.pdf',
+    '- 01HATT00000000000000000002 · shot.png · image · 300 bytes · /ud/sessions/s1/attachments/01HATT00000000000000000002/shot.png'
+  ].join('\n')
+
+  async function stdinLines(
+    sends: (h: AgentHandle) => Promise<void>,
+    count: number
+  ): Promise<unknown[]> {
+    const log = join(dir, `att-${Math.random().toString(36).slice(2)}.log`)
+    const script = scenario('att.jsonl', [{ emit: initEvent }, { waitForStdin: '*' }])
+    const handle = await begin(adapterFor(fake), {
+      FAKE_CLAUDE_SCRIPT: script,
+      FAKE_CLAUDE_LOG: log
+    })
+    const w = watch(handle)
+    await w.waitFor('session')
+    await sends(handle)
+    const read = (): unknown[] =>
+      readFileSync(log, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((l) => (JSON.parse(l) as { stdin?: unknown }).stdin)
+        .filter((x) => (x as { type?: string } | undefined)?.type === 'user')
+    const deadline = Date.now() + 5000
+    while (read().length < count && Date.now() < deadline)
+      await new Promise((r) => setTimeout(r, 20))
+    await handle.stop()
+    await w.done
+    return read()
+  }
+
+  const line = (text: string): unknown => ({
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'text', text }] }
+  })
+
+  it('writes one text block: the text, a blank line, then the attachments block (no image block)', async () => {
+    const lines = await stdinLines(async (h) => {
+      await h.send('Look at these', two)
+    }, 1)
+    expect(lines).toEqual([line(`Look at these\n\n${block}`)])
+  })
+
+  it('sends just the block for a message with attachments and no text', async () => {
+    const lines = await stdinLines(async (h) => {
+      await h.send('', two)
+    }, 1)
+    expect(lines).toEqual([line(block)])
+  })
+
+  it('leaves a message without attachments exactly as before', async () => {
+    const lines = await stdinLines(async (h) => {
+      await h.send('hello')
+      await h.send('again', [])
+    }, 2)
+    expect(lines).toEqual([line('hello'), line('again')])
+  })
+
+  it('keeps the attachments with a message sent while a turn is running', async () => {
+    const lines = await stdinLines(async (h) => {
+      await h.send('first')
+      await h.send('second', [two[0]!])
+    }, 2)
+    expect(lines[1]).toEqual(line(`second\n\n${block.split('\n').slice(0, 3).join('\n')}`))
   })
 })

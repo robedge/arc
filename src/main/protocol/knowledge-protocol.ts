@@ -8,22 +8,6 @@ import type { KnowledgeRequestDeps } from './knowledge-request'
 // The renderer page is a file:// origin, so fetch() needs CORS to read any response.
 const CORS = { 'Access-Control-Allow-Origin': '*' }
 
-/** Must run before the app is ready. */
-export function registerKnowledgeScheme(): void {
-  protocol.registerSchemesAsPrivileged([
-    {
-      scheme: KNOWLEDGE_SCHEME,
-      privileges: {
-        standard: true,
-        secure: true,
-        supportFetchAPI: true,
-        stream: true,
-        corsEnabled: true
-      }
-    }
-  ])
-}
-
 /** Call after the app is ready. */
 export function handleKnowledgeProtocol(deps: KnowledgeRequestDeps): void {
   protocol.handle(KNOWLEDGE_SCHEME, async (request) => {

@@ -298,6 +298,22 @@ describe('codex-parser details', () => {
     ])
   })
 
+  it('skips a userMessage that holds a localImage (spec 012), as the recording shows it', () => {
+    const parser = createCodexParser({ agentId: 'w1' })
+    const item = {
+      type: 'userMessage',
+      id: 'u1',
+      clientId: null,
+      content: [
+        { type: 'text', text: 'look\n\n[Attachments for this message]', text_elements: [] },
+        { type: 'localImage', detail: null, path: '/ud/sessions/s1/attachments/A1/error.png' }
+      ]
+    }
+    const base = { threadId: 't1', turnId: 'turn-1' }
+    expect(parser.parse('item/started', { ...base, item, startedAtMs: 1 })).toEqual([])
+    expect(parser.parse('item/completed', { ...base, item, completedAtMs: 2 })).toEqual([])
+  })
+
   it('does not throw on malformed params', () => {
     const parser = createCodexParser({ agentId: 'w1' })
     for (const method of [

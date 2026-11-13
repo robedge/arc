@@ -1,0 +1,10 @@
+# The brain names an id that is no attachment of the session; the tool refuses and no worker starts.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Unknown attachment\n\nReady."}
+{"result":true}
+{"waitForStdin":"[Attachments for this message]"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"look","task":"Describe the pasted screenshot","repos":["api"],"attachments":["01HZZZZZZZZZZZZZZZZZZZZZZZ"]}}}
+{"say":"The tool refused."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

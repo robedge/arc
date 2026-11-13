@@ -6,6 +6,7 @@
  */
 export function buildCsp(options: { dev: boolean }): string {
   const knowledgeProtocolSources = ['arc-knowledge:']
+  const attachmentProtocolSources = ['arc-attachment:']
   const connect = [
     "'self'",
     ...knowledgeProtocolSources,
@@ -15,7 +16,7 @@ export function buildCsp(options: { dev: boolean }): string {
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    ["img-src 'self' data:", ...knowledgeProtocolSources].join(' '),
+    ["img-src 'self' data:", ...knowledgeProtocolSources, ...attachmentProtocolSources].join(' '),
     `connect-src ${connect.join(' ')}`,
     "object-src 'none'",
     "base-uri 'none'",

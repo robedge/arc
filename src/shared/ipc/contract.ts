@@ -8,6 +8,8 @@ import type {
   ReviewUndoPreview
 } from '../types/review'
 import { IMPORT_MAX_BYTES } from '../limits'
+import { ATTACHMENTS_MAX_PER_MESSAGE } from '../attachments'
+import type { MessageAttachmentView, StageResult } from '../attachments'
 import { PROVIDER_IDS } from '../types/provider'
 import type {
   AppSettings,
@@ -61,6 +63,33 @@ export const WORKER_INPUT_MAX_CHARS = 20_000
  * plus one entry in `ChannelResponses`; main validates with these schemas and
  * the preload derives its allowlist from the keys.
  */
+/** A ULID made by the main process. */
+const draftIdSchema = z.string().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/)
+/** The attachment fields of a message: shared by `sessions:send-message` and `sessions:create`. */
+const attachmentFields = {
+  draftId: draftIdSchema.optional(),
+  attachmentIds: z
+    .array(draftIdSchema)
+    .max(ATTACHMENTS_MAX_PER_MESSAGE)
+    .refine((ids) => new Set(ids).size === ids.length, 'duplicate attachment id')
+    .optional()
+}
+/** Ids need their draft, and a message needs text or files. */
+function checkMessageFiles(
+  v: { draftId?: string | undefined; attachmentIds?: string[] | undefined },
+  text: string,
+  textPath: string,
+  ctx: z.RefinementCtx
+): void {
+  const hasFiles = (v.attachmentIds?.length ?? 0) > 0
+  if (hasFiles && v.draftId === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['draftId'], message: 'draftId is required' })
+  }
+  if (text.trim() === '' && !hasFiles) {
+    ctx.addIssue({ code: 'custom', path: [textPath], message: `${textPath} is required` })
+  }
+}
+
 export const channelSchemas = {
   'app:ping': z.object({}).strict(),
   // The renderer finished flushing unsaved work after `app:before-close`.
@@ -200,13 +229,16 @@ export const channelSchemas = {
   'sessions:create': z
     .object({
       groupId: z.string(),
-      request: z.string().min(1),
+      // Empty only when attachments come with it.
+      request: z.string(),
       mode: z.enum(['plan_first', 'autonomous']),
       workerLimit: z.number().int().min(1).max(6),
       // The brain picked in the dialog; saved as the Settings brain default.
-      brainModel: modelRefSchema.optional()
+      brainModel: modelRefSchema.optional(),
+      ...attachmentFields
     })
-    .strict(),
+    .strict()
+    .superRefine((v, ctx) => checkMessageFiles(v, v.request, 'request', ctx)),
   'sessions:open': z.object({ sessionId: z.string() }).strict(),
   'commands:list': z.object({ sessionId: z.string() }).strict(),
   'commands:refresh': z.object({ sessionId: z.string() }).strict(),
@@ -292,7 +324,15 @@ export const channelSchemas = {
     .strict(),
   // Removes one "Always allow this in this session" rule; returns the updated header.
   'sessions:remove-allow-rule': z.object({ sessionId: z.string(), ruleId: z.string() }).strict(),
-  'sessions:send-message': z.object({ sessionId: z.string(), text: z.string().min(1) }).strict(),
+  // Text may be empty only with attachments; `attachmentIds` are staged under `draftId`.
+  'sessions:send-message': z
+    .object({
+      sessionId: z.string(),
+      text: z.string(),
+      ...attachmentFields
+    })
+    .strict()
+    .superRefine((v, ctx) => checkMessageFiles(v, v.text, 'text', ctx)),
   'sessions:stop-reply': z.object({ sessionId: z.string() }).strict(),
   'sessions:delete': z.object({ sessionId: z.string() }).strict(),
   // `models` maps a proposed worker's name to the provider and model picked on the plan card.
@@ -313,6 +353,18 @@ export const channelSchemas = {
   'usage:dismiss-suggestion': z.object({ id: z.string() }).strict(),
   'knowledge-suggestions:list': z.object({ sessionId: z.string() }).strict(),
   'knowledge-suggestions:discard': z.object({ id: z.string() }).strict(),
+  'attachments:new-draft': z.object({}).strict(),
+  'attachments:stage-paths': z
+    .object({ draftId: draftIdSchema, paths: z.array(z.string()).min(1).max(100) })
+    .strict(),
+  // One pasted image. Arrives structured-cloned as a Uint8Array (a Buffer is one too); the size and
+  // the real type are checked in the service, so the claimed mime is only a bounded string.
+  'attachments:stage-bytes': z
+    .object({ draftId: draftIdSchema, bytes: z.instanceof(Uint8Array), mime: z.string().max(100) })
+    .strict(),
+  'attachments:pick': z.object({ draftId: draftIdSchema }).strict(),
+  'attachments:remove': z.object({ draftId: draftIdSchema, id: draftIdSchema }).strict(),
+  'attachments:discard-draft': z.object({ draftId: draftIdSchema }).strict(),
   'knowledge-suggestions:accept-all': z.object({ sessionId: z.string() }).strict(),
   'knowledge-suggestions:discard-all': z.object({ sessionId: z.string() }).strict(),
   'knowledge-suggestions:current': z.object({ id: z.string() }).strict(),
@@ -463,7 +515,8 @@ export interface ChannelResponses {
   'sessions:set-config': SessionHeader
   'sessions:remove-allow-rule': SessionHeader
   /** Error `CLI_UNAVAILABLE` (nothing persisted) when Claude Code is missing or signed out; the renderer keeps the draft. */
-  'sessions:send-message': { messageId: number }
+  /** Error `ATTACHMENT_UNREADABLE` (nothing persisted) when a staged file is gone. `attachments` is empty without files. */
+  'sessions:send-message': { messageId: number; attachments: MessageAttachmentView[] }
   'sessions:stop-reply': void
   /** Stops the session's processes, deletes its rows and `userData/sessions/<id>/`. */
   'sessions:delete': void
@@ -478,6 +531,16 @@ export interface ChannelResponses {
   'knowledge-suggestions:list': KnowledgeSuggestionView[]
   /** Discards a waiting suggestion; an id that is not waiting is ignored. */
   'knowledge-suggestions:discard': void
+  /** A fresh draft id for one message box. */
+  'attachments:new-draft': { draftId: string }
+  /** Copies each accepted file into staging; refused files are listed with a reason. Error `VALIDATION_FAILED` for an unknown draft. */
+  'attachments:stage-paths': StageResult
+  /** Stages one pasted image as `attachments:stage-paths`, named "Pasted image N"; the bytes decide the type, not `mime`. */
+  'attachments:stage-bytes': StageResult
+  /** Opens the file picker, then stages as `attachments:stage-paths`; a cancelled picker stages nothing. */
+  'attachments:pick': StageResult
+  'attachments:remove': void
+  'attachments:discard-draft': void
   /** Applies a waiting suggestion; a typed error (name taken, write failed, ...) leaves it waiting. */
   'knowledge-suggestions:accept': AcceptOutcome
   /**

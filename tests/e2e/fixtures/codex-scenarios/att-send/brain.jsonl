@@ -1,0 +1,9 @@
+# A Codex brain (spec 012 attachments): answers the first request, then answers the message with attachments once.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Ready for the files."}
+{"turnCompleted":"completed"}
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Got the files."}
+{"turnCompleted":"completed"}

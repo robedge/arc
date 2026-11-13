@@ -81,7 +81,30 @@
   import type { KnowledgeSuggestionView } from '@shared/types/knowledge-suggestion'
   import type { KnowledgeSuggestionProblem } from '../knowledge-suggestions/problem'
   import type { DiffHunk } from '@shared/types/review'
+  import AttachmentChip from '../components/ui/AttachmentChip.svelte'
+  import AttachmentRow, { type AttachmentRowItem } from '../components/ui/AttachmentRow.svelte'
+  import DropZone from '../components/ui/DropZone.svelte'
+  import AttachmentNotices from '../components/sessions/AttachmentNotices.svelte'
+  import type { AttachmentRefusal } from '@shared/attachments'
   import StorageProgress from '../components/settings/StorageProgress.svelte'
+
+  // Attachments: fixed samples. No id on the image chip, so it shows its icon instead of loading a thumbnail.
+  const attRefusals: AttachmentRefusal[] = [
+    { name: 'notes.exe', reason: 'unsupported' },
+    { name: 'huge.png', reason: 'too_large' },
+    { name: 'extra.txt', reason: 'too_many' },
+    { name: 'drafts', reason: 'folder' },
+    { name: 'broken.txt', reason: 'unreadable' }
+  ]
+  // A list shows three lines at most, so the five reasons need two lists; the third shows the overflow line.
+  const attRefusalsA = attRefusals.slice(0, 3)
+  const attRefusalsB = attRefusals.slice(3)
+  const attLong: AttachmentRowItem[] = Array.from({ length: 10 }, (_, i) => ({
+    key: `long-${i}`,
+    name: `quarterly-planning-notes-for-the-orders-service-part-${i + 1}.txt`,
+    kind: 'text',
+    size: 1024 * (i + 1)
+  }))
 
   // Knowledge suggestions: fixed samples, no store and no IPC.
   let ksChipClicks = $state(0)
@@ -1752,6 +1775,43 @@
       </div>
     {/snippet}
     {@render block('Knowledge suggestions', knowledgeSuggestions)}
+
+    {#snippet attachments()}
+      <div data-preview-attachments class="flex flex-col gap-4">
+        <!-- inert: remove and preview buttons would reach the main process -->
+        <div inert class="flex flex-wrap gap-2" data-preview-attachments-chips>
+          <AttachmentChip name="screenshot.png" kind="image" size={184320} onremove={() => {}} />
+          <AttachmentChip name="spec.pdf" kind="pdf" size={2411724} onremove={() => {}} />
+          <AttachmentChip name="notes.txt" kind="text" size={2048} onremove={() => {}} />
+          <AttachmentChip name="report.pdf" kind="pdf" state="staging" onremove={() => {}} />
+          <AttachmentChip name="broken.txt" kind="text" state="error" onremove={() => {}} />
+        </div>
+        <div inert class="flex flex-wrap gap-2" data-preview-attachments-sent>
+          <AttachmentChip name="screenshot.png" kind="image" size={184320} />
+          <AttachmentChip name="spec.pdf" kind="pdf" size={2411724} />
+          <AttachmentChip name="notes.txt" kind="text" size={2048} />
+        </div>
+        <div inert class="max-w-md" data-preview-attachments-long>
+          <AttachmentRow items={attLong} onremove={() => {}} />
+        </div>
+        <div inert class="flex flex-col gap-3" data-preview-attachments-notices>
+          <AttachmentNotices refused={attRefusalsA} ondismiss={() => {}} />
+          <AttachmentNotices refused={attRefusalsB} ondismiss={() => {}} />
+          <AttachmentNotices
+            refused={attRefusals}
+            ondismiss={() => {}}
+            provider="codex"
+            kinds={['pdf']}
+          />
+        </div>
+        <div inert class="h-24">
+          <DropZone ondrop={() => {}} label="Drop to attach" forceActive class="h-full">
+            <p class="p-3 text-sm text-text-muted">Sample message box</p>
+          </DropZone>
+        </div>
+      </div>
+    {/snippet}
+    {@render block('Attachments', attachments)}
   </main>
 </div>
 

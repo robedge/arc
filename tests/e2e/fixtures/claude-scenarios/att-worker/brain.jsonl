@@ -1,0 +1,15 @@
+# Spec 012 slice 7: the brain starts a worker with the attachment id it was shown, and later messages it with the same id.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Worker attachment\n\nReady."}
+{"result":true}
+{"waitForStdin":"[Attachments for this message]"}
+{"capture":{"as":"att","regex":"- (\\w{26}) · Pasted image 1"}}
+{"mcp":{"tool":"spawn_worker","args":{"name":"look","task":"Describe the pasted screenshot","repos":["api"],"attachments":["{{VAR:att}}"]}}}
+{"say":"The worker is looking."}
+{"result":true}
+{"waitForStdin":"Ask again"}
+{"mcp":{"tool":"message_worker","args":{"workerId":"W1","text":"Second look at it","attachments":["{{VAR:att}}"]}}}
+{"say":"Asked again."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

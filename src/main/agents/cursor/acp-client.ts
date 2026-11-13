@@ -31,6 +31,13 @@ export interface AcpHttpMcpServer {
   headers: { name: string; value: string }[]
 }
 
+/** An ACP image content block: the file's bytes, base64. Never logged or kept in an event. */
+export interface AcpImageBlock {
+  type: 'image'
+  data: string
+  mimeType: string
+}
+
 export interface AcpSessionParams {
   cwd: string
   mcpServers: AcpHttpMcpServer[]
@@ -76,6 +83,9 @@ export class AcpClient {
     this.peer.close()
   }
 
+  /** `promptCapabilities.image` from `initialize`; false until then, and when Cursor does not say. */
+  imagePrompts = false
+
   /** No `fs` or `terminal` client capabilities: Cursor then uses its own tools and every action reaches the permission request. */
   async initialize(): Promise<void> {
     const reply = initializeResponseSchema.safeParse(
@@ -85,6 +95,7 @@ export class AcpClient {
       })
     )
     if (!reply.success) throw new Error('Cursor answered initialize with an unexpected shape.')
+    this.imagePrompts = reply.data.agentCapabilities?.promptCapabilities?.image === true
   }
 
   async authenticate(): Promise<void> {
@@ -125,11 +136,15 @@ export class AcpClient {
    * Resolves with the stop reason when the turn ends, and the `usage` (or `_meta.usage`) of the
    * response if Cursor sent one. It waits for as long as the turn runs.
    */
-  async prompt(sessionId: string, text: string): Promise<{ stopReason: string; usage?: unknown }> {
+  async prompt(
+    sessionId: string,
+    text: string,
+    images: readonly AcpImageBlock[] = []
+  ): Promise<{ stopReason: string; usage?: unknown }> {
     const reply = promptResponseSchema.safeParse(
       await this.peer.request(
         'session/prompt',
-        { sessionId, prompt: [{ type: 'text', text }] },
+        { sessionId, prompt: [{ type: 'text', text }, ...images] },
         Infinity
       )
     )

@@ -21,6 +21,10 @@ import { KnowledgeWatcher } from '../knowledge/knowledge-watcher'
 import { KnowledgeStorageService } from '../knowledge/knowledge-storage-service'
 import { createRevealResolver } from '../knowledge/reveal-path'
 import { AvailabilityService } from '../knowledge/availability-service'
+import { clearStagingRoot } from '../attachments/attachment-cleanup'
+import { AttachmentSender } from '../attachments/attachment-send'
+import { AttachmentService } from '../attachments/attachment-service'
+import { makeNativeThumbnail } from '../attachments/attachment-thumbnail'
 import { CliResolver } from '../agents/cli-resolver'
 import { ProviderStatusService } from '../providers/provider-status-service'
 import { CommandCatalogue, CommandProbe } from '../agents/command-probe'
@@ -60,6 +64,7 @@ import { PidLedger } from '../agents/pid-ledger'
 import { ProcessSupervisor } from '../agents/process-supervisor'
 import { EventsRepo } from '../db/repositories/events-repo'
 import { MessagesRepo } from '../db/repositories/messages-repo'
+import { MessageAttachmentsRepo } from '../db/repositories/message-attachments-repo'
 import { AllowRulesRepo } from '../db/repositories/allow-rules-repo'
 import { AttentionRepo } from '../db/repositories/attention-repo'
 import { BrainThreadsRepo } from '../db/repositories/brain-threads-repo'
@@ -487,7 +492,26 @@ function buildSessionServices(
   })
   // The service reports attention changes to the attention service that is built from it.
   const attentionRef = new LateRef<AttentionService>('the attention service')
+  const messageAttachmentsRepo = new MessageAttachmentsRepo(db)
+  const stagingRoot = join(app.getPath('userData'), 'attachment-staging')
+  // Staged files do not survive a restart; cleared before any renderer can stage (tech spec 2.3).
+  clearStagingRoot(stagingRoot, sessionsLog)
+  const attachments = new AttachmentService({
+    stagingRoot,
+    dialogs: core.dialogs,
+    makeThumbnail: makeNativeThumbnail
+  })
+  const getSessionDir = (sessionId: string): string =>
+    join(app.getPath('userData'), 'sessions', sessionId)
   const sessions = new SessionService({
+    messageAttachmentsRepo,
+    attachmentSender: new AttachmentSender({
+      db,
+      staging: attachments,
+      getSessionDir,
+      now: () => Date.now(),
+      log: sessionsLog
+    }),
     usage: usage.usage,
     planUsage: usage.plans,
     plansRepo: new PlansRepo(db),
@@ -519,7 +543,7 @@ function buildSessionServices(
     sessionProjectsRepo,
     sessionGit,
     getKnowledgeRoot: knowledge.getKnowledgeRoot,
-    getSessionDir: (sessionId) => join(app.getPath('userData'), 'sessions', sessionId),
+    getSessionDir,
     getCodexBrainDir: (sessionId) => join(app.getPath('userData'), 'codex-brain', sessionId),
     getPluginViewDir: (repoPaths, role) => agentConfig.pluginView.current(repoPaths, role),
     personal: agentConfig.personalConfig,
@@ -536,7 +560,8 @@ function buildSessionServices(
       claude: new ClaudeAdapter({
         supervisor,
         binary: resolver.claudeBinary(),
-        resolvePath: () => resolver.resolvePath()
+        resolvePath: () => resolver.resolvePath(),
+        warn: (message) => sessionsLog.warn(message)
       }),
       codex: new CodexAdapter({
         supervisor,
@@ -589,7 +614,7 @@ function buildSessionServices(
     onNewRequest: (notice) => notifications.notify(notice)
   })
   attentionRef.bind(attention)
-  return { sessions, attention }
+  return { sessions, attention, attachments, messageAttachmentsRepo }
 }
 
 /**

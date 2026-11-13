@@ -137,6 +137,12 @@
 //
 // `{{REQUEST_ID}}` inside "mcp" args is replaced with the id in the last consumed stdin line that has
 // "(request <id>)", which is how Arc's notes name an attention request.
+//   {"capture":{"as":"k","regex":"..."}}
+//                                   keep the first group of the regex (the whole match when it has no group) from the
+//                                   text of the last consumed stdin message (its text blocks, else the raw line) as
+//                                   `k`. `{{VAR:k}}` in any later emitted string or "mcp" argument is replaced with
+//                                   it, so a scenario can pass a value learned at run time (an attachment id). With
+//                                   no match, `k` stays unset and the placeholder is left as written.
 //   {"exitIfMcpError":code}         with a "mcp" step (not saved): exit with that code when the tool returned an error.
 //
 // A stdin `control_request` with subtype `interrupt` is answered the moment it arrives (even during a
@@ -514,11 +520,36 @@ function lastRequestId() {
   return /\(request ([0-9A-Za-z_-]+)\)/.exec(lastConsumed)?.[1] ?? '{{REQUEST_ID}}'
 }
 
+const captured = new Map()
+
+function lastConsumedText() {
+  try {
+    const content = JSON.parse(lastConsumed)?.message?.content
+    if (typeof content === 'string') return content
+    if (Array.isArray(content)) {
+      return content
+        .filter((b) => b?.type === 'text')
+        .map((b) => b.text)
+        .join('\n')
+    }
+  } catch {
+    // not JSON: the raw line is searched
+  }
+  return lastConsumed
+}
+
+function runCapture(spec) {
+  const match = new RegExp(String(spec.regex)).exec(lastConsumedText())
+  if (match) captured.set(String(spec.as), match[1] ?? match[0])
+}
+
 function substitute(value) {
   if (typeof value === 'string') {
-    return value
+    let out = value
       .replaceAll('{{SESSION_ID}}', sessionId)
       .replaceAll('{{REQUEST_ID}}', lastRequestId())
+    for (const [k, v] of captured) out = out.replaceAll(`{{VAR:${k}}}`, v)
+    return out
   }
   if (Array.isArray(value)) return value.map(substitute)
   if (value && typeof value === 'object') {
@@ -1507,6 +1538,7 @@ async function runStep(step) {
   if ('waitForStdin' in step) {
     if (!(await waitForStdin(String(step.waitForStdin)))) return false
   }
+  if ('capture' in step && typeof step.capture === 'object') runCapture(step.capture)
   if ('exit' in step) {
     await interruptChain
     await exitNow(Number(step.exit))

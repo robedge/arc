@@ -86,6 +86,11 @@ export class WorkersRepo {
     this.db.update(workers).set({ removedAt: now, updatedAt: now }).where(eq(workers.id, id)).run()
   }
 
+  /** The attachments the brain passed to the worker, as the JSON text of `[{id, name, kind, size}]`. */
+  setAttachmentsJson(id: string, attachmentsJson: string, now: number): void {
+    this.db.update(workers).set({ attachmentsJson, updatedAt: now }).where(eq(workers.id, id)).run()
+  }
+
   setActivity(id: string, activity: string | null, now: number): void {
     this.db.update(workers).set({ activity, updatedAt: now }).where(eq(workers.id, id)).run()
   }

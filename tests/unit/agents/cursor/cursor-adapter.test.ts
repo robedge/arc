@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import {
   ProviderHistoryMissingError,
   ProviderUnavailableError,
   type AgentHandle,
+  type AttachmentRef,
   type CursorStartRequest
 } from '../../../../src/main/agents/agent-adapter'
 import type { AgentEvent } from '../../../../src/main/agents/agent-events'
@@ -17,6 +21,8 @@ import type {
   CursorApprovalHandler,
   CursorApprovalRequest
 } from '../../../../src/main/agents/cursor/cursor-types'
+import { withAttachmentBlock } from '../../../../src/main/attachments/attachment-block'
+import { INLINE_IMAGE_MAX_BYTES } from '../../../../src/main/attachments/inline-image'
 import { FakeAcp, until, type Msg } from './fake-acp'
 import { loadReplay, promptTurns, serverMessages, turnMessages } from './fixtures'
 
@@ -316,6 +322,128 @@ describe('CursorAdapter turns', () => {
     await handle.send('second task')
     await until(() => prompts.length === 2)
     expect(promptText(prompts[1])).toBe('second task')
+  })
+
+  describe('attachments (spec 012)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'arc-cursor-att-'))
+    afterAll(() => rmSync(dir, { recursive: true, force: true }))
+    let n = 0
+    const png = (bytes = 'PNGDATA', over: Partial<AttachmentRef> = {}): AttachmentRef => {
+      const path = join(dir, `shot-${++n}.png`)
+      writeFileSync(path, bytes)
+      return {
+        id: 'A1',
+        name: 'shot.png',
+        kind: 'image',
+        mime: 'image/png',
+        size: bytes.length,
+        path,
+        ...over
+      }
+    }
+    const pdf: AttachmentRef = {
+      id: 'A2',
+      name: 'spec.pdf',
+      kind: 'pdf',
+      mime: 'application/pdf',
+      size: 2048,
+      path: '/ud/sessions/s1/attachments/A2/spec.pdf'
+    }
+    const withImages = (fake: FakeAcp, image: boolean | undefined): void => {
+      fake.handlers['initialize'] = (msg, f) =>
+        f.result(msg, {
+          protocolVersion: 1,
+          agentCapabilities: {
+            loadSession: true,
+            ...(image === undefined ? {} : { promptCapabilities: { image, audio: false } })
+          }
+        })
+    }
+    const blocksOf = (msg: Msg | undefined): unknown =>
+      (msg?.['params'] as Msg | undefined)?.['prompt']
+
+    it('sends the text block and one image block per image when the agent advertised images', async () => {
+      const fake = new FakeAcp()
+      withImages(fake, true)
+      const prompts = holdPrompts(fake)
+      const handle = await begin(fake)
+      const image = png('PNGDATA')
+      await handle.send('look', [image, pdf])
+      await until(() => prompts.length === 1)
+      expect(blocksOf(prompts[0])).toEqual([
+        { type: 'text', text: withAttachmentBlock('look', [image, pdf]) },
+        { type: 'image', data: Buffer.from('PNGDATA').toString('base64'), mimeType: 'image/png' }
+      ])
+    })
+
+    it('sends the text block only when the agent did not advertise images, or said nothing', async () => {
+      for (const flag of [false, undefined]) {
+        const fake = new FakeAcp()
+        withImages(fake, flag)
+        const prompts = holdPrompts(fake)
+        const handle = await begin(fake)
+        const image = png()
+        await handle.send('look', [image])
+        await until(() => prompts.length === 1)
+        expect(blocksOf(prompts[0])).toEqual([
+          { type: 'text', text: withAttachmentBlock('look', [image]) }
+        ])
+      }
+    })
+
+    it('sends an image over the inline limit by path only', async () => {
+      const fake = new FakeAcp()
+      withImages(fake, true)
+      const prompts = holdPrompts(fake)
+      const handle = await begin(fake)
+      const big = png('x', { size: INLINE_IMAGE_MAX_BYTES + 1 })
+      await handle.send('look', [big])
+      await until(() => prompts.length === 1)
+      expect(blocksOf(prompts[0])).toEqual([
+        { type: 'text', text: withAttachmentBlock('look', [big]) }
+      ])
+    })
+
+    it('drops the image block of a missing file and still sends the prompt', async () => {
+      const fake = new FakeAcp()
+      withImages(fake, true)
+      const prompts = holdPrompts(fake)
+      const handle = await begin(fake)
+      const gone = { ...png(), path: join(dir, 'gone.png') }
+      await handle.send('look', [gone])
+      await until(() => prompts.length === 1)
+      expect(blocksOf(prompts[0])).toEqual([
+        { type: 'text', text: withAttachmentBlock('look', [gone]) }
+      ])
+    })
+
+    it('keeps the attachments of a send queued behind a running prompt', async () => {
+      const fake = new FakeAcp()
+      withImages(fake, true)
+      const prompts = holdPrompts(fake)
+      const handle = await begin(fake)
+      const image = png('QUEUED')
+      await handle.send('first')
+      await handle.send('second', [image])
+      await until(() => prompts.length === 1)
+      fake.result(prompts[0] as Msg, { stopReason: 'end_turn' })
+      await until(() => prompts.length === 2)
+      expect(blocksOf(prompts[1])).toEqual([
+        { type: 'text', text: withAttachmentBlock('second', [image]) },
+        { type: 'image', data: Buffer.from('QUEUED').toString('base64'), mimeType: 'image/png' }
+      ])
+    })
+
+    it('hands back a queued send as its text with the block, and sends a plain prompt unchanged', async () => {
+      const fake = new FakeAcp()
+      const prompts = holdPrompts(fake)
+      const handle = await begin(fake)
+      await handle.send('first')
+      await handle.send('second', [pdf])
+      expect(handle.discardQueuedSends()).toEqual([withAttachmentBlock('second', [pdf])])
+      await until(() => prompts.length === 1)
+      expect(blocksOf(prompts[0])).toEqual([{ type: 'text', text: 'first' }])
+    })
   })
 
   it('runs one prompt at a time, queues the rest, and gives each send its own result', async () => {

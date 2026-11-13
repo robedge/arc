@@ -1,4 +1,5 @@
 import type { AppServices } from '../../app/app-services'
+import { registerAttachmentHandlers } from './attachments'
 import { registerAgentLoadHandlers } from './agent-load'
 import { registerAppHandlers, type AppHost } from './app'
 import { registerGroupHandlers, registerProjectHandlers } from './groups'
@@ -23,6 +24,7 @@ export function registerAllHandlers(services: AppServices, host: AppHost): void 
   registerKnowledgeHandlers(services)
   registerKnowledgeSuggestionHandlers(services)
   registerSettingsHandlers(services)
+  registerAttachmentHandlers(services)
   registerAgentLoadHandlers(services)
   registerPluginHandlers(services)
   registerUsageHandlers(services)

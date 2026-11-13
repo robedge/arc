@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { WorkerDetails, WorkerView } from '@shared/types/session'
   import { messageFor } from '../../ipc/messages'
+  import AttachmentRow from '../ui/AttachmentRow.svelte'
   import Button from '../ui/Button.svelte'
   import ErrorText from '../ui/ErrorText.svelte'
   import Modal from '../ui/Modal.svelte'
@@ -160,6 +161,21 @@
     <section>
       <h3 class="text-xs tracking-label text-text-muted uppercase">Task</h3>
       <p class="whitespace-pre-wrap text-text">{details?.task ?? worker.task}</p>
+      {#if worker.attachments?.length}
+        <div class="mt-2" data-worker-attachments>
+          <h4 class="mb-1 text-xs tracking-label text-text-muted uppercase">Attachments</h4>
+          <AttachmentRow
+            scope="sent"
+            items={worker.attachments.map((a) => ({
+              key: a.id,
+              id: a.id,
+              name: a.name,
+              kind: a.kind,
+              size: a.size
+            }))}
+          />
+        </div>
+      {/if}
     </section>
     {#if worker.status === 'failed' && (details?.failureReason ?? worker.failureReason)}
       <section>

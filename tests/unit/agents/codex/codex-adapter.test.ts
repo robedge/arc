@@ -15,6 +15,7 @@ import {
   ProviderHistoryMissingError,
   ProviderUnavailableError,
   type AgentHandle,
+  type AttachmentRef,
   type CodexStartRequest
 } from '../../../../src/main/agents/agent-adapter'
 import type { AgentEvent } from '../../../../src/main/agents/agent-events'
@@ -28,6 +29,7 @@ import {
   type CodexApprovalDecision,
   type CodexApprovalRequest
 } from '../../../../src/main/agents/codex/codex-types'
+import { withAttachmentBlock } from '../../../../src/main/attachments/attachment-block'
 import { ProcessSupervisor } from '../../../../src/main/agents/process-supervisor'
 import { startStubBridge, type StubBridge } from './stub-bridge'
 
@@ -397,6 +399,106 @@ describe('CodexAdapter turns', () => {
     expect(start?.params).toEqual({
       threadId: expect.stringMatching(/^fake-thread-/) as string,
       input: [{ type: 'text', text: 'hello' }]
+    })
+  })
+
+  describe('attachments (spec 012)', () => {
+    const png = (): AttachmentRef => {
+      const path = join(dir, `shot-${++counter}.png`)
+      writeFileSync(path, 'png')
+      return { id: 'A1', name: 'shot.png', kind: 'image', mime: 'image/png', size: 3, path }
+    }
+    const pdf: AttachmentRef = {
+      id: 'A2',
+      name: 'spec.pdf',
+      kind: 'pdf',
+      mime: 'application/pdf',
+      size: 2048,
+      path: '/ud/sessions/s1/attachments/A2/spec.pdf'
+    }
+    const turnInputs = (log: string): unknown[] =>
+      received(readLog(log))
+        .filter((m) => m.method === 'turn/start')
+        .map((m) => (m.params as { input: unknown }).input)
+    const oneTurn = (): string =>
+      scenario([{ expect: 'turn/start' }, { turnStarted: true }, { turnCompleted: 'completed' }])
+
+    it('text + PNG + PDF produces a text item with the block, then one localImage for the PNG', async () => {
+      const image = png()
+      const { handle, log } = await begin(oneTurn())
+      const w = watch(handle)
+      expect(await handle.send('look', [image, pdf])).toBe(true)
+      await nthTurnResult(w, 1)
+      expect(turnInputs(log)).toEqual([
+        [
+          { type: 'text', text: withAttachmentBlock('look', [image, pdf]) },
+          { type: 'localImage', path: image.path }
+        ]
+      ])
+      const text = (turnInputs(log)[0] as { text: string }[])[0]?.text ?? ''
+      expect(text).toContain(`- A2 · spec.pdf · pdf · 2.0 KB · ${pdf.path}`)
+    })
+
+    it('keeps the attachments of a send queued behind a running turn', async () => {
+      const image = png()
+      const script = scenario([
+        { expect: 'turn/start', text: 'first' },
+        { turnStarted: true },
+        { turnCompleted: 'completed' },
+        { expect: 'turn/start', text: 'second' },
+        { turnStarted: true },
+        { turnCompleted: 'completed' }
+      ])
+      const { handle, log } = await begin(script)
+      const w = watch(handle)
+      await handle.send('first')
+      await handle.send('second', [image])
+      await nthTurnResult(w, 2)
+      expect(turnInputs(log)).toEqual([
+        [{ type: 'text', text: 'first' }],
+        [
+          { type: 'text', text: withAttachmentBlock('second', [image]) },
+          { type: 'localImage', path: image.path }
+        ]
+      ])
+    })
+
+    it('drops the localImage of a missing file, keeps its path line, and still sends the turn', async () => {
+      const image = { ...png(), path: join(dir, 'gone.png') }
+      const { handle, log } = await begin(oneTurn())
+      const w = watch(handle)
+      await handle.send('look', [image])
+      await nthTurnResult(w, 1)
+      expect(turnInputs(log)).toEqual([
+        [{ type: 'text', text: withAttachmentBlock('look', [image]) }]
+      ])
+    })
+
+    it('sends a PDF or text file by path only', async () => {
+      const { handle, log } = await begin(oneTurn())
+      const w = watch(handle)
+      await handle.send('read', [pdf])
+      await nthTurnResult(w, 1)
+      expect(turnInputs(log)).toEqual([
+        [{ type: 'text', text: withAttachmentBlock('read', [pdf]) }]
+      ])
+    })
+
+    it('leaves a send without attachments as the plain text item', async () => {
+      const { handle, log } = await begin(oneTurn())
+      const w = watch(handle)
+      await handle.send('plain', [])
+      await nthTurnResult(w, 1)
+      expect(turnInputs(log)).toEqual([[{ type: 'text', text: 'plain' }]])
+    })
+
+    it('hands back a queued send as its text, with no image path in it', async () => {
+      const image = png()
+      const script = scenario([{ expect: 'turn/start', text: 'first' }, { turnStarted: true }])
+      const { handle } = await begin(script)
+      await handle.send('first')
+      await handle.send('second', [image])
+      expect(handle.discardQueuedSends?.()).toEqual([withAttachmentBlock('second', [image])])
     })
   })
 

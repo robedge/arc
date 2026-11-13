@@ -20,7 +20,7 @@ test('providers:models lists Codex only while it is signed in, and settings roun
     const models = await page.evaluate(() => window.arc.invoke('providers:models', {}))
     expect(models.ok).toBe(true)
     if (!models.ok) return
-    expect(models.data.claude.map((m) => m.ref.model)).toEqual(['opus', 'sonnet', 'haiku'])
+    expect(models.data.claude.map((m) => m.ref.model)).toEqual(['opus', 'fable', 'sonnet', 'haiku'])
     expect(models.data.codex.map((m) => [m.ref.model, m.tier, m.isDefault])).toEqual([
       ['fake-deep', 'balanced', true],
       ['fake-fast', 'fast', false]
@@ -91,8 +91,13 @@ test('with Codex signed out, providers:models offers no Codex models', async () 
     const page = await mainWindow(app)
     const models = await page.evaluate(() => window.arc.invoke('providers:models', {}))
     expect(models.ok && models.data.codex).toEqual([])
-    expect(models.ok && models.data.claude).toHaveLength(3)
-    expect(existsSync(join(userDataDir, 'provider-cache.json'))).toBe(false)
+    expect(models.ok && models.data.claude).toHaveLength(4)
+    // The Claude list is cached once probed; signed out, nothing is cached for Codex.
+    const cachePath = join(userDataDir, 'provider-cache.json')
+    const cached = existsSync(cachePath)
+      ? (JSON.parse(readFileSync(cachePath, 'utf8')) as Record<string, unknown>)
+      : {}
+    expect(cached).not.toHaveProperty('codex')
   } finally {
     await app.close().catch(() => undefined)
     await rm(userDataDir, { recursive: true, force: true })

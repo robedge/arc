@@ -1,0 +1,109 @@
+{
+  "source": "codex app-server generate-json-schema (codex-cli 0.163.0), v2/TurnStartParams.json definitions.UserInput.oneOf, text/image/localImage variants",
+  "input": {
+    "items": {
+      "$ref": "#/definitions/UserInput"
+    },
+    "type": "array"
+  },
+  "ImageDetail": {
+    "enum": ["auto", "low", "high", "original"],
+    "type": "string"
+  },
+  "variants": [
+    {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "text_elements": {
+          "default": [],
+          "description": "UI-defined spans within `text` used to render or persist special elements.",
+          "items": {
+            "$ref": "#/definitions/TextElement"
+          },
+          "type": "array"
+        },
+        "type": {
+          "enum": ["text"],
+          "title": "TextUserInputType",
+          "type": "string"
+        }
+      },
+      "required": ["text", "type"],
+      "title": "TextUserInput",
+      "type": "object"
+    },
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": ["url"],
+          "title": "UrlUserInput",
+          "type": "object"
+        },
+        {
+          "properties": {
+            "fileId": {
+              "type": "string"
+            }
+          },
+          "required": ["fileId"],
+          "title": "FileIdUserInput",
+          "type": "object"
+        }
+      ],
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ImageDetail"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "enum": ["image"],
+          "title": "ImageUserInputType",
+          "type": "string"
+        }
+      },
+      "required": ["type"],
+      "title": "ImageUserInput",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ImageDetail"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "path": {
+          "type": "string"
+        },
+        "type": {
+          "enum": ["localImage"],
+          "title": "LocalImageUserInputType",
+          "type": "string"
+        }
+      },
+      "required": ["path", "type"],
+      "title": "LocalImageUserInput",
+      "type": "object"
+    }
+  ]
+}
