@@ -13,6 +13,7 @@ import type { CursorCommandRunner } from '../agents/cursor/cursor-commands'
 import type { CodexInput } from '../agents/codex/codex-types'
 import type {
   AgentHandle,
+  AttachmentRef,
   ClaudeStartOptions,
   CodexStartOptions,
   CommonStartOptions,
@@ -24,6 +25,16 @@ import type { ProviderRegistry } from '../agents/provider-registry'
 import type { AgentEvent } from '../agents/agent-events'
 import type { ClassifyContext } from '../policy/classify'
 import { PERMISSION_PROMPT_TOOL } from '../agents/claude/claude-adapter'
+import { attachmentBlock, withAttachmentBlock } from '../attachments/attachment-block'
+import { sentAttachmentsRoot } from '../attachments/attachment-paths'
+import {
+  mergeWorkerAttachments,
+  parseWorkerAttachments,
+  refOfRow,
+  resolveWorkerAttachments,
+  viewOfRef
+} from '../attachments/worker-attachments'
+import type { WorkerAttachmentsRepo } from '../attachments/worker-attachments'
 import { BridgeToolError } from '../bridge/types'
 import {
   applyCodexMcp,
@@ -251,6 +262,13 @@ export interface WorkerManagerDeps {
   getKnowledgeDir: () => string
   /** `userData/sessions/<sid>/workers`; without it the terminal transcripts stay in memory. */
   getTerminalDir?: (() => string) | undefined
+  /**
+   * `userData/sessions/<sid>`: the session's attachments folder (`attachments/` in it) is read only
+   * in every worker's launch. Left out (tests), no folder is added.
+   */
+  getSessionDir?: (() => string) | undefined
+  /** Resolves the attachment ids the brain passes; left out, a call that names ids is refused. */
+  attachmentsRepo?: WorkerAttachmentsRepo | undefined
   /** The sanitized plugin view for agents of these repositories; undefined when it could not be built. */
   getPluginViewDir?:
     ((repoPaths: readonly string[], role: LoadRole) => Promise<string | undefined>) | undefined
@@ -376,6 +394,7 @@ export function workerView(
   tokensInFlight = false
 ): WorkerView {
   const hasWorkingCopy = worktrees.some((w) => w.removedAt === null)
+  const attachments = parseWorkerAttachments(row.attachmentsJson)
   const trees: WorkerWorktreeView[] = worktrees.map((w) => ({
     projectId: w.projectId,
     projectName: projectName(w.projectId),
@@ -405,6 +424,7 @@ export function workerView(
     userControl: row.userControl,
     controlReplying,
     ...(row.command !== null ? { command: row.command } : {}),
+    ...(attachments.length > 0 ? { attachments } : {}),
     ...(tokens !== undefined ? { tokens } : {}),
     ...(tokensInFlight ? { tokensInFlight } : {}),
     createdAt: row.createdAt,
@@ -471,6 +491,11 @@ export interface WorkerPromptInput {
   worktrees: readonly { projectName: string; path: string }[]
   /** The provider that runs the worker; Cursor is told how its tools are reached and about `wait_for`. */
   provider?: ProviderId | undefined
+  /**
+   * Attachments for a worker whose first message is a command: that message must stay the bare
+   * command, so the block goes here instead of after it.
+   */
+  attachments?: readonly AttachmentRef[] | undefined
 }
 
 const TOOLSEARCH_LINE =
@@ -496,6 +521,9 @@ export function buildWorkerPrompt(input: WorkerPromptInput): string {
           `Your task: ${input.task}`,
           `Your first message is the command ${input.command}. Run it as a user would: follow it, in your working copies, and finish with the rest of these rules (commit, then report_done).`
         ]
+      : []),
+    ...(input.attachments && input.attachments.length > 0
+      ? ['', attachmentBlock(input.attachments)]
       : []),
     '',
     `Your working copies (git worktrees detached at the session branch ${input.branchName}):`,
@@ -682,6 +710,8 @@ export class WorkerManager {
   async spawn(request: LaunchRequest): Promise<SpawnWorkerResult> {
     const { input } = request
     const projects = this.resolveRepos(input.repos)
+    // Refused before anything is stored or started: an unknown id is the brain's to fix.
+    const attachmentRefs = this.resolveAttachments(input.attachments)
     const limit = this.workerLimit()
     const overLimit = this.deps.workersRepo.countActive(this.deps.sessionId) >= limit
     // A worker whose provider waits for its limit runs on the stand-in when there is one (it has no
@@ -713,6 +743,8 @@ export class WorkerManager {
       slug,
       task: input.task,
       command: input.command ?? null,
+      attachmentsJson:
+        attachmentRefs.length > 0 ? JSON.stringify(attachmentRefs.map(viewOfRef)) : null,
       projectIdsJson: JSON.stringify(projects.map((p) => p.projectId)),
       provider,
       model,
@@ -1385,6 +1417,50 @@ export class WorkerManager {
     }
   }
 
+  /** The session's attachments folder; absent when the manager was built without a session folder. */
+  private attachmentsDir(): string | undefined {
+    const sessionDir = this.deps.getSessionDir?.()
+    return sessionDir === undefined ? undefined : sentAttachmentsRoot(sessionDir)
+  }
+
+  /** The refs for the ids the brain named; `unknown_attachment` lists the ids it can use. */
+  private resolveAttachments(ids: readonly string[] | undefined): AttachmentRef[] {
+    if (ids === undefined || ids.length === 0) return []
+    const { attachmentsRepo, getSessionDir } = this.deps
+    if (attachmentsRepo === undefined || getSessionDir === undefined) {
+      throw new BridgeToolError(
+        'unknown_attachment',
+        'Attachments are not available in this session.'
+      )
+    }
+    return resolveWorkerAttachments({
+      repo: attachmentsRepo,
+      sessionDir: getSessionDir(),
+      sessionId: this.deps.sessionId,
+      ids
+    })
+  }
+
+  /** What a worker was given, from its stored list; an attachment whose row is gone is left out. */
+  private attachmentRefsOf(row: WorkerRow): AttachmentRef[] {
+    const { attachmentsRepo, getSessionDir } = this.deps
+    const ids = parseWorkerAttachments(row.attachmentsJson).map((a) => a.id)
+    if (ids.length === 0 || attachmentsRepo === undefined || getSessionDir === undefined) return []
+    const sessionDir = getSessionDir()
+    return attachmentsRepo.getMany(ids, this.deps.sessionId).map((r) => refOfRow(r, sessionDir))
+  }
+
+  /** Adds attachments to the worker's stored list, by id, so its task view lists everything it was given. */
+  private recordAttachments(row: WorkerRow, refs: readonly AttachmentRef[]): void {
+    if (refs.length === 0) return
+    this.deps.workersRepo.setAttachmentsJson(
+      row.id,
+      mergeWorkerAttachments(row.attachmentsJson, refs.map(viewOfRef)),
+      this.deps.now()
+    )
+    this.pushNow(row.id)
+  }
+
   private async launch(
     run: Running,
     row: WorkerRow,
@@ -1399,6 +1475,11 @@ export class WorkerManager {
     this.logFor(run.workerId).status('Starting')
     const knowledgeDir = this.deps.getKnowledgeDir()
     const otherCheckouts = this.otherCheckouts(new Set(projects.map((p) => p.projectPath)))
+    // Readable and not writable in every launch, so what a later message names is already reachable.
+    const attachmentsDir = this.attachmentsDir()
+    const attachmentRefs = this.attachmentRefsOf(row)
+    // A command is the whole first message, so its attachments go in the instructions instead.
+    const refsViaPrompt = row.command !== null
     const claude: ClaudeStartOptions = { permissionPromptTool: PERMISSION_PROMPT_TOOL }
     // Filled once the user's Codex servers are known; the Codex approval handler reads it.
     const mcpCover = new McpCoverage()
@@ -1413,8 +1494,17 @@ export class WorkerManager {
       role: 'worker',
       cwd: first.path,
       model: row.model,
-      addDirs: [...trees.slice(1).map((t) => t.path), knowledgeDir, ...otherCheckouts],
-      readOnlyDirs: [knowledgeDir, ...otherCheckouts],
+      addDirs: [
+        ...trees.slice(1).map((t) => t.path),
+        knowledgeDir,
+        ...otherCheckouts,
+        ...(attachmentsDir === undefined ? [] : [attachmentsDir])
+      ],
+      readOnlyDirs: [
+        knowledgeDir,
+        ...otherCheckouts,
+        ...(attachmentsDir === undefined ? [] : [attachmentsDir])
+      ],
       access: 'worker-write',
       instructions:
         prompt ??
@@ -1426,7 +1516,8 @@ export class WorkerManager {
           command: row.command,
           branchName: first.project.branchName ?? `arc/${sessionSlug ?? 'session'}`,
           worktrees: trees.map((t) => ({ projectName: t.project.projectName, path: t.path })),
-          provider: row.provider
+          provider: row.provider,
+          ...(refsViaPrompt && attachmentRefs.length > 0 ? { attachments: attachmentRefs } : {})
         })
     }
     // The row says which provider runs the worker, for a fresh start and for a resume alike.
@@ -1537,12 +1628,18 @@ export class WorkerManager {
         detachMcp?.()
       )
       if (run.stopRequestedBy !== null) void handle.stop()
+      // A resumed conversation already holds the block; one that starts over needs it again.
+      const firstRefs =
+        resume?.sessionId != null || refsViaPrompt || attachmentRefs.length === 0
+          ? undefined
+          : attachmentRefs
       const written = await this.sendFirst(
         handle,
         row,
         projects,
         firstText,
-        firstIsCommand && firstText === firstMessage
+        firstIsCommand && firstText === firstMessage,
+        firstRefs
       )
       if (!written) throw new Error('the worker process exited right away')
     } catch (error: unknown) {
@@ -1585,10 +1682,11 @@ export class WorkerManager {
     row: WorkerRow,
     projects: readonly SessionProjectRow[],
     message: string,
-    isCommand: boolean
+    isCommand: boolean,
+    attachments?: readonly AttachmentRef[]
   ): Promise<boolean> {
     if (!isCommand || row.provider !== 'codex' || !this.deps.codexCommands) {
-      return handle.send(message)
+      return handle.send(message, attachments)
     }
     const name = commandName(message)
     if (name === null) return handle.send(message)
@@ -2207,6 +2305,7 @@ export class WorkerManager {
     const denyDirs = [
       ...this.deps.sessionProjectsRepo.listBySession(sessionId).map((p) => p.projectPath),
       this.deps.getKnowledgeDir(),
+      ...(this.attachmentsDir() === undefined ? [] : [this.attachmentsDir() as string]),
       ...this.deps.worktreesRepo
         .listBySession(sessionId)
         .filter((t) => t.removedAt === null && t.workerId !== workerId)
@@ -2268,7 +2367,12 @@ export class WorkerManager {
     return {
       worktreeRoots: roots,
       // The worker's own project checkouts too: they stay protected even when one sits in the temp folder.
-      readOnlyDirs: [this.deps.getKnowledgeDir(), ...this.otherCheckouts(own), ...own],
+      readOnlyDirs: [
+        this.deps.getKnowledgeDir(),
+        ...this.otherCheckouts(own),
+        ...own,
+        ...(this.attachmentsDir() === undefined ? [] : [this.attachmentsDir() as string])
+      ],
       ...(roots[0] === undefined ? {} : { cwd: roots[0] })
     }
   }
@@ -2518,21 +2622,35 @@ export class WorkerManager {
 
   async message(
     ref: string,
-    text: string
+    text: string,
+    attachmentIds?: readonly string[]
   ): Promise<{ delivered: boolean; queued?: boolean | undefined }> {
     const row = this.resolveRef(ref)
     if (!row) throw new BridgeToolError('unknown_worker', `No worker "${ref}" in this session.`)
+    const refs = this.resolveAttachments(attachmentIds)
     // The user is in control (even paused, with no process): nothing reaches the worker's input
-    // until hand-back, so the user's line and the brain's never interleave.
+    // until hand-back, so the user's line and the brain's never interleave. A held message keeps
+    // its attachments as the text block (the paths); native image input is not sent for it.
     if (row.userControl !== null) {
-      this.deps.heldMessagesRepo.enqueue(row.id, this.deps.sessionId, text, this.deps.now())
+      this.deps.heldMessagesRepo.enqueue(
+        row.id,
+        this.deps.sessionId,
+        withAttachmentBlock(text, refs),
+        this.deps.now()
+      )
+      this.recordAttachments(row, refs)
       return { delivered: false, queued: true }
     }
     const run = this.running.get(row.id)
     if (!run?.handle) {
       throw new BridgeToolError('worker_not_running', `W${row.number} ${row.slug} is not running.`)
     }
-    return { delivered: await run.handle.send(`${BRAIN_MESSAGE_PREFIX}${text}`) }
+    const delivered = await run.handle.send(
+      `${BRAIN_MESSAGE_PREFIX}${text}`,
+      refs.length > 0 ? refs : undefined
+    )
+    if (delivered) this.recordAttachments(row, refs)
+    return { delivered }
   }
 
   // ---- stepping in (spec 006, tech spec 2.4) ----

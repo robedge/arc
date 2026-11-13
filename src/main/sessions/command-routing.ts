@@ -10,6 +10,14 @@ export function commandNameOf(text: string): string | null {
   return match?.[1] ?? null
 }
 
+/**
+ * Whether a message is a command for the attachment refusal: its trimmed text starts with "/".
+ * Wider than `commandNameOf` (a lone "/" counts), which is what routes a message to a command.
+ */
+export function startsWithSlash(text: string): boolean {
+  return text.trimStart().startsWith('/')
+}
+
 /** A command as the brain or a plan writes it: `/name args`, or `claude:name args` / `codex:name args` / `cursor:name args`. */
 export interface CommandRef {
   /** What follows the slash, or the whole first word when there is no slash. */

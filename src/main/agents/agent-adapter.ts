@@ -1,9 +1,21 @@
+import type { AttachmentKind } from '../../shared/attachments'
 import type { ProviderId, ProviderState } from '../../shared/types/provider'
 import type { AgentEvent } from './agent-events'
 import type { CodexApprovalHandler, CodexInput } from './codex/codex-types'
 import type { CursorApprovalHandler, CursorToolCall } from './cursor/cursor-types'
 
 export type AgentRole = 'brain' | 'worker'
+
+/** A sent attachment as an agent is given it: the stored copy's absolute path and what it is. */
+export interface AttachmentRef {
+  id: string
+  name: string
+  kind: AttachmentKind
+  mime: string
+  size: number
+  /** Absolute path of the stored copy. */
+  path: string
+}
 
 /** Where an agent reaches Arc's MCP bridge. Each adapter renders its own MCP config from it. */
 export interface BridgeEndpoint {
@@ -194,8 +206,11 @@ export interface AgentHandle {
   readonly pid: number | undefined
   /** Every event, ending with one `exit` event. Read it once. */
   readonly events: AsyncIterable<AgentEvent>
-  /** Sends a user message. Resolves false if the process is gone. */
-  send(text: string): Promise<boolean>
+  /**
+   * Sends a user message, with the files attached to it. Resolves false if the process is gone.
+   * Each adapter decides how the files reach the model (tech spec 2.8).
+   */
+  send(text: string, attachments?: readonly AttachmentRef[]): Promise<boolean>
   /**
    * Starts a turn with structured input (a skill plus its arguments). Present when the provider
    * takes input items (Codex `turn/start.input`); a Claude command is plain text.

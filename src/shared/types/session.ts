@@ -1,3 +1,4 @@
+import type { MessageAttachmentView } from '../attachments'
 import type { TokenTotals } from './usage'
 import type { KnowledgeSuggestionView } from './knowledge-suggestion'
 import type { ProviderId, ProviderState, ProviderStatus, RunningOn, WorkersPref } from './provider'
@@ -134,6 +135,8 @@ export interface SessionMessage {
   planId: string | null
   /** Present only on a system message that offers buttons. */
   prompt?: MessagePrompt
+  /** Files attached to a user message, in order. Omitted when there are none. */
+  attachments?: MessageAttachmentView[]
   createdAt: number
   updatedAt: number
 }
@@ -217,6 +220,8 @@ export interface WorkerView {
   controlReplying?: boolean
   /** The slash command the worker runs (e.g. `/awos:spec`); absent for an ordinary task. */
   command?: string
+  /** The attachments the brain passed to this worker, in the order given; absent when none. */
+  attachments?: MessageAttachmentView[]
   /**
    * Tokens this worker has used, from the recorded usage rows. Set by the main process whenever usage
    * recording is on (zeros before the first row, null for a worker created before tracking started); refreshed by `session:worker-changed` after each

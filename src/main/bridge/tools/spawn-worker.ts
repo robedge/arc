@@ -1,13 +1,14 @@
 import { z } from 'zod'
 import { PROVIDER_IDS } from '../../../shared/types/provider'
 import { defineTool } from '../types'
+import { attachmentsField } from './attachments-field'
 
 export const spawnWorkerTool = defineTool({
   name: 'spawn_worker',
   role: 'brain',
   description:
     "Start one worker in its own working copy of the named projects; call it once per worker, and independent workers can run at the same time. Returns {workerId, status, provider, model, note}: what the worker really runs on, and note says why when the user's choice or availability overrode yours. " +
-    'Errors: plan_not_approved (Plan-first mode and no approved plan entry matches this name, repos and command), unknown_repo, branch_not_ready, worktree_failed, unknown_command (the command is not in the list), ambiguous_command (both Claude and Codex have a command of that name: use codex:name or claude:name), command_args_invalid (a Codex prompt needs arguments it was not given), command_not_in_repo (a repository command that the chosen repository does not have).',
+    'Errors: plan_not_approved (Plan-first mode and no approved plan entry matches this name, repos and command), unknown_repo, branch_not_ready, worktree_failed, unknown_command (the command is not in the list), ambiguous_command (both Claude and Codex have a command of that name: use codex:name or claude:name), command_args_invalid (a Codex prompt needs arguments it was not given), command_not_in_repo (a repository command that the chosen repository does not have), unknown_attachment (an id in `attachments` is not an attachment of this session; the error lists the valid ids).',
   inputShape: {
     name: z.string().min(1).max(60),
     task: z.string().min(1),
@@ -32,7 +33,8 @@ export const spawnWorkerTool = defineTool({
       .optional()
       .describe(
         'A slash command the worker runs as its first message, with its arguments, for example "/awos:spec retry settings", or "codex:review" / "claude:review" when both providers have that name. It must be in the command list Arc gave you. A command runs on its own provider whatever the Workers setting says. The task is then a short description.'
-      )
+      ),
+    attachments: attachmentsField
   },
   run: async (args, ctx) =>
     ctx.services.spawnWorker(ctx.agent, {
@@ -42,6 +44,7 @@ export const spawnWorkerTool = defineTool({
       provider: args.provider,
       model: args.model,
       dependsOn: args.dependsOn,
-      command: args.command
+      command: args.command,
+      attachments: args.attachments
     })
 })

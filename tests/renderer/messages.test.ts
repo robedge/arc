@@ -51,6 +51,9 @@ const expected: Record<string, string> = {
   TOO_MANY_NOTES: 'You can send up to 50 notes at a time.',
   ITEM_NAME_TAKEN: 'A note with this name already exists.',
   SUGGESTION_NOT_FOUND: 'That suggestion is no longer waiting.',
+  ATTACHMENT_UNREADABLE: 'big_dump.sql could no longer be read. Remove it or attach it again.',
+  ATTACHMENTS_WITH_COMMAND: "Attachments can't be sent with a command.",
+  ATTACHMENTS_WITH_PLAN_FEEDBACK: "Attachments can't be added to plan feedback.",
   IO_FAILED: GENERIC,
   INTERNAL: GENERIC,
   VALIDATION_FAILED: GENERIC

@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 import type {
   AgentAdapter,
   AgentHandle,
+  AttachmentRef,
   ClaudeStartRequest,
   CodexStartRequest,
   CursorStartRequest,
@@ -76,6 +77,8 @@ export class FakeHandle implements AgentHandle {
   readonly queue = new EventQueue<AgentEvent>()
   readonly events: AsyncIterable<AgentEvent> = this.queue
   readonly sent: string[] = []
+  /** The attachments passed with each `send`, parallel to `sent`. */
+  readonly sentAttachments: (readonly AttachmentRef[] | undefined)[] = []
   interrupts = 0
   /** What `interrupt()` reports; `killed` plays an interrupt the process did not survive. */
   interruptOutcome: InterruptOutcome = 'acked'
@@ -117,8 +120,9 @@ export class FakeHandle implements AgentHandle {
     this.queue.push(filled as unknown as AgentEvent)
   }
 
-  send(text: string): Promise<boolean> {
+  send(text: string, attachments?: readonly AttachmentRef[]): Promise<boolean> {
     this.sent.push(text)
+    this.sentAttachments.push(attachments)
     return Promise.resolve(this.sendsOk)
   }
 

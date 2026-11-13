@@ -289,6 +289,40 @@ describe('exit classification', () => {
   })
 })
 
+describe('writeLine with a very large line', () => {
+  it('writes a multi-megabyte line whole with one newline, even when the pipe is slow, then the next line in order', async () => {
+    const child = new EventEmitter() as EventEmitter & {
+      pid: number
+      stdin: PassThrough
+      stdout: PassThrough
+      stderr: PassThrough
+    }
+    child.pid = 4243
+    // A tiny buffer makes every write report back-pressure, as a slow reader of a 7 MB line would.
+    child.stdin = new PassThrough({ highWaterMark: 16 })
+    child.stdout = new PassThrough()
+    child.stderr = new PassThrough()
+    const received: Buffer[] = []
+    child.stdin.on('data', (c: Buffer) => received.push(c))
+    const supervisor = new ProcessSupervisor({
+      spawn: () => child as unknown as ChildLike,
+      kill: () => undefined
+    })
+    const proc = supervisor.spawn({ command: 'x', args: [], cwd: '/', env: {} })
+    const big = JSON.stringify({ data: 'A'.repeat(7 * 1024 * 1024) })
+    expect(proc.writeLine(big)).toBe(true)
+    expect(proc.writeLine('{"next":1}')).toBe(true)
+    const want = big.length + 1 + '{"next":1}'.length + 1
+    await until(() => received.reduce((n, c) => n + c.length, 0) >= want, 15_000)
+    const all = Buffer.concat(received).toString('utf8')
+    expect(all).toBe(`${big}\n{"next":1}\n`)
+    expect(all.split('\n')).toHaveLength(3)
+    child.stdout.end()
+    child.emit('exit', 0, null)
+    await proc.exited
+  })
+})
+
 describe('process group', () => {
   it('killing the group also kills grandchildren', async () => {
     const proc = startStub('grandchild')

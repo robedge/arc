@@ -67,6 +67,8 @@ export interface SpawnWorkerInput {
   dependsOn?: string[] | undefined
   /** The slash command the worker runs as its first message; `task` stays a short description. */
   command?: string | undefined
+  /** Ids of the session's attachments the worker is given (at most 10, each once). */
+  attachments?: string[] | undefined
 }
 
 export interface SpawnWorkerResult {
@@ -190,7 +192,7 @@ export interface BridgeServices {
   spawnWorker(agent: BridgeAgent, input: SpawnWorkerInput): Promise<SpawnWorkerResult>
   messageWorker(
     agent: BridgeAgent,
-    input: { workerId: string; text: string }
+    input: { workerId: string; text: string; attachments?: string[] | undefined }
   ): Promise<{ delivered: boolean; queued?: boolean | undefined }>
   getWorkerStatus(agent: BridgeAgent, input: { workerId?: string | undefined }): WorkerStatusEntry[]
   /** Brain. Merges a Done worker into the session branch; waits for the repository's merge queue. */

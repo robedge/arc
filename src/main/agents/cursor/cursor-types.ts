@@ -101,7 +101,15 @@ export const initializeResponseSchema = z.looseObject({
   agentCapabilities: z
     .looseObject({
       loadSession: z.boolean().optional(),
-      mcpCapabilities: z.looseObject({ http: z.boolean().optional() }).optional()
+      mcpCapabilities: z.looseObject({ http: z.boolean().optional() }).optional(),
+      /** What a `session/prompt` may carry besides text; a missing flag means no. */
+      promptCapabilities: z
+        .looseObject({
+          image: z.boolean().optional(),
+          audio: z.boolean().optional(),
+          embeddedContext: z.boolean().optional()
+        })
+        .optional()
     })
     .optional()
 })

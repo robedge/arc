@@ -1,0 +1,20 @@
+[
+  "-p",
+  "--input-format",
+  "stream-json",
+  "--output-format",
+  "stream-json",
+  "--verbose",
+  "--include-partial-messages",
+  "--replay-user-messages",
+  "--model",
+  "haiku",
+  "--setting-sources",
+  "project",
+  "--add-dir",
+  "<SCRATCH>/attachments",
+  "--allowedTools",
+  "Read Grep Glob WebFetch WebSearch",
+  "--disallowedTools",
+  "Edit Write NotebookEdit AskUserQuestion"
+]

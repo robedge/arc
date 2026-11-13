@@ -18,3 +18,13 @@ it('becomes role=img with an accessible name when titled', () => {
   const img = screen.getByRole('img', { name: 'Warning' })
   expect(img.hasAttribute('aria-hidden')).toBe(false)
 })
+
+it('has a paperclip icon', () => {
+  const { container } = render(Icon, { name: 'paperclip' })
+  expect(container.querySelectorAll('path').length).toBe(icons.paperclip.length)
+})
+
+it('has an image icon', () => {
+  const { container } = render(Icon, { name: 'image' })
+  expect(container.querySelectorAll('path').length).toBe(icons.image.length)
+})

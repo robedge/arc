@@ -13,6 +13,7 @@ import type {
 } from '@shared/types/session'
 import { createStreamBuffer } from './stream-buffer'
 import { knowledgeSuggestions } from './knowledge-suggestions.svelte'
+import { attachments, sessionKey } from './attachments.svelte'
 
 /** Snapshot window and page size for messages. */
 const PAGE_SIZE = 100
@@ -329,8 +330,19 @@ class ActiveSessionStore {
   async send(text: string): Promise<AppError | null> {
     const sessionId = this.sessionId
     if (sessionId === null) return null
-    const res = await window.arc.invoke('sessions:send-message', { sessionId, text })
+    const key = sessionKey(sessionId)
+    const draftId = attachments.draftIdFor(key)
+    const attachmentIds = attachments
+      .ready(key)
+      .map((item) => item.id)
+      .filter((id): id is string => id !== undefined)
+    const res = await window.arc.invoke('sessions:send-message', {
+      sessionId,
+      text,
+      ...(draftId !== null && attachmentIds.length > 0 ? { draftId, attachmentIds } : {})
+    })
     if (!res.ok) return res.error
+    attachments.clear(key)
     if (this.sessionId === sessionId && !this.messages.some((m) => m.id === res.data.messageId)) {
       const now = Date.now()
       this.messages = insertSorted(this.messages, {
@@ -340,6 +352,7 @@ class ActiveSessionStore {
         content: text,
         state: 'complete',
         planId: null,
+        ...(res.data.attachments?.length ? { attachments: res.data.attachments } : {}),
         createdAt: now,
         updatedAt: now
       })

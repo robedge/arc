@@ -4,6 +4,7 @@ import {
   PROMPT_UPDATE_NOTE_V6,
   PROMPT_UPDATE_NOTE_V7,
   PROMPT_UPDATE_NOTE_V7_OFF,
+  PROMPT_UPDATE_NOTE_V8,
   buildBrainPrompt,
   promptUpdateNote
 } from '../../../src/main/sessions/orchestrator'
@@ -18,8 +19,8 @@ const base = {
 }
 
 describe('brain prompt version 7', () => {
-  it('is version 7', () => {
-    expect(BRAIN_PROMPT_VERSION).toBe(7)
+  it('is at least version 7', () => {
+    expect(BRAIN_PROMPT_VERSION).toBeGreaterThanOrEqual(7)
   })
 
   it('has the knowledge suggestions section with the provider tool name', () => {
@@ -53,9 +54,11 @@ describe('the version 7 update note', () => {
     )
   })
 
-  it('gives a version 6 session the note once and a current one nothing', () => {
-    expect(promptUpdateNote(6, undefined, 'PROVIDERS')).toBe(PROMPT_UPDATE_NOTE_V7)
-    expect(promptUpdateNote(7, undefined, 'PROVIDERS')).toBeUndefined()
+  it('gives a version 6 session the note once, then the version 8 note, and a current one nothing', () => {
+    expect(promptUpdateNote(6, undefined, 'PROVIDERS')).toBe(
+      `${PROMPT_UPDATE_NOTE_V7}\n\n${PROMPT_UPDATE_NOTE_V8}`
+    )
+    expect(promptUpdateNote(8, undefined, 'PROVIDERS')).toBeUndefined()
   })
 
   it('leaves it out for a brain without workers', () => {
@@ -65,7 +68,8 @@ describe('the version 7 update note', () => {
   it('gives an older session the earlier notes first, then this one', () => {
     const note = promptUpdateNote(5, undefined, 'PROVIDERS') ?? ''
     expect(note.indexOf(PROMPT_UPDATE_NOTE_V6)).toBeGreaterThanOrEqual(0)
-    expect(note.endsWith(PROMPT_UPDATE_NOTE_V7)).toBe(true)
+    expect(note.endsWith(PROMPT_UPDATE_NOTE_V8)).toBe(true)
+    expect(note.indexOf(PROMPT_UPDATE_NOTE_V7)).toBeLessThan(note.indexOf(PROMPT_UPDATE_NOTE_V8))
     expect(note.split(PROMPT_UPDATE_NOTE_V7)).toHaveLength(2)
   })
 })
@@ -100,15 +104,15 @@ describe('the suggestOnOwn variants', () => {
     expect(codex).toMatch(/do not call [a-z_]*suggest_knowledge_update on your own/)
   })
 
-  it('stays version 7', () => {
-    expect(BRAIN_PROMPT_VERSION).toBe(7)
-  })
-
   it('the version 7 update note follows the setting', () => {
-    expect(promptUpdateNote(6, undefined, 'PROVIDERS', true)).toBe(PROMPT_UPDATE_NOTE_V7)
-    expect(promptUpdateNote(6, undefined, 'PROVIDERS', false)).toBe(PROMPT_UPDATE_NOTE_V7_OFF)
+    expect(promptUpdateNote(6, undefined, 'PROVIDERS', true)).toBe(
+      `${PROMPT_UPDATE_NOTE_V7}\n\n${PROMPT_UPDATE_NOTE_V8}`
+    )
+    expect(promptUpdateNote(6, undefined, 'PROVIDERS', false)).toBe(
+      `${PROMPT_UPDATE_NOTE_V7_OFF}\n\n${PROMPT_UPDATE_NOTE_V8}`
+    )
     expect(PROMPT_UPDATE_NOTE_V7_OFF).not.toMatch(/you can now suggest/i)
     expect(PROMPT_UPDATE_NOTE_V7_OFF).toContain('asked_by_user')
-    expect(promptUpdateNote(7, undefined, 'PROVIDERS', false)).toBeUndefined()
+    expect(promptUpdateNote(8, undefined, 'PROVIDERS', false)).toBeUndefined()
   })
 })

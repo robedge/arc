@@ -128,7 +128,11 @@ describe('a brain on Codex', () => {
     const knowledge = join(dir(), 'userData', 'groups', r().groupId, 'knowledge')
     expect(start?.cwd).toBe(join(dir(), 'userData', 'codex-brain', sessionId))
     expect(start?.cwd).not.toBe(knowledge)
-    expect(start?.addDirs).toEqual([join(dir(), 'repo-a'), knowledge])
+    expect(start?.addDirs).toEqual([
+      join(dir(), 'repo-a'),
+      knowledge,
+      join(dir(), 'userData', 'sessions', sessionId, 'attachments')
+    ])
     expect(start?.instructions).toContain(`The group's knowledge folder is ${knowledge}`)
     expect(start?.instructions).toContain('Your sandbox is read-only')
     expect(start?.instructions).not.toContain('(Read, Grep, Glob)')

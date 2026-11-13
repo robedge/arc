@@ -29,6 +29,33 @@ function rig(answer: (msg: Msg) => Msg | undefined): { client: AcpClient; sent: 
   return { client, sent }
 }
 
+describe('AcpClient initialize promptCapabilities', () => {
+  const initWith = async (agentCapabilities: unknown): Promise<boolean> => {
+    const { client } = rig(() => ({ result: { protocolVersion: 1, agentCapabilities } }))
+    await client.initialize()
+    return client.imagePrompts
+  }
+  it('reads promptCapabilities.image: true, false, and absent as no', async () => {
+    expect(
+      await initWith({ promptCapabilities: { audio: false, embeddedContext: false, image: true } })
+    ).toBe(true)
+    expect(await initWith({ promptCapabilities: { image: false } })).toBe(false)
+    expect(await initWith({ loadSession: true })).toBe(false)
+    expect(await initWith(undefined)).toBe(false)
+  })
+  it('sends the image blocks after the text block in session/prompt', async () => {
+    const { client, sent } = rig(() => ({ result: { stopReason: 'end_turn' } }))
+    await client.prompt('s1', 'hi', [{ type: 'image', data: 'QQ==', mimeType: 'image/png' }])
+    expect(sent[0]?.['params']).toEqual({
+      sessionId: 's1',
+      prompt: [
+        { type: 'text', text: 'hi' },
+        { type: 'image', data: 'QQ==', mimeType: 'image/png' }
+      ]
+    })
+  })
+})
+
 describe('AcpClient', () => {
   it('sends the handshake and session calls with the params the spikes found, jsonrpc on every message', async () => {
     const { client, sent } = rig((msg) => {

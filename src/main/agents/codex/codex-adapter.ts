@@ -1,9 +1,13 @@
+import { existsSync } from 'node:fs'
 import { MCP_SERVER_NAME } from '../../bridge/types'
+import { withAttachmentBlock } from '../../attachments/attachment-block'
+import { cliLog } from '../../logging'
 import {
   ProviderHistoryMissingError,
   ProviderUnavailableError,
   type AgentAdapter,
   type AgentHandle,
+  type AttachmentRef,
   type CodexStartRequest,
   type HandleCapabilities,
   type InterruptOutcome,
@@ -119,7 +123,27 @@ const HISTORY_MISSING = /thread not found|no rollout found|rollout .*not found/i
 /** The text of a queued send; a skill input counts as its text part. */
 function textOf(input: string | CodexInput[]): string {
   if (typeof input === 'string') return input
-  return input.map((part) => (part.type === 'text' ? part.text : `$${part.name}`)).join(' ')
+  return input
+    .flatMap((part) => {
+      if (part.type === 'text') return [part.text]
+      return part.type === 'skill' ? [`$${part.name}`] : []
+    })
+    .join(' ')
+}
+
+/**
+ * The turn input for a send with attachments (tech spec 2.8): one text item (the user's text and the
+ * block that lists every attachment), then a `localImage` per image, in order. A PDF or text file is
+ * path-only. An image whose file is gone is left out; its path line stays in the block.
+ */
+function attachmentInput(text: string, attachments: readonly AttachmentRef[]): CodexInput[] {
+  const input: CodexInput[] = [{ type: 'text', text: withAttachmentBlock(text, attachments) }]
+  for (const ref of attachments) {
+    if (ref.kind !== 'image') continue
+    if (existsSync(ref.path)) input.push({ type: 'localImage', path: ref.path })
+    else cliLog.warn('Codex: an attached image is missing on disk; sending its path only.')
+  }
+  return input
 }
 
 function isHistoryMissing(error: unknown): error is RpcError {
@@ -429,8 +453,9 @@ class CodexHandle implements AgentHandle {
 
   // ---- turns -----------------------------------------------------------------------------
 
-  send(text: string): Promise<boolean> {
-    return this.sendInput(text)
+  send(text: string, attachments?: readonly AttachmentRef[]): Promise<boolean> {
+    if (!attachments || attachments.length === 0) return this.sendInput(text)
+    return this.sendInput(attachmentInput(text, attachments))
   }
 
   /**

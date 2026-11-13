@@ -1,0 +1,9 @@
+# A Codex worker that answers its first turn and a second one.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Looking at the screenshot."}
+{"turnCompleted":"completed"}
+{"expect":"turn/start","text":"Second look"}
+{"turnStarted":true}
+{"say":"Looked again."}
+{"turnCompleted":"completed"}

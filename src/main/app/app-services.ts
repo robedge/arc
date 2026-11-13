@@ -8,6 +8,7 @@ import type { ProcessSupervisor } from '../agents/process-supervisor'
 import type { BridgeServer } from '../bridge/bridge-server'
 import type { AppSettingsRepo } from '../db/repositories/app-settings-repo'
 import type { KnowledgeItemsRepo } from '../db/repositories/knowledge-items-repo'
+import type { MessageAttachmentsRepo } from '../db/repositories/message-attachments-repo'
 import type { KnowledgeSuggestionsRepo } from '../db/repositories/knowledge-suggestions-repo'
 import type { UsageRepo } from '../db/repositories/usage-repo'
 import type { UsageSuggestionsRepo } from '../db/repositories/usage-suggestions-repo'
@@ -24,6 +25,7 @@ import type { ModelRegistry } from '../models/model-registry'
 import type { BypassDetector } from '../personal/bypass-detector'
 import type { LoadCatalogue } from '../personal/load-catalogue'
 import type { PersonalConfigService } from '../personal/personal-config'
+import type { AttachmentService } from '../attachments/attachment-service'
 import type { Dialogs } from '../platform/dialogs'
 import type { ShellService } from '../platform/shell-service'
 import type { PluginService } from '../plugins/plugin-service'
@@ -66,6 +68,7 @@ export interface AppServices {
   storageService: KnowledgeStorageService
   knowledgeService: KnowledgeService
   knowledgeSuggestions: KnowledgeSuggestionService
+  attachments: AttachmentService
   knowledgeSuggestionsRepo: KnowledgeSuggestionsRepo
   shellService: ShellService
   groupService: GroupService
@@ -90,5 +93,6 @@ export interface AppServices {
   claudePlanProbe: ClaudePlanProbe | undefined
 
   sessions: SessionService
+  messageAttachmentsRepo: MessageAttachmentsRepo
   attention: AttentionService
 }

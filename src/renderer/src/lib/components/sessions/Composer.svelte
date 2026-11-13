@@ -2,9 +2,11 @@
   import type { BrainState } from '@shared/types/session'
   import { messageFor } from '../../ipc/messages'
   import { activeSession } from '../../stores/active-session.svelte'
+  import { attachments, sessionKey } from '../../stores/attachments.svelte'
   import { commands } from '../../stores/commands.svelte'
   import Button from '../ui/Button.svelte'
   import ErrorText from '../ui/ErrorText.svelte'
+  import AttachField from './AttachField.svelte'
   import CliBanner from './CliBanner.svelte'
   import CommandMenu from './CommandMenu.svelte'
   import { commandOptionId } from './command-filter'
@@ -19,6 +21,9 @@
 
   // Only a running turn is stoppable; while the brain waits on the user (a plan decision), sending
   // is the way to answer it.
+  // The brain that is running now (it can change by a handoff), for the can't-read warning.
+  const provider = $derived(activeSession.header?.brainRunningOn?.provider ?? 'claude')
+
   const thinking = $derived(brainState === 'thinking')
 
   // The parent keys this component by session, so the draft is read once.
@@ -46,7 +51,10 @@
   // Prefetch so the list is ready by the time the user types `/`.
   $effect(() => commands.ensure(sessionId))
 
-  const canSend = $derived(text.trim().length > 0 && !sending)
+  const attachKey = $derived(sessionKey(sessionId))
+  const hasReady = $derived(attachments.ready(attachKey).length > 0)
+  const staging = $derived(attachments.isStaging(attachKey))
+  const canSend = $derived((text.trim().length > 0 || hasReady) && !staging && !sending)
 
   function oninput(): void {
     activeSession.setDraft(sessionId, text)
@@ -61,6 +69,9 @@
       const failure = await activeSession.send(text.trimEnd())
       if (failure) {
         error = messageFor(failure)
+        if (failure.code === 'ATTACHMENT_UNREADABLE' && failure.details?.name) {
+          attachments.markUnreadable(attachKey, failure.details.name)
+        }
         return
       }
       text = ''
@@ -82,7 +93,7 @@
 <div class="flex min-w-0 shrink-0 flex-col gap-2 border-t border-border p-3" data-composer>
   <CliBanner />
   {#if error}<ErrorText message={error} />{/if}
-  <div class="relative flex items-end gap-2">
+  <AttachField {attachKey} {provider} disabled={sending} onerror={(message) => (error = message)}>
     {#if menuOpen}
       <CommandMenu
         id={menuId}
@@ -120,12 +131,21 @@
         </div>
       {/if}
     </div>
-    {#if thinking}
-      <Button variant="danger" onclick={() => void activeSession.stop()}>Stop</Button>
-    {:else}
-      <Button variant="primary" disabled={!canSend} busy={sending} onclick={() => void send()}
-        >Send</Button
-      >
-    {/if}
-  </div>
+    {#snippet actions()}
+      {#if thinking}
+        <Button variant="danger" onclick={() => void activeSession.stop()}>Stop</Button>
+      {:else}
+        <Button
+          variant="primary"
+          disabled={!canSend}
+          busy={sending}
+          ariaDescribedby={staging ? 'composer-staging-hint' : undefined}
+          onclick={() => void send()}>Send</Button
+        >
+        {#if staging}
+          <span id="composer-staging-hint" class="sr-only">Waiting for attachments</span>
+        {/if}
+      {/if}
+    {/snippet}
+  </AttachField>
 </div>

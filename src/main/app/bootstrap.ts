@@ -18,6 +18,7 @@ import { GroupsRepo } from '../db/repositories/groups-repo'
 import { recoverStorage } from '../knowledge/storage-recovery'
 import { sweepOrphans } from '../agents/pid-ledger'
 import { recoverAtStartup } from '../sessions/startup-recovery'
+import { SessionsRepo } from '../db/repositories/sessions-repo'
 import { WorkersRepo } from '../db/repositories/workers-repo'
 import { AttentionRepo } from '../db/repositories/attention-repo'
 import { MessagesRepo } from '../db/repositories/messages-repo'
@@ -26,7 +27,10 @@ import { emit } from '../ipc/register'
 import { registerAllHandlers } from '../ipc/handlers'
 import { configureLogging, dbLog, knowledgeLog, log, sessionsLog } from '../logging'
 import { createDialogs } from '../platform/dialogs'
-import { handleKnowledgeProtocol, registerKnowledgeScheme } from '../protocol/knowledge-protocol'
+import { sweepOrphanAttachmentFolders } from '../attachments/attachment-cleanup'
+import { handleAttachmentProtocol } from '../protocol/attachment-protocol'
+import { handleKnowledgeProtocol } from '../protocol/knowledge-protocol'
+import { registerAppSchemes } from '../protocol/schemes'
 import { buildCsp } from './csp'
 import { buildServices, pidLedgerPath, startServices } from './build-services'
 import type { AppServices } from './app-services'
@@ -139,7 +143,7 @@ export function start(): void {
   const userDataOverride = process.env['HARNESS_USER_DATA']
   if (userDataOverride) app.setPath('userData', userDataOverride)
   configureLogging()
-  registerKnowledgeScheme()
+  registerAppSchemes()
 
   void app.whenReady().then(async () => {
     if (isSmokeRun(process.argv)) {
@@ -222,6 +226,17 @@ export function start(): void {
       getKnowledgeRoot: built.getKnowledgeRoot,
       log: knowledgeLog
     })
+    const userData = app.getPath('userData')
+    handleAttachmentProtocol({
+      stagingRoot: join(userData, 'attachment-staging'),
+      getStaged: (id) => {
+        const s = built.attachments.stagedById(id)
+        return s && { ...s.meta, draftId: s.draftId, storedName: s.storedName }
+      },
+      getSent: (id) => built.messageAttachmentsRepo.get(id),
+      getSessionDir: (sessionId) => join(userData, 'sessions', sessionId),
+      log: sessionsLog
+    })
     registerAllHandlers(built, {
       version: app.getVersion(),
       relaunch: () => {
@@ -231,6 +246,16 @@ export function start(): void {
       closeReady: () => closeGate?.ready()
     })
     startServices(built)
+    // Off the startup path; folders touched in the last minute are skipped, so a send is never raced.
+    const sessionsRepo = new SessionsRepo(db)
+    void sweepOrphanAttachmentFolders({
+      sessionsRoot: join(userData, 'sessions'),
+      sessionExists: (id) => sessionsRepo.getById(id) !== undefined,
+      knownIds: (sessionId, ids) =>
+        built.messageAttachmentsRepo.getMany(ids, sessionId).map((row) => row.id),
+      now: Date.now,
+      log: sessionsLog
+    })
     log.info('Arc started')
     Menu.setApplicationMenu(
       Menu.buildFromTemplate(

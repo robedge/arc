@@ -1,4 +1,6 @@
 import type { MessagePrompt, SessionMessage } from '@shared/types/session'
+import { attachmentView } from '../attachments/attachment-send'
+import type { MessageAttachmentRow } from '../db/schema'
 import type { MessageRow } from '../db/repositories/messages-repo'
 
 /** Reads the stored `prompt_json` of a message; anything that is not a known prompt is no prompt. */
@@ -49,7 +51,10 @@ export function suggestionsPromptText(count: number): string {
   return `I have ${count} suggestion${count === 1 ? '' : 's'} for this group's knowledge.`
 }
 
-export function messageRowDto(row: MessageRow): SessionMessage {
+export function messageRowDto(
+  row: MessageRow,
+  attachments?: MessageAttachmentRow[]
+): SessionMessage {
   const prompt = parsePrompt(row.promptJson)
   return {
     id: row.id,
@@ -59,6 +64,13 @@ export function messageRowDto(row: MessageRow): SessionMessage {
     state: row.state,
     planId: row.planId,
     ...(prompt ? { prompt } : {}),
+    ...(attachments && attachments.length > 0
+      ? {
+          attachments: attachments.map((a) =>
+            attachmentView({ id: a.id, name: a.name, kind: a.kind, size: a.sizeBytes })
+          )
+        }
+      : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   }

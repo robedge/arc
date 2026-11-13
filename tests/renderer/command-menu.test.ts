@@ -177,7 +177,7 @@ it('Tab inserts too, and Up/Down wrap while aria-activedescendant follows', asyn
 
 it('announces the count', async () => {
   await typeSlash('/')
-  expect(screen.getByRole('status').textContent).toBe('4 commands')
+  expect(screen.getByRole('status', { name: 'Command count' }).textContent).toBe('4 commands')
 })
 
 it('Escape closes the list keeping the text until the next input', async () => {

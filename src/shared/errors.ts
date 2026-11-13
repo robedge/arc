@@ -45,6 +45,12 @@ export const ERROR_CODES = [
   'NOT_DRAFT',
   'TOO_MANY_NOTES',
   'IO_FAILED',
+  /** A staged attachment is gone or unreadable at send time (`details.name` when known). */
+  'ATTACHMENT_UNREADABLE',
+  /** A message with attachments that starts with "/" (refused before anything is written). */
+  'ATTACHMENTS_WITH_COMMAND',
+  /** A message with attachments that a waiting plan would take as feedback. */
+  'ATTACHMENTS_WITH_PLAN_FEEDBACK',
   'INTERNAL'
 ] as const
 

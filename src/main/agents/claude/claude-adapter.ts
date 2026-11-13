@@ -1,12 +1,16 @@
+import { readFileSync, statSync } from 'node:fs'
 import type {
   AgentAdapter,
   AgentHandle,
+  AttachmentRef,
   ClaudeStartRequest,
   HandleCapabilities,
   InterruptOutcome,
   McpServerTools,
   StartOptions
 } from '../agent-adapter'
+import { withAttachmentBlock } from '../../attachments/attachment-block'
+import { INLINE_IMAGE_MAX_BYTES } from '../../attachments/inline-image'
 import type { AgentEvent } from '../agent-events'
 import { createClaudeParser } from './claude-parser'
 import { EventQueue } from '../event-queue'
@@ -151,6 +155,13 @@ export interface ClaudeAdapterDeps {
   env?: NodeJS.ProcessEnv
   now?: () => number
   timings?: Partial<ClaudeAdapterTimings>
+  /** Receives a warning that must not carry a path or file contents (an image that could not be read). */
+  warn?: (message: string) => void
+}
+
+interface ImageBlock {
+  type: 'image'
+  source: { type: 'base64'; media_type: string; data: string }
 }
 
 type TurnWait = 'turn' | 'exit' | 'timeout'
@@ -180,7 +191,13 @@ export class ClaudeAdapter implements AgentAdapter {
       env,
       agentId: options.agentId
     })
-    return new ClaudeHandle(options.agentId, proc, this.timings, this.deps.now ?? Date.now)
+    return new ClaudeHandle(
+      options.agentId,
+      proc,
+      this.timings,
+      this.deps.now ?? Date.now,
+      this.deps.warn
+    )
   }
 
   resume(options: StartOptions & { resume: { threadId: string } }): Promise<AgentHandle> {
@@ -196,6 +213,8 @@ class ClaudeHandle implements AgentHandle {
   private turnActive = false
   private exitSeen = false
   private requestCounter = 0
+  /** Messages sent with image blocks whose echo (`isReplay`) has not come back yet. */
+  private replaysPending = 0
   private readonly waiters = new Set<(result: 'turn' | 'exit') => void>()
   /** `mcp_status` requests waiting for the CLI's answer, by request id. */
   private readonly statusWaiters = new Map<
@@ -211,17 +230,25 @@ class ClaudeHandle implements AgentHandle {
     readonly agentId: string,
     private readonly proc: SupervisedProcess,
     private readonly timings: ClaudeAdapterTimings,
-    private readonly now: () => number
+    private readonly now: () => number,
+    private readonly warn?: (message: string) => void
   ) {
     this.events = this.queue
     const parser = createClaudeParser({ agentId, now })
     proc.onLine((line) => {
       // The answer to Arc's own `mcp_status` is not a turn event; the parser never sees it.
       if (this.statusWaiters.size > 0 && this.settleStatus(line)) return
+      if (this.replaysPending > 0 && line.includes('"isReplay":true')) this.replaysPending -= 1
       for (const event of parser.parse(line)) this.emit(event)
     })
     proc.onStderr((text) => this.emit({ type: 'stderr', agentId, ts: now(), text }))
-    proc.onOverflow((bytes) =>
+    proc.onOverflow((bytes) => {
+      // The CLI echoes a sent message whole, base64 included, so an echo of a large image is over
+      // the line limit. It carries nothing Arc uses; dropping it is expected, not an error.
+      if (this.replaysPending > 0) {
+        this.replaysPending -= 1
+        return
+      }
       this.emit({
         type: 'error',
         agentId,
@@ -229,7 +256,7 @@ class ClaudeHandle implements AgentHandle {
         kind: 'parse',
         message: `Dropped an output line of ${bytes} bytes (limit exceeded).`
       })
-    )
+    })
     void proc.exited.then((info) => {
       if (info.spawnError) {
         const notInstalled = info.spawnError.code === 'ENOENT'
@@ -330,14 +357,48 @@ class ClaudeHandle implements AgentHandle {
     this.queue.push(event)
   }
 
-  send(text: string): Promise<boolean> {
+  /**
+   * Reads the image files synchronously, so consecutive sends keep their order and the result is
+   * still available at once. The line is written whole: `writeLine` hands it to the stream in one
+   * write, which Node buffers however slow the reader is.
+   */
+  send(text: string, attachments?: readonly AttachmentRef[]): Promise<boolean> {
+    // While a turn runs the CLI queues this line whole, so the files stay with their message.
+    const images = this.imageBlocks(attachments)
     const line = JSON.stringify({
       type: 'user',
-      message: { role: 'user', content: [{ type: 'text', text }] }
+      message: {
+        role: 'user',
+        content: [{ type: 'text', text: withAttachmentBlock(text, attachments) }, ...images]
+      }
     })
     const written = this.proc.writeLine(line)
-    if (written) this.turnActive = true
+    if (written) {
+      this.turnActive = true
+      if (images.length > 0) this.replaysPending += 1
+    }
     return Promise.resolve(written)
+  }
+
+  /** A base64 `image` block per image at or under the inline limit; an unreadable file gets none (its path stays in the text). */
+  private imageBlocks(attachments: readonly AttachmentRef[] | undefined): ImageBlock[] {
+    const blocks: ImageBlock[] = []
+    for (const att of attachments ?? []) {
+      if (att.kind !== 'image') continue
+      try {
+        if (statSync(att.path).size > INLINE_IMAGE_MAX_BYTES) continue
+        const data = readFileSync(att.path)
+        // Re-checked on the bytes read: the file may have grown since the stat.
+        if (data.length > INLINE_IMAGE_MAX_BYTES) continue
+        blocks.push({
+          type: 'image',
+          source: { type: 'base64', media_type: att.mime, data: data.toString('base64') }
+        })
+      } catch {
+        this.warn?.('An attached image could not be read, so it was sent by path only.')
+      }
+    }
+    return blocks
   }
 
   private waitForTurnEnd(ms: number): Promise<TurnWait> {

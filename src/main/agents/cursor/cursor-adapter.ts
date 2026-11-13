@@ -1,9 +1,14 @@
+import { readFile } from 'node:fs/promises'
+import { withAttachmentBlock } from '../../attachments/attachment-block'
+import { INLINE_IMAGE_MAX_BYTES } from '../../attachments/inline-image'
+import { cliLog } from '../../logging'
 import { MCP_SERVER_NAME } from '../../bridge/types'
 import {
   ProviderHistoryMissingError,
   ProviderUnavailableError,
   type AgentAdapter,
   type AgentHandle,
+  type AttachmentRef,
   type CursorStartRequest,
   type HandleCapabilities,
   type InterruptOutcome,
@@ -20,7 +25,7 @@ import {
 } from '../process-supervisor'
 import { RpcError, type JsonRpcId, type RpcServerRequest } from '../rpc/json-rpc-peer'
 import { MIN_CURSOR_VERSION } from '../../../shared/types/provider'
-import { AcpClient, isAuthRequired, isInvalidParams } from './acp-client'
+import { AcpClient, isAuthRequired, isInvalidParams, type AcpImageBlock } from './acp-client'
 import {
   buildSessionParams,
   cursorGlobalArgs,
@@ -117,6 +122,12 @@ export function optionFor(
   return reject ? { optionId: reject.optionId, allowed: false } : undefined
 }
 
+/** A send waiting for its turn: the user's text and the attachments that ride with it. */
+interface QueuedSend {
+  text: string
+  attachments: readonly AttachmentRef[]
+}
+
 export class CursorAdapter implements AgentAdapter {
   readonly provider = 'cursor' as const
   private readonly timings: CursorAdapterTimings
@@ -209,7 +220,7 @@ export class CursorHandle implements AgentHandle {
   /** The prompt of this turn has been sent; a `session/cancel` before that would be lost. */
   private promptSent = false
   private cancelBeforePrompt = false
-  private readonly queuedSends: string[] = []
+  private readonly queuedSends: QueuedSend[] = []
   /** Reasons for the requests Arc rejected since the last prompt; sent in front of the next one. */
   private pendingDeclines: string[] = []
   /** `session/load` replays the history as updates; they are dropped until the load answers. */
@@ -367,15 +378,16 @@ export class CursorHandle implements AgentHandle {
 
   // ---- turns -----------------------------------------------------------------------------
 
-  send(text: string): Promise<boolean> {
+  send(text: string, attachments?: readonly AttachmentRef[]): Promise<boolean> {
     if (this.exitSeen) return Promise.resolve(false)
-    if (this.busy) this.queuedSends.push(text)
-    else this.startTurn(text)
+    const send: QueuedSend = { text, attachments: attachments ?? [] }
+    if (this.busy) this.queuedSends.push(send)
+    else this.startTurn(send)
     return Promise.resolve(true)
   }
 
   discardQueuedSends(): string[] {
-    return this.queuedSends.splice(0)
+    return this.queuedSends.splice(0).map((s) => withAttachmentBlock(s.text, s.attachments))
   }
 
   /** A Cursor model change takes effect from the next prompt (`session/set_model`), with no restart. */
@@ -383,14 +395,35 @@ export class CursorHandle implements AgentHandle {
     this.pendingModel = model
   }
 
-  private startTurn(text: string): void {
+  private startTurn(send: QueuedSend): void {
     this.busy = true
     this.promptSent = false
     this.cancelBeforePrompt = false
-    void this.runTurn(text)
+    void this.runTurn(send)
   }
 
-  private async runTurn(text: string): Promise<void> {
+  /**
+   * The image blocks of a send: one per image attachment, in order, when Cursor advertised
+   * `promptCapabilities.image`. An image over the inline limit or gone from disk is left out and
+   * stays in the text block by its path. A PDF or text file is path-only (`embeddedContext` is false).
+   */
+  private async imageBlocks(attachments: readonly AttachmentRef[]): Promise<AcpImageBlock[]> {
+    if (!this.client.imagePrompts) return []
+    const blocks: AcpImageBlock[] = []
+    for (const ref of attachments) {
+      if (ref.kind !== 'image' || ref.size > INLINE_IMAGE_MAX_BYTES) continue
+      try {
+        const bytes = await readFile(ref.path)
+        if (bytes.length > INLINE_IMAGE_MAX_BYTES) continue
+        blocks.push({ type: 'image', data: bytes.toString('base64'), mimeType: ref.mime })
+      } catch {
+        cliLog.warn('Cursor: an attached image could not be read; sending its path only.')
+      }
+    }
+    return blocks
+  }
+
+  private async runTurn({ text, attachments }: QueuedSend): Promise<void> {
     this.emitAll(this.parser.beginTurn())
     try {
       await this.applyPendingModel()
@@ -398,13 +431,14 @@ export class CursorHandle implements AgentHandle {
         this.emitAll(this.parser.endTurn({ stopReason: 'cancelled' }))
         return
       }
+      const images = await this.imageBlocks(attachments)
       const body = withInstructions(
         this.pendingInstructions,
-        withDeclines(this.pendingDeclines.splice(0), text)
+        withAttachmentBlock(withDeclines(this.pendingDeclines.splice(0), text), attachments)
       )
       this.pendingInstructions = undefined
       this.promptSent = true
-      this.emitAll(this.parser.endTurn(await this.client.prompt(this.sessionId, body)))
+      this.emitAll(this.parser.endTurn(await this.client.prompt(this.sessionId, body, images)))
     } catch (error: unknown) {
       // The process ended mid-turn: the `exit` event tells it, and no result is owed.
       if (!this.exitSeen) {

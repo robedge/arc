@@ -100,7 +100,9 @@ export const workers = sqliteTable(
     /** The last line the user typed while in control, cut to 200 characters. */
     controlLastMessage: text('control_last_message'),
     createdAt: integer('created_at').notNull(),
-    updatedAt: integer('updated_at').notNull()
+    updatedAt: integer('updated_at').notNull(),
+    /** The attachments the brain passed to this worker, as `[{id, name, kind}]`; null when none. */
+    attachmentsJson: text('attachments_json')
   },
   (table) => [
     unique('workers_session_number_unq').on(table.sessionId, table.number),

@@ -13,6 +13,15 @@ describe('buildCsp', () => {
     expect(directive(csp, 'script-src')).toBe("script-src 'self'")
   })
 
+  it('allows the attachment scheme for images only', () => {
+    for (const dev of [false, true]) {
+      const csp = buildCsp({ dev })
+      expect(directive(csp, 'img-src')).toContain('arc-attachment:')
+      expect(directive(csp, 'connect-src')).not.toContain('arc-attachment')
+      expect(directive(csp, 'default-src')).not.toContain('arc-attachment')
+    }
+  })
+
   it('only the dev policy may reach the Vite server', () => {
     expect(buildCsp({ dev: false })).not.toContain('localhost')
     const dev = directive(buildCsp({ dev: true }), 'connect-src')

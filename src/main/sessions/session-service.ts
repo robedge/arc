@@ -49,14 +49,13 @@ import { MergeQueue } from '../git/merge-queue'
 import { sweepWorktrees } from '../git/worktree-sweep'
 import type { EventsRepo } from '../db/repositories/events-repo'
 import type { GroupsRepo } from '../db/repositories/groups-repo'
-import type { MessagesRepo } from '../db/repositories/messages-repo'
+import { MessagesRepo } from '../db/repositories/messages-repo'
 import type { ProjectsRepo } from '../db/repositories/projects-repo'
 import type { BrainThreadsRepo } from '../db/repositories/brain-threads-repo'
-import type { SessionRow, SessionsRepo } from '../db/repositories/sessions-repo'
-import type {
-  SessionProjectRow,
-  SessionProjectsRepo
-} from '../db/repositories/session-projects-repo'
+import { SessionsRepo } from '../db/repositories/sessions-repo'
+import type { SessionRow } from '../db/repositories/sessions-repo'
+import { SessionProjectsRepo } from '../db/repositories/session-projects-repo'
+import type { SessionProjectRow } from '../db/repositories/session-projects-repo'
 import { SESSION_BRANCH_PREFIX, slugify } from '../git/session-git'
 import type {
   DirtyChoice,
@@ -69,6 +68,13 @@ import type {
 import { ulid } from '../db/ids'
 import { deriveListStatus } from './list-status'
 import { messageRowDto } from './message-prompt'
+import type { MessageAttachmentsRepo } from '../db/repositories/message-attachments-repo'
+import type { MessageRow } from '../db/repositories/messages-repo'
+import { startsWithSlash } from './command-routing'
+import { attachmentView } from '../attachments/attachment-send'
+import { sentAttachmentsRoot } from '../attachments/attachment-paths'
+import type { AttachmentSender, StoredAttachment } from '../attachments/attachment-send'
+import type { MessageAttachmentView } from '@shared/attachments'
 import { commandName, workerLabel } from './worker-label'
 import { planView } from './plan-coordinator'
 import type { AttentionAnswer, AttentionState } from './attention-coordinator'
@@ -182,6 +188,11 @@ export interface SessionServiceDeps {
   /** `userData/worktrees`; worker working copies live under `<sessionId>/<workerId>/<repo>`. */
   getWorktreesRoot: () => string
   getKnowledgeRoot: (groupId: string) => string
+  /** Moves staged attachments into a session with their message; left out (tests), a send with files is refused. */
+  /** Loads the attachments of a page of messages; left out (tests), messages carry none. */
+  messageAttachmentsRepo?:
+    Pick<MessageAttachmentsRepo, 'listForMessages' | 'getMany' | 'listForSession'> | undefined
+  attachmentSender?: Pick<AttachmentSender, 'send' | 'sendIn'> | undefined
   /** `userData/sessions/<id>/`; removed when the session is deleted. */
   getSessionDir: (sessionId: string) => string
   /**
@@ -311,6 +322,8 @@ interface CreateParams {
   workerLimit: number
   /** The brain picked in the New session dialog; left out, the Settings default applies. */
   brainModel?: ModelRef | undefined
+  /** Staged attachments of the first message; they stay staged until the session is written. */
+  files?: { draftId: string; attachmentIds: readonly string[] } | undefined
 }
 
 /** What a `needsDirtyChoice` token stands for. */
@@ -432,10 +445,15 @@ export class SessionService {
     request: string,
     mode: SessionMode,
     workerLimit: number,
-    brainModel?: ModelRef
+    brainModel?: ModelRef,
+    files?: { draftId: string; attachmentIds: readonly string[] }
   ): Promise<CreateSessionResult> {
     const text = request.trim()
-    if (text === '') throw new AppErrorException('VALIDATION_FAILED')
+    const hasFiles = files !== undefined && files.attachmentIds.length > 0
+    if (text === '' && !hasFiles) throw new AppErrorException('VALIDATION_FAILED')
+    if (hasFiles && !this.deps.attachmentSender) throw new AppErrorException('VALIDATION_FAILED')
+    // Refused before anything exists; the staged files stay for the renderer to retry.
+    if (hasFiles && startsWithSlash(text)) throw new AppErrorException('ATTACHMENTS_WITH_COMMAND')
     // The same rule as `setConfig`: a Codex or Cursor brain must be one the provider lists now.
     if (brainModel !== undefined && !this.models.has(brainModel)) {
       throw new AppErrorException('VALIDATION_FAILED')
@@ -449,13 +467,14 @@ export class SessionService {
       request: text,
       mode,
       workerLimit,
-      ...(brainModel ? { brainModel } : {})
+      ...(brainModel ? { brainModel } : {}),
+      ...(hasFiles ? { files } : {})
     }
     const plan = await this.planFor(this.gitProjects(groupId))
     if (plan.dirtyRepos.length > 0) {
       return this.askDirty({ kind: 'create', params, plan, expiresAt: 0 }, plan.dirtyRepos)
     }
-    return { sessionId: this.startSession(params, plan, {}) }
+    return { sessionId: await this.startSession(params, plan, {}) }
   }
 
   private async planFor(projects: SessionGitProject[]): Promise<SessionStartPlan> {
@@ -501,12 +520,16 @@ export class SessionService {
     return pending
   }
 
-  /** Writes the session, its project rows and the first message, and starts the brain. */
-  private startSession(
+  /**
+   * Writes the session, its project rows and the first message, and starts the brain. With
+   * attachments the staged files are copied first and everything is written in one transaction;
+   * on a failure nothing remains but the staged files, so the user can retry.
+   */
+  private async startSession(
     params: CreateParams,
     plan: SessionStartPlan,
     choices: Record<string, DirtyChoiceValue>
-  ): string {
+  ): Promise<string> {
     const now = this.now()
     const sessionId = this.newId()
     // A new session copies the Settings defaults; changing Settings later never touches it.
@@ -518,7 +541,7 @@ export class SessionService {
       ? { provider: params.brainModel.provider, model: normalizeModel(params.brainModel.model) }
       : undefined
     const defaults = { ...stored, brain: picked ?? stored.brain }
-    this.deps.sessionsRepo.create({
+    const sessionRow = {
       id: sessionId,
       groupId: params.groupId,
       name: PLACEHOLDER_SESSION_NAME,
@@ -533,24 +556,16 @@ export class SessionService {
       brainPromptVersion: BRAIN_PROMPT_VERSION,
       createdAt: now,
       lastActiveAt: now
-    })
+    } as const
     // Non-git projects are read only from the start; git projects get their branch after the title.
-    this.deps.sessionProjectsRepo.insertMany(
-      plan.projects.map((p) => ({
-        sessionId,
-        projectId: p.projectId,
-        readOnly: !p.isGit,
-        projectPath: p.path,
-        projectName: p.name
-      }))
-    )
-    if (Object.keys(choices).length > 0) this.startChoices.set(sessionId, choices)
-    // The pick is remembered: the next New session dialog and the Providers page show it.
-    if (picked && this.deps.appSettings) {
-      this.deps.appSettings.set('providers.brain', picked, now)
-      this.deps.onSettingsSaved?.()
-    }
-    this.deps.messagesRepo.append({
+    const projectRows = plan.projects.map((p) => ({
+      sessionId,
+      projectId: p.projectId,
+      readOnly: !p.isGit,
+      projectPath: p.path,
+      projectName: p.name
+    }))
+    const firstMessage = {
       sessionId,
       role: 'user',
       content: params.request,
@@ -558,9 +573,41 @@ export class SessionService {
       planId: null,
       createdAt: now,
       updatedAt: now
-    })
+    } as const
+    const sender = params.files ? this.deps.attachmentSender : undefined
+    let sentFiles: StoredAttachment[] = []
+    if (params.files && sender) {
+      try {
+        const sent = await sender.sendIn({
+          sessionId,
+          draftId: params.files.draftId,
+          ids: params.files.attachmentIds,
+          write: (tx) => {
+            new SessionsRepo(tx).create(sessionRow)
+            new SessionProjectsRepo(tx).insertMany(projectRows)
+            return new MessagesRepo(tx).append(firstMessage)
+          }
+        })
+        sentFiles = sent.attachments
+      } catch (error: unknown) {
+        // The copies' folder goes with the session folder; the staged files stay for a retry.
+        await this.removeSessionDir(sessionId)
+        throw error
+      }
+    } else {
+      this.deps.sessionsRepo.create(sessionRow)
+      this.deps.sessionProjectsRepo.insertMany(projectRows)
+    }
+    this.attachmentsDirOf(sessionId)
+    if (Object.keys(choices).length > 0) this.startChoices.set(sessionId, choices)
+    // The pick is remembered: the next New session dialog and the Providers page show it.
+    if (picked && this.deps.appSettings) {
+      this.deps.appSettings.set('providers.brain', picked, now)
+      this.deps.onSettingsSaved?.()
+    }
+    if (!params.files) this.deps.messagesRepo.append(firstMessage)
     const orchestrator = this.orchestratorFor(sessionId, params.request)
-    void orchestrator.send(params.request)
+    this.deliver(sessionId, orchestrator, params.request, sentFiles)
     this.scheduleSummary(sessionId)
     return sessionId
   }
@@ -725,7 +772,7 @@ export class SessionService {
       )
       if (!answered) return { status: 'cancelled' }
       await this.ensureCli()
-      const sessionId = this.startSession(pending.params, pending.plan, choices)
+      const sessionId = await this.startSession(pending.params, pending.plan, choices)
       return { status: 'ready', sessionId }
     }
     if (pending.kind === 'add') {
@@ -1428,6 +1475,13 @@ export class SessionService {
     }
   }
 
+  /** Message DTOs with their attachments, loaded in one query for the whole batch. */
+  private messageDtos(rows: MessageRow[]): SessionMessage[] {
+    const repo = this.deps.messageAttachmentsRepo
+    const byMessage = repo?.listForMessages(rows.map((r) => r.id))
+    return rows.map((r) => messageRowDto(r, byMessage?.get(r.id)))
+  }
+
   /** The snapshot without the branch check (`open` adds it). */
   snapshot(sessionId: string): SessionSnapshot {
     const orchestrator = this.orchestrators.get(sessionId)
@@ -1435,7 +1489,7 @@ export class SessionService {
     const row = this.requireSession(sessionId)
     return {
       header: this.headerOf(row),
-      messages: this.deps.messagesRepo.latest(sessionId, SNAPSHOT_MESSAGES).map(messageRowDto),
+      messages: this.messageDtos(this.deps.messagesRepo.latest(sessionId, SNAPSHOT_MESSAGES)),
       events: this.deps.eventsRepo.latest(sessionId, SNAPSHOT_EVENTS).map(eventDto),
       workers:
         orchestrator?.workerViews ??
@@ -1568,7 +1622,7 @@ export class SessionService {
   ): SessionMessage[] | SessionEventEntry[] {
     this.requireSession(sessionId)
     return kind === 'messages'
-      ? this.deps.messagesRepo.page(sessionId, beforeId, limit).map(messageRowDto)
+      ? this.messageDtos(this.deps.messagesRepo.page(sessionId, beforeId, limit))
       : this.deps.eventsRepo.page(sessionId, beforeId, limit).map(eventDto)
   }
 
@@ -1658,14 +1712,26 @@ export class SessionService {
     )
   }
 
-  async sendMessage(sessionId: string, text: string): Promise<{ messageId: number }> {
+  async sendMessage(
+    sessionId: string,
+    text: string,
+    files?: { draftId: string; attachmentIds: readonly string[] }
+  ): Promise<{ messageId: number; attachments: MessageAttachmentView[] }> {
     const body = text.trim()
-    if (body === '') throw new AppErrorException('VALIDATION_FAILED')
+    const ids = files?.attachmentIds ?? []
+    if (body === '' && ids.length === 0) throw new AppErrorException('VALIDATION_FAILED')
     this.requireSession(sessionId)
     const orchestrator = this.orchestratorFor(sessionId, null)
+    // Before anything is written or copied; the staged files stay for the renderer to retry.
+    if (ids.length > 0) {
+      if (startsWithSlash(body)) throw new AppErrorException('ATTACHMENTS_WITH_COMMAND')
+      if (orchestrator.hasPlanAwaitingFeedback()) {
+        throw new AppErrorException('ATTACHMENTS_WITH_PLAN_FEEDBACK')
+      }
+    }
     if (!orchestrator.isBrainRunning) await this.ensureCli()
     const now = this.now()
-    const row = this.deps.messagesRepo.append({
+    const message = {
       sessionId,
       role: 'user',
       content: body,
@@ -1673,11 +1739,48 @@ export class SessionService {
       planId: null,
       createdAt: now,
       updatedAt: now
-    })
+    } as const
+    let messageId: number
+    let stored: StoredAttachment[] = []
+    if (files && ids.length > 0) {
+      const sender = this.deps.attachmentSender
+      if (!sender) throw new AppErrorException('VALIDATION_FAILED')
+      const sent = await sender.send({ sessionId, draftId: files.draftId, ids, message })
+      messageId = sent.message.id
+      stored = sent.attachments
+    } else {
+      messageId = this.deps.messagesRepo.append(message).id
+    }
     this.deps.sessionsRepo.touch(sessionId, now)
     this.scheduleSummary(sessionId)
-    void orchestrator.send(body)
-    return { messageId: row.id }
+    this.deliver(sessionId, orchestrator, body, stored)
+    return { messageId, attachments: stored.map(attachmentView) }
+  }
+
+  /**
+   * The one place a user message goes to the brain. `attachments` are the stored files of this
+   * message (absolute paths); a message with only files still reaches the brain, as the block.
+   */
+  private deliver(
+    sessionId: string,
+    orchestrator: Orchestrator,
+    text: string,
+    attachments: StoredAttachment[]
+  ): void {
+    orchestrator.send(text, attachments.length > 0 ? attachments : undefined).catch((error) => {
+      // The message is already stored with its files. A plan can start waiting after the check in
+      // `sendMessage`, and the orchestrator then refuses files rather than drop them: say so.
+      // Log the session and the error name only; an error message may hold a path or a name.
+      const name = error instanceof Error ? error.name : 'Error'
+      this.deps.log.warn(
+        `a message was not delivered to the brain of session ${sessionId} (${name})`
+      )
+      orchestrator.postSystemMessage(
+        orchestrator.hasPlanAwaitingFeedback()
+          ? 'Your last message was not delivered to the brain: a plan is waiting for your decision. Answer the plan, then send it again.'
+          : 'Your last message was not delivered to the brain. Send it again.'
+      )
+    })
   }
 
   async stopReply(sessionId: string): Promise<void> {
@@ -1954,8 +2057,9 @@ export class SessionService {
     let titleRequest = firstRequest
     if (titleRequest === null && row.name === PLACEHOLDER_SESSION_NAME) {
       titleRequest =
-        this.deps.messagesRepo.latest(sessionId, SNAPSHOT_MESSAGES).find((m) => m.role === 'user')
-          ?.content ?? null
+        this.deps.messagesRepo
+          .latest(sessionId, SNAPSHOT_MESSAGES)
+          .find((m) => m.role === 'user' && m.content !== '')?.content ?? null
     }
     const orchestrator = new Orchestrator({
       sessionId,
@@ -1986,6 +2090,8 @@ export class SessionService {
         getWorktreesRoot: this.deps.getWorktreesRoot,
         getKnowledgeDir: () => this.deps.getKnowledgeRoot(row.groupId),
         getTerminalDir: () => join(this.deps.getSessionDir(sessionId), 'workers'),
+        getSessionDir: () => this.deps.getSessionDir(sessionId),
+        attachmentsRepo: this.deps.messageAttachmentsRepo,
         groupName: () => this.deps.groupsRepo.getById(row.groupId)?.name ?? 'group',
         branchesReady: () => this.branchStarts.get(sessionId) ?? Promise.resolve(),
         autoMerge: this.deps.autoMergeDone ?? true
@@ -2068,7 +2174,9 @@ export class SessionService {
       cwd,
       addDirs: [
         ...projects.map((p) => p.path),
-        ...(knowledgePath === cwd || !exists(knowledgePath) ? [] : [knowledgePath])
+        ...(knowledgePath === cwd || !exists(knowledgePath) ? [] : [knowledgePath]),
+        // Always present, so a message with attachments never changes the launch (`launchKey`).
+        this.attachmentsDirOf(sessionId)
       ],
       instructions: buildBrainPrompt({
         groupName: group.name,
@@ -2102,6 +2210,13 @@ export class SessionService {
       this.deps.log.warn('could not read the Claude plan meter for the brain prompt', error)
       return undefined
     }
+  }
+
+  /** `userData/sessions/<id>/attachments`, made here when a session from before attachments lacks it. */
+  private attachmentsDirOf(sessionId: string): string {
+    const dir = sentAttachmentsRoot(this.deps.getSessionDir(sessionId))
+    mkdirSync(dir, { recursive: true })
+    return dir
   }
 
   private codexBrainDirOf(sessionId: string): string {

@@ -1,0 +1,8 @@
+# A Cursor brain (spec 012 attachments): answers the first request, then answers the message with attachments once.
+{"expect":"prompt"}
+{"title":"Attachment check"}
+{"text":"Ready for the files."}
+{"end":"end_turn"}
+{"expect":"prompt"}
+{"text":"Got the files."}
+{"end":"end_turn"}

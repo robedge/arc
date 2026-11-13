@@ -1,0 +1,9 @@
+# A Claude worker that looks at what it was given, answers, and waits for a second message.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Looking at the screenshot."}
+{"result":true}
+{"waitForStdin":"Second look"}
+{"say":"Looked again."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}
