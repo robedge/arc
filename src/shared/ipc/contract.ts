@@ -35,9 +35,9 @@ import type {
   BrainState,
   AttentionView,
   CreateSessionResult,
-  NeedsDirtyChoice,
   OpenSessionResult,
   ResolveDirtyResult,
+  AnswerBranchQuestionResult,
   SessionEventEntry,
   PlanView,
   SessionHeader,
@@ -300,11 +300,18 @@ export const channelSchemas = {
       showAnyway: z.boolean().optional()
     })
     .strict(),
-  // `token` comes from a `needsDirtyChoice` result. A missing choice for a dirty repo counts as 'cancel'.
+  // `token` comes from a `needsDirtyChoice` result of `sessions:open`. A missing choice for a dirty repo counts as 'cancel'.
   'sessions:resolve-dirty': z
     .object({
       token: z.string(),
       choices: z.record(z.string(), z.enum(['stash', 'commit', 'carry', 'cancel']))
+    })
+    .strict(),
+  // The user's choice for a Needs attention card "Unsaved changes in <project>" (spec 013).
+  'sessions:answer-branch-question': z
+    .object({
+      questionId: z.string(),
+      choice: z.enum(['stash', 'commit', 'carry', 'skip'])
     })
     .strict(),
   'sessions:rename': z.object({ sessionId: z.string(), name: z.string() }).strict(),
@@ -510,6 +517,8 @@ export interface ChannelResponses {
   /** Posts every draft as one conversation message and marks them sent. Errors `SESSION_NOT_FOUND`, `VALIDATION_FAILED` (no drafts), `CLI_UNAVAILABLE`. */
   'review:send-notes': { messageId: number; count: number }
   'sessions:resolve-dirty': ResolveDirtyResult
+  /** `not-open` when the question is gone or answered; `failed` re-opens it with the reason (the card shows it). */
+  'sessions:answer-branch-question': AnswerBranchQuestionResult
   'sessions:rename': SessionSummary
   /** Error `VALIDATION_FAILED` for a model its provider does not offer (not a Claude alias, 'auto' for workers, a reported model id, a listed Codex or Cursor model). Pushes `session:header`. */
   'sessions:set-config': SessionHeader
@@ -657,16 +666,8 @@ export interface IpcEvents {
    * session). Not part of the per-session `seq` stream.
    */
   'session:summary': { groupId: string; summary: SessionSummary }
-  /** The header changed (the session branches were created); in the per-session `seq` stream. */
+  /** The header changed (a session branch was created in a repository, or a project joined or left the group); in the per-session `seq` stream. */
   'session:header': { sessionId: string; seq: number; header: SessionHeader }
-  /**
-   * A project joined the group and has unsaved changes: the open session asks what to do with them
-   * before creating its branch there. Answer with `sessions:resolve-dirty`. Not in the `seq` stream.
-   */
-  'session:dirty-question': {
-    sessionId: string
-    needsDirtyChoice: NeedsDirtyChoice['needsDirtyChoice']
-  }
   /** A plan was proposed or changed state (approved, replaced, rejected, awaiting a comment). */
   'session:plan': { sessionId: string; seq: number; plan: PlanView }
   /** The requests waiting for the user in a session changed (the badge, the dialog). */
@@ -760,7 +761,6 @@ const eventFlags = {
   'session:brain-state': true,
   'session:summary': true,
   'session:header': true,
-  'session:dirty-question': true,
   'session:plan': true,
   'session:worker-changed': true,
   'usage:session-changed': true,

@@ -31,6 +31,7 @@
   import Icon from '../ui/Icon.svelte'
   import IconButton from '../ui/IconButton.svelte'
   import Panel from '../ui/Panel.svelte'
+  import PopoverList from '../ui/PopoverList.svelte'
   import UsageChip from './UsageChip.svelte'
   import { toasts } from '../../stores/toasts.svelte'
 
@@ -140,16 +141,27 @@
     kind: 'branch' | 'read-only' | 'removed'
   }
 
-  // One chip when every repository shares branch and base, otherwise one per repository.
+  const gitProjects = $derived(header.branches.filter((b) => !b.readOnly && !b.removed))
+  const branched = $derived(gitProjects.filter((b) => b.branchName !== null))
+  /** Git projects with no session branch yet: counted, not listed one by one. */
+  const unbranched = $derived(gitProjects.filter((b) => b.branchName === null))
+  const countText = $derived.by((): string => {
+    const n = unbranched.length
+    const noun = n === 1 ? 'project' : 'projects'
+    return branched.length > 0 ? `${n} more ${noun}` : `${n} ${noun}`
+  })
+
+  // One named chip per repository with a branch. The single collapsed chip stays only when every
+  // git project has a branch and all labels are identical (sessions started before branches on demand).
   const chips = $derived.by((): Chip[] => {
-    const branched = header.branches.filter(
-      (b) => !b.readOnly && !b.removed && b.branchName !== null
-    )
     const label = (b: (typeof branched)[number]): string =>
       b.baseBranch ? `${b.branchName} ← ${b.baseBranch}` : (b.branchName ?? '')
     const out: Chip[] = []
     const first = branched[0]
-    const same = first !== undefined && branched.every((b) => label(b) === label(first))
+    const same =
+      first !== undefined &&
+      unbranched.length === 0 &&
+      branched.every((b) => label(b) === label(first))
     if (first !== undefined && same) {
       out.push({ key: 'branch', repo: null, text: label(first), kind: 'branch' })
     } else {
@@ -336,7 +348,7 @@
         >
       {/if}
     </span>
-    {#if chips.length > 0}
+    {#if chips.length > 0 || unbranched.length > 0}
       <ul class="ml-auto flex flex-wrap items-center gap-2" aria-label="Session branches">
         {#each chips as chip (chip.key)}
           <li
@@ -349,6 +361,15 @@
             >
           </li>
         {/each}
+        {#if unbranched.length > 0}
+          <li>
+            <PopoverList
+              label={countText}
+              listLabel="Projects without a session branch"
+              items={unbranched.map((b) => b.projectName)}
+            />
+          </li>
+        {/if}
       </ul>
     {/if}
   </div>
@@ -365,6 +386,7 @@
   onAnswer={(id, text) => void answer(id, { text })}
   onAnswerStructured={(id, answers) => answer(id, { answers })}
   onDecline={(id) => answer(id, { decline: true })}
+  onAnswerBranch={(id, choice) => activeSession.answerBranchQuestion(id, choice)}
   onClose={() => activeSession.closeAttention()}
 />
 

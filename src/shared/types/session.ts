@@ -41,11 +41,11 @@ export interface SessionSummary {
   attentionCount: number
 }
 
-/** One project of a session: the session branch it is on, or read only when it is not a git repository. */
+/** One project of a session: the session branch it has, a git project with no branch yet, or read only when it is not a git repository. */
 export interface SessionBranch {
   projectId: string | null
   projectName: string
-  /** `arc/<slug>`; null while the branch is not created yet (before the brain named the session) and for read-only projects. */
+  /** `arc/<slug>`; null until a worker first starts in this repository, and for read-only projects. */
   branchName: string | null
   baseBranch: string | null
   readOnly: boolean
@@ -88,7 +88,7 @@ export interface SessionHeader {
   status: SessionStatus
   createdAt: number
   lastActiveAt: number
-  /** One entry per project the session started with. Updated by `session:header` when branches are created. */
+  /** Every project of the session, including git projects with no branch yet (`branchName` null). Pushed again by `session:header` when a branch is created and when a project joins or leaves the group. */
   branches: SessionBranch[]
 }
 
@@ -378,6 +378,31 @@ export type AttentionView =
        */
       questions?: AttentionQuestion[]
     })
+  | (AttentionViewBase & {
+      /**
+       * Arc's own question before it creates the session branch in a repository that has unsaved
+       * changes (spec 013). `id` is the question id; `from` is "Arc"; it is always in the queue.
+       * Answered with `sessions:answer-branch-question`, not `attention:answer`.
+       */
+      kind: 'branch'
+      projectId: string
+      projectName: string
+      /** The first changed paths, read from git when the view is built (at most 10). */
+      files: string[]
+      /** How many changed paths are not in `files`. */
+      moreFiles: number
+      /** Labels of the queued workers that wait on this repository, such as "W3 web-fix". */
+      workers: string[]
+      /** Why "Bring them along" did not work; the other choices are offered again. */
+      message?: string
+    })
+
+/** What the user can choose for unsaved changes in a repository (`sessions:answer-branch-question`). */
+export type BranchChoiceValue = 'stash' | 'commit' | 'carry' | 'skip'
+
+/** `not-open`: the question is gone or was answered already. `failed`: the question is open again with the reason. */
+export type AnswerBranchQuestionResult =
+  { status: 'ok' } | { status: 'not-open' } | { status: 'failed'; reason: string }
 
 /** A project with uncommitted changes that needs the user's choice. */
 export interface DirtyRepo {
@@ -417,7 +442,7 @@ export interface SessionSnapshot {
   seq: number
 }
 
-export type CreateSessionResult = { sessionId: string } | NeedsDirtyChoice
+export type CreateSessionResult = { sessionId: string }
 
 /** `sessions:open`: the snapshot, or the dirty-repo question when a repo must leave another branch first. */
 export type OpenSessionResult = SessionSnapshot | NeedsDirtyChoice

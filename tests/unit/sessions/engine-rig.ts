@@ -24,7 +24,7 @@ export interface EngineRig {
   bridge: BridgeServer
   api: GitFixture
   web: GitFixture
-  /** Creates a session, names it (so the session branch exists) and returns its id. */
+  /** Creates a session, names it (so the session branch name is chosen) and returns its id. */
   startSession(mode?: SessionMode): Promise<string>
   /** The MCP config the Nth started agent was given, as the CLI would read it. */
   configOf(handle: FakeHandle): McpServerConfig
@@ -89,14 +89,8 @@ export async function makeEngineRig(
       })
       brain.emit({ type: 'assistant-message', messageId: 'm0', text: 'Title: Retry work\nReady.' })
       brain.emit({ type: 'turn-result', ok: true, interrupted: false, durationMs: 1 })
-      await until(
-        () =>
-          (
-            rig.opened.sqlite
-              .prepare('select count(*) as n from session_projects where branch_name is not null')
-              .get() as { n: number }
-          ).n >= 2
-      )
+      // Naming only chooses the branch name; no repository has a branch until a worker starts.
+      await until(() => rig.deps.sessionsRepo.getById(created.sessionId)?.slug != null)
       return created.sessionId
     },
     configOf,

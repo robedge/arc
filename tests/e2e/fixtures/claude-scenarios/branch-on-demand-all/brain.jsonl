@@ -1,0 +1,18 @@
+# Names the session, then starts one worker in each of api, web and infra when asked.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nThe orders report is slow because of one query."}
+{"result":true}
+{"waitForStdin":"Start the api worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-note","task":"Look at the API client","repos":["api"]}}}
+{"say":"The api worker is running."}
+{"result":true}
+{"waitForStdin":"Start the web worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"web-note","task":"Look at the web client","repos":["web"]}}}
+{"say":"The web worker is running."}
+{"result":true}
+{"waitForStdin":"Start the infra worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"infra-note","task":"Look at the infra setup","repos":["infra"]}}}
+{"say":"The infra worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

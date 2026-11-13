@@ -1,3 +1,4 @@
+// @spec: 013-session-branches-on-demand
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -40,7 +41,8 @@ describe('merge_worker, clean path', () => {
     const sessionId = await start()
     if (!e) throw new Error('rig')
     const branch = branchOf(e, sessionId)
-    const before = gitIn(e.api.path, 'rev-parse', `refs/heads/${branch}`)
+    // The branch does not exist until the worker starts; it is made from the checked out tip.
+    const before = gitIn(e.api.path, 'rev-parse', 'HEAD')
     const w1 = await doneWorker(e, 'api-retry', 'api', { 'retry.txt': 'retry\n' })
     e.rig.pushed.length = 0
 
@@ -128,7 +130,8 @@ describe('merge_worker, checkout state', () => {
     const sessionId = await start()
     if (!e) throw new Error('rig')
     const branch = branchOf(e, sessionId)
-    const before = gitIn(e.api.path, 'rev-parse', `refs/heads/${branch}`)
+    // The branch does not exist until the worker starts; it is made from the checked out tip.
+    const before = gitIn(e.api.path, 'rev-parse', 'HEAD')
     const w1 = await doneWorker(e, 'api-retry', 'api', { 'retry.txt': 'retry\n' })
     writeFileSync(join(e.api.path, 'README.md'), 'hello\nunsaved\n')
 
@@ -488,9 +491,50 @@ describe('final summary', () => {
     expect(summary).toContain(`api (${branch}, base dev):`)
     expect(summary).toContain('Merge W1 api-retry')
     expect(summary).toContain('api-retry: retry.txt')
-    expect(summary).toContain('web (' + branch + ', base dev):')
-    expect(summary).toContain('(no commits)')
+    expect(summary).not.toContain('web (')
+    expect(summary).not.toContain('(no commits)')
     expect(summary).toContain('W2 docs failed; its work was not merged.')
     expect(e.brain().sent.filter((t) => t.startsWith('[Arc] All workers finished'))).toHaveLength(1)
+  })
+
+  it('the summary names only the repository with commits (branch everywhere, commits in one)', async () => {
+    const sessionId = await start()
+    if (!e) throw new Error('rig')
+    const branch = branchOf(e, sessionId)
+    await doneWorker(e, 'api-retry', 'api', { 'retry.txt': 'retry\n' })
+    const w2 = await spawnWorker(e, 'web-look', 'web')
+    // Both repositories now have the session branch; only api has commits on it.
+    const rows = e.rig.deps.sessionProjectsRepo.listBySession(sessionId)
+    for (const name of ['api', 'web']) {
+      expect(rows.find((r) => r.projectName === name)?.branchName).toBe(branch)
+    }
+    await e.call(e.brain(), 'merge_worker', mergeArgs('W1'))
+    w2.handle.emit({ type: 'exit', code: 1, signal: null, expected: false, stderrTail: 'boom' })
+    await until(
+      () => e?.brain().sent.some((t) => t.startsWith('[Arc] All workers finished')) ?? false
+    )
+    const summary = e.brain().sent.find((t) => t.startsWith('[Arc] All workers finished')) ?? ''
+    expect(summary).toContain(`api (${branch}, base dev):`)
+    expect(summary).not.toContain('web (')
+    expect(summary).not.toContain('(no commits)')
+  })
+
+  it('the summary lists no repository when a merged worker left no commits', async () => {
+    const sessionId = await start()
+    if (!e) throw new Error('rig')
+    await doneWorker(e, 'api-look', 'api', {})
+    await e.call(e.brain(), 'merge_worker', mergeArgs('W1'))
+    await until(
+      () => e?.brain().sent.some((t) => t.startsWith('[Arc] All workers finished')) ?? false
+    )
+    const summary = e.brain().sent.find((t) => t.startsWith('[Arc] All workers finished')) ?? ''
+    expect(summary).not.toContain('api (')
+    expect(summary).not.toContain('(no commits)')
+    // The header is never left with nothing under it.
+    expect(summary).toContain(
+      'Commits on each session branch (machine-made from git log <base>..<branch> --oneline):\n  (no commits in any repository)'
+    )
+    expect(summary).toContain('W1 api-look: merged')
+    expect(sessionId).not.toBe('')
   })
 })

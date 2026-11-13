@@ -15,6 +15,7 @@ let attention: AttentionService
 let notices: AttentionNotice[]
 let pushes: IpcEvents['session:attention'][]
 let answered: [string, unknown][]
+let answeredBranch: [string, string][]
 let seq = 0
 
 function addSession(id: string, groupId: string): void {
@@ -52,10 +53,20 @@ beforeEach(async () => {
   notices = []
   pushes = []
   answered = []
+  answeredBranch = []
   rig = await makeRig(dir())
   attention = new AttentionService({
-    sessions: { answerAttention: (id, answer) => void answered.push([id, answer]) },
+    sessions: {
+      answerAttention: (id, answer) => void answered.push([id, answer]),
+      answerBranchQuestion: (id, choice) => {
+        answeredBranch.push([id, choice])
+        return Promise.resolve({ status: 'ok' })
+      },
+      branchQuestionViews: (id) => rig.service.branchQuestionViews(id),
+      attentionState: (id) => rig.service.attentionState(id)
+    },
     attentionRepo: rig.deps.attentionRepo,
+    branchQuestionsRepo: rig.deps.branchQuestionsRepo,
     sessionsRepo: rig.sessionsRepo,
     workerOf: (id) => rig.deps.workersRepo.get(id),
     emit: (_event, payload) => void pushes.push(payload),

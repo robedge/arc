@@ -127,8 +127,8 @@ describe('Commands available block', () => {
 })
 
 describe('prompt update note for commands', () => {
-  it('is version 8 with attachments', () => {
-    expect(BRAIN_PROMPT_VERSION).toBe(8)
+  it('is the current version', () => {
+    expect(BRAIN_PROMPT_VERSION).toBe(9)
   })
 
   it('gives a version 3 session only the commands note, with the current list', () => {

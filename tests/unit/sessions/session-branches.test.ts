@@ -1,3 +1,5 @@
+// @spec: 013-session-branches-on-demand
+// @regression
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -67,7 +69,6 @@ async function reply(title: string): Promise<void> {
 async function startClean(title: string): Promise<string> {
   const r = rig as Rig
   const created = await r.service.create(r.groupId, 'Fix the order sync', 'plan_first', 3)
-  if (!('sessionId' in created)) throw new Error('expected a session id')
   await until(() => r.adapter.handles.length > 0 && r.adapter.last.sent.length > 0)
   await reply(title)
   return created.sessionId
@@ -77,46 +78,73 @@ function headerOf(sessionId: string): SessionHeader {
   return (rig as Rig).service.snapshot(sessionId).header
 }
 
-describe('session branch flow', () => {
-  it('creates arc/<slug> from dev after the title and records the rows', async () => {
+/** The branches named arc/ in a repository. */
+const arcBranches = (repo: string): string =>
+  git(repo, 'branch', '--list', 'arc/*', '--format=%(refname:short)').trim()
+
+describe('naming a session', () => {
+  it('sets the name and touches no repository', async () => {
     const fx = await setup({ api: 'clean', web: 'no-dev', docs: 'plain' })
+    const before = {
+      api: git((fx['api'] as GitFixture).path, 'for-each-ref', '--format=%(refname) %(objectname)'),
+      web: git((fx['web'] as GitFixture).path, 'for-each-ref', '--format=%(refname) %(objectname)')
+    }
     const sessionId = await startClean('Fix order sync')
-    await until(() => headerOf(sessionId).branches.some((b) => b.branchName !== null))
+    await until(() => (rig as Rig).sessionsRepo.getById(sessionId)?.slug === 'fix-order-sync')
 
-    expect(branchOf((fx['api'] as GitFixture).path)).toBe('arc/fix-order-sync')
-    expect(branchOf((fx['web'] as GitFixture).path)).toBe('arc/fix-order-sync')
+    expect(branchOf((fx['api'] as GitFixture).path)).toBe('dev')
+    expect(branchOf((fx['web'] as GitFixture).path)).toBe('main')
+    expect(arcBranches((fx['api'] as GitFixture).path)).toBe('')
+    expect(arcBranches((fx['web'] as GitFixture).path)).toBe('')
+    expect(
+      git((fx['api'] as GitFixture).path, 'for-each-ref', '--format=%(refname) %(objectname)')
+    ).toBe(before.api)
+    expect(
+      git((fx['web'] as GitFixture).path, 'for-each-ref', '--format=%(refname) %(objectname)')
+    ).toBe(before.web)
     const rows = new SessionProjectsRepo((rig as Rig).opened.db).listBySession(sessionId)
-    const byId = Object.fromEntries(rows.map((r) => [r.projectId, r]))
-    expect(byId['api']).toMatchObject({
-      branchName: 'arc/fix-order-sync',
-      baseBranch: 'dev',
-      previousBranch: 'dev',
-      readOnly: false
-    })
-    expect(byId['web']).toMatchObject({ baseBranch: 'main', readOnly: false })
-    expect(byId['docs']).toMatchObject({ branchName: null, readOnly: true })
-    // The branch point is recorded for review: dev's tip when the session started.
-    const devTip = (repo: string): string => git(repo, 'rev-parse', 'refs/heads/dev').trim()
-    expect(byId['api']?.baseSha).toBe(devTip((fx['api'] as GitFixture).path))
-    expect(byId['web']?.baseSha).toBe(
-      git((fx['web'] as GitFixture).path, 'rev-parse', 'refs/heads/main').trim()
-    )
-    expect(byId['docs']?.baseSha).toBeNull()
-    expect((rig as Rig).sessionsRepo.getById(sessionId)?.slug).toBe('fix-order-sync')
+    expect(rows.length).toBeGreaterThanOrEqual(3)
+    expect(rows.every((x) => x.branchName === null)).toBe(true)
+    expect(headerOf(sessionId).branches.every((b) => b.branchName === null)).toBe(true)
+  })
 
-    const pushed = (rig as Rig).of('session:header').at(-1)
-    expect(pushed?.sessionId).toBe(sessionId)
-    expect(pushed?.header.branches.find((b) => b.projectId === 'api')).toMatchObject({
-      branchName: 'arc/fix-order-sync',
-      baseBranch: 'dev'
-    })
+  it('avoids a branch an older session left in any repository', async () => {
+    const fx = await setup({ api: 'clean', web: 'clean' })
+    git((fx['web'] as GitFixture).path, 'branch', 'arc/fix-order-sync')
+    const sessionId = await startClean('Fix order sync')
+    await until(() => (rig as Rig).sessionsRepo.getById(sessionId)?.slug !== null)
+    expect((rig as Rig).sessionsRepo.getById(sessionId)?.slug).toBe('fix-order-sync-2')
+    expect(arcBranches((fx['api'] as GitFixture).path)).toBe('')
+  })
+
+  it('starts with no question and leaves unsaved changes in place', async () => {
+    const fx = await setup({ api: 'dirty' })
+    const r = rig as Rig
+    const created = await r.service.create(r.groupId, 'Fix it', 'plan_first', 3)
+    expect(created).toEqual({ sessionId: expect.any(String) })
+    await until(() => r.adapter.handles.length > 0 && r.adapter.last.sent.length > 0)
+    await reply('Fix order sync')
+    await until(() => r.sessionsRepo.getById(created.sessionId)?.slug === 'fix-order-sync')
+    const repo = (fx['api'] as GitFixture).path
+    expect(branchOf(repo)).toBe('dev')
+    expect(git(repo, 'status', '--porcelain')).toContain(trackedFile)
+    expect(arcBranches(repo)).toBe('')
+  })
+
+  it('names a session that was left without a name when it is opened', async () => {
+    await setup({ api: 'clean' })
+    const r = rig as Rig
+    const created = await r.service.create(r.groupId, 'Fix it', 'plan_first', 3)
+    expect(r.sessionsRepo.getById(created.sessionId)?.slug).toBeNull()
+    r.sessionsRepo.rename(created.sessionId, 'Fix order sync')
+    await r.service.open(created.sessionId)
+    await until(() => r.sessionsRepo.getById(created.sessionId)?.slug === 'fix-order-sync')
   })
 
   it('marks a non-git project read only right when the session starts', async () => {
     await setup({ docs: 'plain' })
     const r = rig as Rig
     const created = await r.service.create(r.groupId, 'Look around', 'plan_first', 3)
-    if (!('sessionId' in created)) throw new Error('expected a session id')
     expect(headerOf(created.sessionId).branches).toContainEqual({
       projectId: 'docs',
       projectName: 'docs',
@@ -125,88 +153,26 @@ describe('session branch flow', () => {
       readOnly: true
     })
   })
-
-  it('asks before creating anything when a repository is dirty, with the changed files', async () => {
-    const fx = await setup({ api: 'dirty' })
-    const r = rig as Rig
-    const result = await r.service.create(r.groupId, 'Fix it', 'plan_first', 3)
-    if (!('needsDirtyChoice' in result)) throw new Error('expected a question')
-    expect(result.needsDirtyChoice.repos).toEqual([
-      expect.objectContaining({ projectId: 'api', name: 'api', fileCount: 2 })
-    ])
-    expect(result.needsDirtyChoice.repos[0]?.files).toContain(trackedFile)
-    expect(r.sessionsRepo.listByGroup(r.groupId)).toHaveLength(0)
-    expect(r.adapter.handles).toHaveLength(0)
-    expect(branchOf((fx['api'] as GitFixture).path)).toBe('dev')
-  })
-
-  it('Cancel creates nothing and leaves the repository untouched', async () => {
-    const fx = await setup({ api: 'dirty' })
-    const r = rig as Rig
-    const result = await r.service.create(r.groupId, 'Fix it', 'plan_first', 3)
-    if (!('needsDirtyChoice' in result)) throw new Error('expected a question')
-    const resolved = await r.service.resolveDirty(result.needsDirtyChoice.token, { api: 'cancel' })
-    expect(resolved).toEqual({ status: 'cancelled' })
-    expect(r.sessionsRepo.listByGroup(r.groupId)).toHaveLength(0)
-    expect(r.adapter.handles).toHaveLength(0)
-    const repo = (fx['api'] as GitFixture).path
-    expect(branchOf(repo)).toBe('dev')
-    expect(git(repo, 'status', '--porcelain')).toContain(trackedFile)
-    // The token is spent.
-    await expect(
-      r.service.resolveDirty(result.needsDirtyChoice.token, { api: 'stash' })
-    ).rejects.toThrow()
-  })
-
-  it('Set aside creates the session now and the stash with the branch after the title', async () => {
-    const fx = await setup({ api: 'dirty' })
-    const r = rig as Rig
-    const result = await r.service.create(r.groupId, 'Fix it', 'plan_first', 3)
-    if (!('needsDirtyChoice' in result)) throw new Error('expected a question')
-    const resolved = await r.service.resolveDirty(result.needsDirtyChoice.token, { api: 'stash' })
-    if (resolved.status !== 'ready') throw new Error('expected ready')
-    const repo = (fx['api'] as GitFixture).path
-    await until(() => r.adapter.handles.length > 0 && r.adapter.last.sent.length > 0)
-    await reply('Fix order sync')
-    await until(() => headerOf(resolved.sessionId).branches.some((b) => b.branchName !== null))
-    expect(branchOf(repo)).toBe('arc/fix-order-sync')
-    expect(git(repo, 'status', '--porcelain')).toBe('')
-    expect(git(repo, 'stash', 'list')).toContain('arc:Fix order sync')
-    const row = new SessionProjectsRepo(r.opened.db)
-      .listBySession(resolved.sessionId)
-      .find((x) => x.projectId === 'api')
-    expect(row).toMatchObject({ dirtyHandling: 'stashed' })
-    expect(row?.stashRef).toMatch(/^[0-9a-f]{40}$/)
-  })
-
-  it('explains an aborted branch start in a system message and leaves the repository alone', async () => {
-    const fx = await setup({ api: 'clean' })
-    const r = rig as Rig
-    const created = await r.service.create(r.groupId, 'Fix it', 'plan_first', 3)
-    if (!('sessionId' in created)) throw new Error('expected a session id')
-    const repo = (fx['api'] as GitFixture).path
-    // The repository becomes dirty before the title arrives: no choice was made for it.
-    writeFileSync(join(repo, trackedFile), 'changed meanwhile\n')
-    await until(() => r.adapter.handles.length > 0 && r.adapter.last.sent.length > 0)
-    await reply('Fix order sync')
-    await until(() =>
-      r.service.snapshot(created.sessionId).messages.some((m) => m.role === 'system')
-    )
-    const note = r.service.snapshot(created.sessionId).messages.find((m) => m.role === 'system')
-    expect(note?.content).toContain('no branch was created')
-    expect(branchOf(repo)).toBe('dev')
-    expect(r.sessionsRepo.getById(created.sessionId)?.slug).toBeNull()
-  })
 })
 
 describe('reopening a session', () => {
+  /** A session whose api repository already has its session branch (made the way a first worker does). */
   async function started(kinds: Record<string, GitFixtureKind>): Promise<{
     sessionId: string
     fx: Record<string, GitFixture>
   }> {
     const fx = await setup(kinds)
     const sessionId = await startClean('Fix order sync')
-    await until(() => headerOf(sessionId).branches.some((b) => b.branchName !== null))
+    await until(() => (rig as Rig).sessionsRepo.getById(sessionId)?.slug === 'fix-order-sync')
+    const repo = (fx['api'] as GitFixture).path
+    git(repo, 'checkout', '-b', 'arc/fix-order-sync')
+    new SessionProjectsRepo((rig as Rig).opened.db).setBranch(
+      sessionId,
+      'api',
+      'arc/fix-order-sync',
+      'dev',
+      'dev'
+    )
     return { sessionId, fx }
   }
 

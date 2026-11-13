@@ -85,7 +85,6 @@
   $effect(() => window.arc.on('session:summary', (e) => sessionsList.applySummary(e)))
   $effect(() => window.arc.on('session:brain-state', (e) => activeSession.applyBrainState(e)))
   $effect(() => window.arc.on('session:header', (e) => activeSession.applyHeader(e)))
-  $effect(() => window.arc.on('session:dirty-question', (e) => activeSession.applyDirtyQuestion(e)))
   $effect(() => window.arc.on('session:plan', (e) => activeSession.applyPlan(e)))
   $effect(() => window.arc.on('session:worker-changed', (e) => activeSession.applyWorker(e)))
   $effect(() =>

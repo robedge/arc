@@ -38,6 +38,7 @@
   import DirtyTreeDialog from '../components/sessions/DirtyTreeDialog.svelte'
   import ReviewFileList from '../components/review/ReviewFileList.svelte'
   import SessionHeader from '../components/sessions/SessionHeader.svelte'
+  import PopoverList from '../components/ui/PopoverList.svelte'
   import NewSessionDialog from '../components/sessions/NewSessionDialog.svelte'
   import type { SessionEventEntry, SessionMessage } from '@shared/types/session'
   import HeaderMenu from '../components/sessions/HeaderMenu.svelte'
@@ -423,6 +424,15 @@
     id: 'preview-cursor',
     workers: { mode: 'provider', provider: 'cursor' } as const
   })
+  const branchNames = ['api', 'web', 'docs', 'billing', 'search', 'mail', 'auth', 'jobs', 'infra']
+  const branchesOf = (withBranch: number) =>
+    branchNames.map((n, i) => ({
+      projectId: n,
+      projectName: n,
+      branchName: i < withBranch ? 'arc/fix-order-sync' : null,
+      baseBranch: i < withBranch ? 'dev' : null,
+      readOnly: false
+    }))
   const previewHeader = {
     id: 'preview',
     groupId: 'g',
@@ -673,6 +683,40 @@
   let attentionOpen = $state(false)
   const attentionCount = 2
   let structuredOpen = $state(false)
+  let branchOpen = $state(false)
+  const branchRequests: AttentionRequest[] = [
+    {
+      id: 'bq-normal',
+      kind: 'branch',
+      from: 'Arc',
+      projectId: 'web',
+      projectName: 'web',
+      files: ['src/routes/orders.ts', 'src/lib/retry.ts', 'README.md'],
+      moreFiles: 0,
+      workers: ['W3 web-fix']
+    },
+    {
+      id: 'bq-long',
+      kind: 'branch',
+      from: 'Arc',
+      projectId: 'api',
+      projectName: 'api',
+      files: Array.from({ length: 10 }, (_, i) => `src/services/handlers/file-${i + 1}.ts`),
+      moreFiles: 14,
+      workers: ['W1 api-retry', 'W2 api-docs']
+    },
+    {
+      id: 'bq-carry-failed',
+      kind: 'branch',
+      from: 'Arc',
+      projectId: 'web',
+      projectName: 'web',
+      files: ['src/routes/orders.ts', 'src/lib/retry.ts'],
+      moreFiles: 0,
+      workers: ['W3 web-fix'],
+      message: 'The changes could not be brought along. Pick another choice.'
+    }
+  ]
   const requests: AttentionRequest[] = [
     {
       id: 'p1',
@@ -1378,6 +1422,34 @@
           onback={() => {}}
           changedCount={0}
         />
+        <SessionHeader
+          header={{ ...previewHeader, id: 'preview-branches-0', branches: branchesOf(0) }}
+          groupName="Sample group, 0 of 9 branches"
+          onback={() => {}}
+        />
+        <SessionHeader
+          header={{ ...previewHeader, id: 'preview-branches-1', branches: branchesOf(1) }}
+          groupName="Sample group, 1 of 9 branches"
+          onback={() => {}}
+        />
+        <SessionHeader
+          header={{ ...previewHeader, id: 'preview-branches-3', branches: branchesOf(3) }}
+          groupName="Sample group, 3 of 9 branches"
+          onback={() => {}}
+        />
+        <SessionHeader
+          header={{ ...previewHeader, id: 'preview-branches-9', branches: branchesOf(9) }}
+          groupName="Sample group, all 9 branches"
+          onback={() => {}}
+        />
+        <div class="flex min-h-40 justify-end">
+          <PopoverList
+            label="8 more projects"
+            listLabel="Projects without a session branch"
+            items={branchNames.slice(1)}
+            initiallyOpen
+          />
+        </div>
         <Panel as="div" class="max-w-xs">
           <ReviewFileList
             selected={{ projectId: 'api', source: 'session', path: 'src/orders/sync.ts' }}
@@ -1697,6 +1769,7 @@
       <div class="flex items-center gap-4">
         <AttentionBadge count={attentionCount} onclick={() => (attentionOpen = true)} />
         <Button onclick={() => (structuredOpen = true)}>Open structured questions</Button>
+        <Button onclick={() => (branchOpen = true)}>Open unsaved changes</Button>
         <p class="font-mono text-xs text-text-muted" data-last-action>
           Sample last action: {lastAction}
         </p>
@@ -1857,6 +1930,19 @@
     lastAction = `decline ${id}`
   }}
   onClose={() => (structuredOpen = false)}
+/>
+
+<AttentionDialog
+  open={branchOpen}
+  requests={branchRequests}
+  onApprove={() => {}}
+  onDeny={() => {}}
+  onAlwaysAllow={() => {}}
+  onAnswer={() => {}}
+  onAnswerBranch={(id, choice) => {
+    lastAction = `branch ${id}: ${choice}`
+  }}
+  onClose={() => (branchOpen = false)}
 />
 
 <div class="pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col gap-2">

@@ -1,3 +1,4 @@
+// @spec: 013-session-branches-on-demand
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import SessionHeader from '../../src/renderer/src/lib/components/sessions/SessionHeader.svelte'
@@ -88,6 +89,104 @@ it('shows a removed project as Removed, in words, and not as a branch', () => {
   const branchChips = [...document.querySelectorAll('[data-branch-chip="branch"]')]
   expect(branchChips).toHaveLength(1)
   expect(branchChips[0]?.textContent?.replace(/\s+/g, ' ').trim()).toBe('arc/fix-order-sync ← dev')
+})
+
+const bare = (projectId: string) => branch(projectId, null, { branchName: null, baseBranch: null })
+const chipTexts = (): string[] =>
+  [...document.querySelectorAll('[data-branch-chip="branch"]')].map(
+    (c) => c.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+  )
+const names = (n: number): string[] =>
+  ['api', 'web', 'docs', 'billing', 'search', 'mail', 'auth', 'jobs', 'infra'].slice(0, n)
+const countButton = (): HTMLElement | null => document.querySelector('[data-popover-list] button')
+
+it('1 of 9 shows the api chip and 8 more projects', () => {
+  const branches = [branch('api', 'dev'), ...names(9).slice(1).map(bare)]
+  render(SessionHeader, { header: { ...header, branches }, groupName: 'Team', onback: vi.fn() })
+  expect(chipTexts()).toEqual(['api arc/fix-order-sync ← dev'])
+  expect(countButton()?.textContent?.replace(/\s+/g, ' ').trim()).toBe('8 more projects')
+})
+
+it('0 of 9 shows only the count, 9 projects', () => {
+  render(SessionHeader, {
+    header: { ...header, branches: names(9).map(bare) },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  expect(chipTexts()).toEqual([])
+  expect(countButton()?.textContent?.trim()).toBe('9 projects')
+})
+
+it('3 of 9 lists three named chips and 6 more projects', () => {
+  const all = names(9)
+  const branches = [...all.slice(0, 3).map((n) => branch(n, 'dev')), ...all.slice(3).map(bare)]
+  render(SessionHeader, { header: { ...header, branches }, groupName: 'Team', onback: vi.fn() })
+  expect(chipTexts()).toHaveLength(3)
+  expect(chipTexts()[2]).toBe('docs arc/fix-order-sync ← dev')
+  expect(countButton()?.textContent?.trim()).toBe('6 more projects')
+})
+
+it('all 9 with the same label shows the single chip and no count', () => {
+  const branches = names(9).map((n) => branch(n, 'dev'))
+  render(SessionHeader, { header: { ...header, branches }, groupName: 'Team', onback: vi.fn() })
+  expect(chipTexts()).toEqual(['arc/fix-order-sync ← dev'])
+  expect(countButton()).toBeNull()
+})
+
+it('singular counts: 1 more project and 1 project', () => {
+  render(SessionHeader, {
+    header: { ...header, branches: [branch('api', 'dev'), bare('web')] },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  expect(countButton()?.textContent?.trim()).toBe('1 more project')
+  cleanup()
+  render(SessionHeader, {
+    header: { ...header, branches: [bare('web')] },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  expect(countButton()?.textContent?.trim()).toBe('1 project')
+})
+
+it('does not count read only or removed projects', () => {
+  const branches = [
+    branch('api', 'dev'),
+    bare('web'),
+    branch('docs', null, { branchName: null, readOnly: true }),
+    branch('old', null, { branchName: null, removed: true })
+  ]
+  render(SessionHeader, { header: { ...header, branches }, groupName: 'Team', onback: vi.fn() })
+  expect(countButton()?.textContent?.trim()).toBe('1 more project')
+  expect(document.querySelectorAll('[data-branch-chip="read-only"]')).toHaveLength(1)
+  expect(document.querySelectorAll('[data-branch-chip="removed"]')).toHaveLength(1)
+})
+
+it('opening the count lists the unbranched project names', async () => {
+  const branches = [branch('api', 'dev'), bare('web'), bare('docs')]
+  render(SessionHeader, { header: { ...header, branches }, groupName: 'Team', onback: vi.fn() })
+  await fireEvent.click(countButton() as HTMLElement)
+  const list = screen.getByRole('list', { name: 'Projects without a session branch' })
+  expect([...list.querySelectorAll('li')].map((li) => li.textContent?.trim())).toEqual([
+    'web',
+    'docs'
+  ])
+})
+
+it('updates live when a project gets its branch', async () => {
+  const view = render(SessionHeader, {
+    header: { ...header, branches: [branch('api', 'dev'), bare('web')] },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  expect(countButton()?.textContent?.trim()).toBe('1 more project')
+  await view.rerender({
+    header: { ...header, branches: [branch('api', 'dev'), branch('web', 'dev')] },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  expect(countButton()).toBeNull()
+  expect(chipTexts()).toEqual(['arc/fix-order-sync ← dev'])
 })
 
 it('shows no chips before any branch exists', () => {

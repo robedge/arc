@@ -264,58 +264,14 @@ it('ATTACHMENT_UNREADABLE marks that chip as an error', async () => {
   expect(document.querySelectorAll('[data-attachment-state="error"]')).toHaveLength(1)
 })
 
-it('the dirty-tree choice keeps the attachments until the session is created', async () => {
-  createReply = () => ({
-    ok: true,
-    data: {
-      needsDirtyChoice: {
-        token: 't1',
-        repos: [{ projectId: 'api', name: 'api', files: ['a.ts'], fileCount: 1 }]
-      }
-    }
-  })
-  const oncreated = vi.fn()
-  mount({ oncreated })
-  await attach()
-  await fireEvent.click(start())
-  await waitFor(() => expect(screen.getByText('Unsaved changes')).toBeTruthy())
-  expect(calls('attachments:discard-draft')).toHaveLength(0)
-  // Back out of the question: the form returns with its attachments.
-  invoke.mockImplementation(async (channel: string) =>
-    channel === 'sessions:resolve-dirty'
-      ? { ok: true, data: { status: 'cancelled' } }
-      : { ok: true, data: undefined }
-  )
-  await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-  await waitFor(() => expect(screen.getByLabelText('Request')).toBeTruthy())
-  expect(screen.getAllByRole('listitem')).toHaveLength(2)
-  expect(calls('attachments:discard-draft')).toHaveLength(0)
-  expect(oncreated).not.toHaveBeenCalled()
-})
-
-it('the draft is cleared when the dirty choice creates the session', async () => {
-  createReply = () => ({
-    ok: true,
-    data: {
-      needsDirtyChoice: {
-        token: 't1',
-        repos: [{ projectId: 'api', name: 'api', files: ['a.ts'], fileCount: 1 }]
-      }
-    }
-  })
+it('the draft is cleared when the session is created', async () => {
+  createReply = () => ({ ok: true, data: { sessionId: 's9' } })
   const oncreated = vi.fn()
   const view = mount({ oncreated })
   await attach()
   await fireEvent.click(start())
-  await waitFor(() => expect(screen.getByText('Unsaved changes')).toBeTruthy())
-  invoke.mockImplementation(async (channel: string) =>
-    channel === 'sessions:resolve-dirty'
-      ? { ok: true, data: { status: 'ready', sessionId: 's9' } }
-      : { ok: true, data: undefined }
-  )
-  await fireEvent.click(screen.getByRole('radio', { name: /Set aside/ }))
-  await fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
   await waitFor(() => expect(oncreated).toHaveBeenCalledWith('s9'))
+  expect(screen.queryByText('Unsaved changes')).toBeNull()
   view.unmount()
   expect(calls('attachments:discard-draft')).toHaveLength(0)
 })

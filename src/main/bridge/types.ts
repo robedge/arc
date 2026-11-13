@@ -77,7 +77,10 @@ export interface SpawnWorkerResult {
   /** What the worker really runs on, so the brain sees overrides and fallbacks. */
   provider: ProviderId
   model: string
-  /** Why the choice differs from what the brain asked for; null when it does not. */
+  /**
+   * Why the choice differs from what the brain asked for, and, for a worker that waits for the
+   * user's choice about unsaved changes, that it must not be spawned again; null when neither.
+   */
   note: string | null
 }
 

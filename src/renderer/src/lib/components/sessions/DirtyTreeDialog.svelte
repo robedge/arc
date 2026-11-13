@@ -8,7 +8,7 @@
   import Radio from '../ui/Radio.svelte'
 
   interface Props {
-    /** From the `needsDirtyChoice` result. */
+    /** From the `needsDirtyChoice` result of reopening a session. */
     token: string
     repos: DirtyRepo[]
     /** Shown when the last try did not work (carrying the changes failed). */
@@ -33,7 +33,7 @@
     {
       value: 'carry',
       label: 'Bring them along',
-      hint: 'Takes the changes onto the new session branch.'
+      hint: 'Takes the changes onto the session branch.'
     }
   ]
 
@@ -83,7 +83,7 @@
 
 <Modal title="Unsaved changes" size="lg" {onsubmit} {oncancel} {busy}>
   <p class="text-sm text-text">
-    These repositories have changes that are not committed. Arc is about to move them to a new
+    These repositories have changes that are not committed. Arc is about to switch them back to the
     session branch. Choose what to do with the changes in each one.
   </p>
   {#if message}<Banner kind="warning">{message}</Banner>{/if}

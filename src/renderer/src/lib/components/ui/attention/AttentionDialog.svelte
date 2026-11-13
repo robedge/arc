@@ -4,6 +4,8 @@
   import PermissionCard from './PermissionCard.svelte'
   import QuestionCard from './QuestionCard.svelte'
   import StructuredQuestionCard from './StructuredQuestionCard.svelte'
+  import BranchQuestionCard from './BranchQuestionCard.svelte'
+  import type { BranchChoiceValue } from '@shared/types/session'
   import type { AttentionRequest } from './types'
 
   interface Props {
@@ -22,6 +24,8 @@
     ) => Promise<string | null | void> | void
     /** Dismisses a structured question; resolves to an error message on failure. */
     onDecline?: (id: string) => Promise<string | null | void> | void
+    /** Arc's unsaved-changes choice; resolves to an error message on failure. */
+    onAnswerBranch?: (id: string, choice: BranchChoiceValue) => Promise<string | null | void> | void
     onClose: () => void
   }
 
@@ -35,6 +39,7 @@
     onAnswer,
     onAnswerStructured = () => {},
     onDecline = () => {},
+    onAnswerBranch = () => {},
     onClose
   }: Props = $props()
 
@@ -71,6 +76,17 @@
             {onApprove}
             {onDeny}
             {onAlwaysAllow}
+          />
+        {:else if request.kind === 'branch'}
+          <BranchQuestionCard
+            id={request.id}
+            from={request.from}
+            projectName={request.projectName}
+            files={request.files}
+            moreFiles={request.moreFiles}
+            workers={request.workers}
+            message={request.message}
+            onAnswer={onAnswerBranch}
           />
         {:else if request.questions && request.questions.length > 0}
           <StructuredQuestionCard

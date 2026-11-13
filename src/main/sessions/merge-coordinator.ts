@@ -821,6 +821,7 @@ export class MergeCoordinator {
       'Commits on each session branch (machine-made from git log <base>..<branch> --oneline):'
     )
     const undone: string[] = []
+    let listed = 0
     for (const project of this.deps.sessionProjectsRepo.listBySession(this.deps.sessionId)) {
       if (project.readOnly || project.branchName === null) continue
       let tip: SessionTip
@@ -834,16 +835,20 @@ export class MergeCoordinator {
         project.baseBranch,
         tip.effectiveTip
       )
-      const base = project.baseBranch ? `, base ${project.baseBranch}` : ''
-      lines.push(`${project.projectName} (${project.branchName}${base}):`)
-      if (commits.length === 0) lines.push('  (no commits)')
-      for (const c of commits) lines.push(`  ${c.sha} ${c.subject}`)
+      // A repository with a branch but no commits was not changed, so the summary leaves it out.
+      if (commits.length > 0) {
+        listed += 1
+        const base = project.baseBranch ? `, base ${project.baseBranch}` : ''
+        lines.push(`${project.projectName} (${project.branchName}${base}):`)
+        for (const c of commits) lines.push(`  ${c.sha} ${c.subject}`)
+      }
       if (tip.pendingTip !== null) {
         undone.push(
           `The ${project.branchName} update in ${project.projectName} is waiting for the user's checkout to be clean.`
         )
       }
     }
+    if (listed === 0) lines.push('  (no commits in any repository)')
     for (const r of rows) {
       if (r.status === 'failed' || r.status === 'stopped') {
         undone.push(`W${r.number} ${r.slug} ${r.status}; its work was not merged.`)

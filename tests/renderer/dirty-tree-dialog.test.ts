@@ -1,3 +1,4 @@
+// @spec: 013-session-branches-on-demand
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import DirtyTreeDialog from '../../src/renderer/src/lib/components/sessions/DirtyTreeDialog.svelte'
@@ -59,4 +60,15 @@ it('Cancel answers cancel for every repository', async () => {
     token: 't1',
     choices: { api: 'cancel', web: 'cancel' }
   })
+})
+
+it('explains that Arc is about to switch the repositories back to the session branch', () => {
+  setup()
+  expect(
+    screen.getByText(
+      'These repositories have changes that are not committed. Arc is about to switch them back to the session branch. Choose what to do with the changes in each one.'
+    )
+  ).toBeTruthy()
+  expect(screen.getAllByText('Takes the changes onto the session branch.')).toHaveLength(2)
+  expect(document.body.textContent).not.toMatch(/new session|new branch/i)
 })

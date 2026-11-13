@@ -8,6 +8,7 @@ import type { ProcessSupervisor } from '../agents/process-supervisor'
 import type { BridgeServer } from '../bridge/bridge-server'
 import type { AppSettingsRepo } from '../db/repositories/app-settings-repo'
 import type { KnowledgeItemsRepo } from '../db/repositories/knowledge-items-repo'
+import type { BranchQuestionsRepo } from '../db/repositories/branch-questions-repo'
 import type { MessageAttachmentsRepo } from '../db/repositories/message-attachments-repo'
 import type { KnowledgeSuggestionsRepo } from '../db/repositories/knowledge-suggestions-repo'
 import type { UsageRepo } from '../db/repositories/usage-repo'
@@ -94,5 +95,6 @@ export interface AppServices {
 
   sessions: SessionService
   messageAttachmentsRepo: MessageAttachmentsRepo
+  branchQuestionsRepo: BranchQuestionsRepo
   attention: AttentionService
 }

@@ -64,6 +64,7 @@ import { PidLedger } from '../agents/pid-ledger'
 import { ProcessSupervisor } from '../agents/process-supervisor'
 import { EventsRepo } from '../db/repositories/events-repo'
 import { MessagesRepo } from '../db/repositories/messages-repo'
+import { BranchQuestionsRepo } from '../db/repositories/branch-questions-repo'
 import { MessageAttachmentsRepo } from '../db/repositories/message-attachments-repo'
 import { AllowRulesRepo } from '../db/repositories/allow-rules-repo'
 import { AttentionRepo } from '../db/repositories/attention-repo'
@@ -493,6 +494,7 @@ function buildSessionServices(
   // The service reports attention changes to the attention service that is built from it.
   const attentionRef = new LateRef<AttentionService>('the attention service')
   const messageAttachmentsRepo = new MessageAttachmentsRepo(db)
+  const branchQuestionsRepo = new BranchQuestionsRepo(db)
   const stagingRoot = join(app.getPath('userData'), 'attachment-staging')
   // Staged files do not survive a restart; cleared before any renderer can stage (tech spec 2.3).
   clearStagingRoot(stagingRoot, sessionsLog)
@@ -504,6 +506,7 @@ function buildSessionServices(
   const getSessionDir = (sessionId: string): string =>
     join(app.getPath('userData'), 'sessions', sessionId)
   const sessions = new SessionService({
+    branchQuestionsRepo,
     messageAttachmentsRepo,
     attachmentSender: new AttachmentSender({
       db,
@@ -587,6 +590,7 @@ function buildSessionServices(
     emit,
     onAttentionChanged: (sessionId, state) =>
       attentionRef.get().onAttentionChanged(sessionId, state),
+    onBranchQuestionsChanged: (sessionId) => attentionRef.get().onBranchQuestionsChanged(sessionId),
     log: sessionsLog
   })
   const notifications = new NotificationService({
@@ -608,13 +612,15 @@ function buildSessionServices(
   const attention = new AttentionService({
     sessions,
     attentionRepo: new AttentionRepo(db),
+    branchQuestionsRepo,
     sessionsRepo: new SessionsRepo(db),
     workerOf: (id) => workersRepo.get(id),
     emit,
-    onNewRequest: (notice) => notifications.notify(notice)
+    onNewRequest: (notice) => notifications.notify(notice),
+    log: sessionsLog
   })
   attentionRef.bind(attention)
-  return { sessions, attention, attachments, messageAttachmentsRepo }
+  return { sessions, attention, attachments, messageAttachmentsRepo, branchQuestionsRepo }
 }
 
 /**

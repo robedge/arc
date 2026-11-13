@@ -1,6 +1,12 @@
-import type { AttentionTool, AttentionView } from '@shared/types/session'
+import type {
+  AnswerBranchQuestionResult,
+  AttentionTool,
+  AttentionView,
+  BranchChoiceValue
+} from '@shared/types/session'
 import type { IpcEvents } from '@shared/ipc/contract'
 import type { AttentionRepo, AttentionRequestRow } from '../db/repositories/attention-repo'
+import type { BranchQuestionsRepo } from '../db/repositories/branch-questions-repo'
 import type { SessionsRepo } from '../db/repositories/sessions-repo'
 import type { WorkerRow } from '../db/schema'
 import { HELPER_REASON, questionsOfRow } from './attention-questions'
@@ -100,16 +106,31 @@ export function attentionViews(
   return rows.map((row) => attentionView(row, row.workerId ? workerOf(row.workerId) : undefined))
 }
 
+function noticeText(request: AttentionView): string {
+  if (request.kind === 'question') return request.question
+  if (request.kind === 'branch') return `Unsaved changes in ${request.projectName}`
+  return request.action
+}
+
 export interface AttentionServiceDeps {
   sessions: {
     answerAttention: (requestId: string, answer: AttentionAnswer) => void
+    answerBranchQuestion: (
+      questionId: string,
+      choice: BranchChoiceValue
+    ) => Promise<AnswerBranchQuestionResult>
+    /** The cards of a session's open unsaved-changes questions. */
+    branchQuestionViews: (sessionId: string) => Promise<AttentionView[]>
+    attentionState: (sessionId: string) => AttentionState
   }
   attentionRepo: Pick<AttentionRepo, 'countPendingEscalatedByGroup'>
+  branchQuestionsRepo: Pick<BranchQuestionsRepo, 'countPending' | 'countPendingByGroup'>
   sessionsRepo: Pick<SessionsRepo, 'getById'>
   workerOf: (workerId: string) => Pick<WorkerRow, 'number' | 'slug' | 'dependsOnJson'> | undefined
   emit: <E extends 'session:attention'>(event: E, payload: IpcEvents[E]) => void
   /** A request is with the user (called on every change; the notification service dedupes by id). */
   onNewRequest: (notice: AttentionNotice) => void
+  log?: { warn: (message: string, ...rest: unknown[]) => void }
 }
 
 /**
@@ -125,21 +146,47 @@ export class AttentionService {
     const session = this.deps.sessionsRepo.getById(sessionId)
     if (!session) return
     const requests = attentionViews(state.requests, this.deps.workerOf)
-    this.deps.emit('session:attention', {
-      sessionId,
-      groupId: session.groupId,
-      count: state.count,
-      requests
-    })
+    if (this.deps.branchQuestionsRepo.countPending(sessionId) === 0) {
+      this.push(sessionId, session.groupId, state.count, requests)
+      return
+    }
+    this.pushWithQuestions(sessionId, session.groupId, state.count, requests).catch(
+      (error: unknown) => {
+        // Reading git or the database can fail while Arc quits; the next change pushes again.
+        this.deps.log?.warn('could not push the unsaved-changes cards', error)
+      }
+    )
+  }
+
+  /** An unsaved-changes question opened, was answered, was put back or was closed. */
+  onBranchQuestionsChanged(sessionId: string): void {
+    this.onAttentionChanged(sessionId, this.deps.sessions.attentionState(sessionId))
+  }
+
+  /** The agent requests plus Arc's own questions, which are read from git and so come later. */
+  private async pushWithQuestions(
+    sessionId: string,
+    groupId: string,
+    count: number,
+    requests: AttentionView[]
+  ): Promise<void> {
+    const questions = await this.deps.sessions.branchQuestionViews(sessionId)
+    // Another change came while git was read: its own push is the one that counts.
+    if (questions.length !== this.deps.branchQuestionsRepo.countPending(sessionId)) return
+    this.push(sessionId, groupId, count + questions.length, [...requests, ...questions])
+  }
+
+  private push(sessionId: string, groupId: string, count: number, requests: AttentionView[]): void {
+    this.deps.emit('session:attention', { sessionId, groupId, count, requests })
     for (const request of requests) {
       // A request answered in the worker's terminal is not a Needs-attention item: no notification.
       if (request.route === 'terminal') continue
       this.deps.onNewRequest({
         sessionId,
-        groupId: session.groupId,
+        groupId,
         requestId: request.id,
         from: request.from,
-        text: request.kind === 'question' ? request.question : request.action
+        text: noticeText(request)
       })
     }
   }
@@ -148,7 +195,20 @@ export class AttentionService {
     this.deps.sessions.answerAttention(requestId, answer)
   }
 
+  answerBranchQuestion(
+    questionId: string,
+    choice: BranchChoiceValue
+  ): Promise<AnswerBranchQuestionResult> {
+    return this.deps.sessions.answerBranchQuestion(questionId, choice)
+  }
+
   summary(): { byGroup: Record<string, number> } {
-    return { byGroup: this.deps.attentionRepo.countPendingEscalatedByGroup() }
+    const byGroup = { ...this.deps.attentionRepo.countPendingEscalatedByGroup() }
+    for (const [groupId, n] of Object.entries(
+      this.deps.branchQuestionsRepo.countPendingByGroup()
+    )) {
+      byGroup[groupId] = (byGroup[groupId] ?? 0) + n
+    }
+    return { byGroup }
   }
 }

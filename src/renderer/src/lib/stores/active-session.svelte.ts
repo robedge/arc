@@ -1,6 +1,7 @@
 import type { AppError } from '@shared/errors'
 import type {
   AttentionView,
+  BranchChoiceValue,
   BrainState,
   DirtyRepo,
   PlanView,
@@ -11,6 +12,7 @@ import type {
   SessionSnapshot,
   WorkerView
 } from '@shared/types/session'
+import { messageFor } from '../ipc/messages'
 import { createStreamBuffer } from './stream-buffer'
 import { knowledgeSuggestions } from './knowledge-suggestions.svelte'
 import { attachments, sessionKey } from './attachments.svelte'
@@ -119,14 +121,6 @@ class ActiveSessionStore {
     if (result.status === 'ready' && result.sessionId !== this.sessionId) {
       void this.open(result.sessionId)
     }
-  }
-
-  /** `session:dirty-question`: a project joined the group with unsaved changes; ask what to do. */
-  applyDirtyQuestion(e: {
-    sessionId: string
-    needsDirtyChoice: { token: string; repos: DirtyRepo[] }
-  }): void {
-    this.dirtyChoice = e.needsDirtyChoice
   }
 
   setSnapshot(snapshot: SessionSnapshot): void {
@@ -296,8 +290,12 @@ class ActiveSessionStore {
   }
 
   /** The terminal-routed requests of one worker, pinned in its step-in bar. */
-  terminalAttentionFor(workerId: string): AttentionView[] {
-    return this.attention.filter((r) => r.route === 'terminal' && r.workerId === workerId)
+  terminalAttentionFor(workerId: string): Exclude<AttentionView, { kind: 'branch' }>[] {
+    // Arc's own unsaved-changes questions are always in the queue, never in a terminal.
+    return this.attention.filter(
+      (r): r is Exclude<AttentionView, { kind: 'branch' }> =>
+        r.kind !== 'branch' && r.route === 'terminal' && r.workerId === workerId
+    )
   }
 
   openAttention(requestId?: string): void {
@@ -319,6 +317,19 @@ class ActiveSessionStore {
   ): Promise<AppError | null> {
     const res = await window.arc.invoke('attention:answer', { requestId, ...answer })
     return res.ok ? null : res.error
+  }
+
+  /**
+   * Answers Arc's unsaved-changes question. Resolves to null when it worked or the question is gone
+   * (`not-open`; the next push removes the card), else the text to show on the card.
+   */
+  async answerBranchQuestion(
+    questionId: string,
+    choice: BranchChoiceValue
+  ): Promise<string | null> {
+    const res = await window.arc.invoke('sessions:answer-branch-question', { questionId, choice })
+    if (!res.ok) return messageFor(res.error)
+    return res.data.status === 'failed' ? res.data.reason : null
   }
 
   /** Renames the open session in the header after `sessions:rename` succeeded. */
