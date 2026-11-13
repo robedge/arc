@@ -1,7 +1,7 @@
 # Technical Specification: Session Branches on Demand
 
 - **Functional Specification:** [functional-spec.md](./functional-spec.md)
-- **Status:** Draft
+- **Status:** Completed
 - **Author(s):** redgell
 
 ---
