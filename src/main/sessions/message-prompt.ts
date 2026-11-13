@@ -1,4 +1,5 @@
 import type { MessagePrompt, SessionMessage } from '@shared/types/session'
+import { surfaceProblem, surfaceSchema } from '@shared/surface'
 import { attachmentView } from '../attachments/attachment-send'
 import type { MessageAttachmentRow } from '../db/schema'
 import type { MessageRow } from '../db/repositories/messages-repo'
@@ -12,7 +13,15 @@ export function parsePrompt(json: string | null): MessagePrompt | undefined {
       workerIds?: unknown
       status?: unknown
       count?: unknown
+      surface?: unknown
     } | null
+    if (parsed?.kind === 'surface') {
+      const surface = surfaceSchema.safeParse(parsed.surface)
+      if (surface.success && surfaceProblem(surface.data) === null) {
+        return { kind: 'surface', surface: surface.data }
+      }
+      return undefined
+    }
     if (parsed?.kind === 'review-link') return { kind: 'review-link' }
     if (
       parsed?.kind === 'knowledge-suggestions' &&

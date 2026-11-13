@@ -10,6 +10,7 @@ import { reportDoneTool } from './report-done'
 import { reportProgressTool } from './report-progress'
 import { requestPermissionTool } from './request-permission'
 import { resolveRequestTool } from './resolve-request'
+import { showSurfaceTool } from './show-surface'
 import { spawnWorkerTool } from './spawn-worker'
 import { suggestKnowledgeUpdateTool } from './suggest-knowledge-update'
 import { syncWorkerTool } from './sync-worker'
@@ -26,6 +27,7 @@ export const BRIDGE_TOOLS: readonly AnyBridgeTool[] = [
   escalateToUserTool,
   askUserTool,
   suggestKnowledgeUpdateTool,
+  showSurfaceTool,
   reportProgressTool,
   reportDoneTool,
   askBrainTool,

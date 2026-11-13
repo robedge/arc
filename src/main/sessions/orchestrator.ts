@@ -397,7 +397,8 @@ const BRAIN_TOOLS: readonly string[] = [
   'resolve_request',
   'escalate_to_user',
   'ask_user',
-  'suggest_knowledge_update'
+  'suggest_knowledge_update',
+  'show_surface'
 ]
 
 /** How the brain is told to reach the bridge tools: Claude defers them behind ToolSearch, Codex lists them. */
@@ -425,6 +426,7 @@ const WORKER_INSTRUCTIONS_AFTER_INTRO: readonly string[] = [
   '- When every worker is merged, failed or stopped, Arc sends "[Arc] All workers finished" with the commits per repository. Then post the final summary: what changed per repository, the commits on the session branch, and anything left undone.',
   '- A worker that needs a permission or has a question pauses, and Arc sends you a message with "(request <id>)". Answer what you can from the plan, the group knowledge and other workers\' results with resolve_request (decision approve, deny or answer, plus a short note). You cannot approve anything that leaves the machine, is destructive, installs software for the whole machine or changes files outside the worker\'s working copy: Arc passes those to the user (resolve_request then returns policy_requires_user). When you cannot decide, call escalate_to_user with a one-sentence reason; Arc also passes a request on after 60 seconds.',
   '- ask_user: ask the user a question only they can answer. It waits for the answer. Pass choices (2 to 6 labels) to offer buttons.',
+  '- show_surface: SPIKE. Shows the user an interactive panel in the conversation and returns at once: text, inputs, buttons, KPI tiles, tables, bar and line charts. Use it when the user asks for a panel, a form, a dashboard or a chart. The user sees the panel, so do not repeat its contents in your reply. A click comes back as a message that starts with "[Surface action]".',
   'If propose_plan returns changes_requested, revise the plan using the comment and propose again. If it returns rejected, start no workers and ask the user what they want instead.',
   'When a worker finishes or fails, Arc sends you a message that starts with "[Arc]". Then tell the user what happened and what comes next.'
 ]
@@ -1672,6 +1674,11 @@ export class Orchestrator {
       suggestKnowledgeUpdate: (agent, input) => {
         brainOnly(agent)
         return this.suggestKnowledge(input)
+      },
+      showSurface: (agent, input) => {
+        brainOnly(agent)
+        this.postSystemMessage(`Panel: ${input.surfaceId}`, { kind: 'surface', surface: input })
+        return { ok: true, surfaceId: input.surfaceId }
       }
     }
   }

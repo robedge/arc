@@ -1,4 +1,5 @@
 import type { MessageAttachmentView } from '../attachments'
+import type { Surface } from '../surface'
 import type { TokenTotals } from './usage'
 import type { KnowledgeSuggestionView } from './knowledge-suggestion'
 import type { ProviderId, ProviderState, ProviderStatus, RunningOn, WorkersPref } from './provider'
@@ -106,6 +107,13 @@ export type MessagePrompt =
     }
   | ReviewLinkPrompt
   | KnowledgeSuggestionsPrompt
+  | SurfacePrompt
+
+/** SPIKE (A2UI): the brain's `show_surface` panel, drawn in place of the message text. */
+export interface SurfacePrompt {
+  kind: 'surface'
+  surface: Surface
+}
 
 /**
  * Marks the brain's reply to the final summary (or the "All work is merged." fallback system
