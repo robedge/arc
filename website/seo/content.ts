@@ -10,12 +10,14 @@ export const PLACEHOLDER_SITE_URL = 'https://arc.example.com';
 
 export const site = {
   name: 'Arc',
+  /** Source repository; index.html uses it through the %REPO_URL% token. */
+  repoUrl: 'https://github.com/robedge/arc',
   title: 'Arc - local-first macOS agent harness for Claude Code and Codex',
   description:
-    'Arc is a local-first macOS agent harness that points your Claude Code and Codex subscriptions at a whole group of repos. Lasting knowledge, no API keys.',
+    'Arc is a local-first macOS agent harness that points your Claude Code and Codex subscriptions at a whole group of repos. Lasting knowledge, no API keys. Open source.',
   /** One-paragraph summary used for llms.txt, the noscript block and JSON-LD. */
   summary:
-    'Arc is a personal, local-first macOS desktop app that points the Claude Code and Codex subscriptions a developer already pays for at a whole group of related repositories, with lasting knowledge (notes, docs, schemas, playbooks, links) attached to the group. A brain agent plans the work, worker agents fan out across the repos in their own git worktrees, and the result lands on one session branch for the developer to review.',
+    'Arc is a personal, local-first macOS desktop app that points the Claude Code and Codex subscriptions a developer already pays for at a whole group of related repositories, with lasting knowledge (notes, docs, schemas, playbooks, links) attached to the group. A brain agent plans the work, worker agents fan out across the repos in their own git worktrees, and the result lands on one session branch for the developer to review. Arc is open source, with its code on GitHub.',
   /** Headline drawn on the Open Graph image (scripts/build-images.mjs); same as the page h1. */
   ogHeadline: 'One agent harness across your whole group of repos.',
   ogImageAlt:
@@ -34,6 +36,11 @@ export interface Faq {
 }
 
 export const faqs: Faq[] = [
+  {
+    q: 'Is Arc open source?',
+    a: 'Yes. Arc is open source and its code is on GitHub at https://github.com/robedge/arc.',
+    source: 'Repository: https://github.com/robedge/arc (no LICENSE file at the time of writing)',
+  },
   {
     q: 'Does Arc need API keys?',
     a: 'No. Arc runs on the Claude and Codex subscriptions you already have by driving the locally installed Claude Code and Codex CLIs. It uses no direct API keys and makes no Anthropic or OpenAI SDK calls, so there is no separate API billing.',
@@ -93,6 +100,7 @@ export const faqs: Faq[] = [
 
 /** Feature list for the SoftwareApplication JSON-LD. */
 export const features: string[] = [
+  'Open source, with the code on GitHub',
   'Groups of local repositories with lasting knowledge: Projects, Notes, Docs, Prompts and Playbooks, Links and custom sections',
   'Brain agent that plans and spawns worker agents, one per sub-task',
   'Plan-first or autonomous spawn mode with a worker cap',

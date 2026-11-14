@@ -51,6 +51,7 @@
             <li><a href="#attention">Approvals</a></li>
             <li><a href="#security">Security</a></li>
             <li><a href="#faq">FAQ</a></li>
+            <li><a class="nav__ext" href="%REPO_URL%" target="_blank" rel="noopener">GitHub</a></li>
           </ul>
         </nav>
         <a class="nav__cta" href="#download">Download</a>
@@ -71,6 +72,7 @@
             Arc points the Claude and Codex subscriptions you already pay for at every repository in a
             group, with lasting notes, docs and playbooks attached. Ask once. A brain plans the work,
             workers fan out across the repos, and the result lands on one session branch for you to review.
+            Arc is open source.
           </p>
           <div class="actions">
             <a class="btn btn--primary" href="#download">Get Arc for macOS</a>
@@ -630,9 +632,10 @@ root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data
           <h2 id="download-title" class="display">Bring your whole system into one session.</h2>
           <p class="lede">Arc for macOS, Apple Silicon first. Bring a Claude or Codex subscription and the matching CLI, installed and logged in.</p>
           <div class="actions actions--center">
-            <a class="btn btn--primary btn--lg" id="download-link" href="https://github.com/robedge/arc/releases/latest/download/Arc-macos-arm64.dmg">Download for macOS</a>
+            <a class="btn btn--primary btn--lg" id="download-link" href="%REPO_URL%/releases/latest/download/Arc-macos-arm64.dmg">Download for macOS</a>
             <a class="btn btn--ghost" href="#top">Back to top</a>
           </div>
+          <p class="download__oss mono">Open source // <a href="%REPO_URL%" target="_blank" rel="noopener">Read the code on GitHub</a></p>
           <ul class="reqs mono" role="list">
             <li>macOS, single user</li>
             <li>Claude Code and/or Codex CLI on your PATH</li>
@@ -644,7 +647,8 @@ root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data
 
     <footer class="site-footer">
       <p class="wordmark wordmark--small"><svg class="wordmark__ring" aria-hidden="true"><use href="#ring" /></svg><span class="wordmark__text">ARC</span></p>
-      <p class="muted small">A local-first agent harness for macOS. Product definition v1.0, status: proposed.</p>
+      <p class="muted small">A local-first agent harness for macOS. Open source. Product definition v1.0, status: proposed.</p>
+      <a class="footer-link mono" href="%REPO_URL%" target="_blank" rel="noopener">GitHub</a>
     </footer>
 
     <script type="module" src="/src/main.ts"></script>

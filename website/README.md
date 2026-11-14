@@ -237,11 +237,11 @@ requests. The site makes no network calls beyond its own assets and has no analy
 ## Notes
 
 - The `#download-link` button in `index.html` points at
-  `https://github.com/robedge/arc/releases/latest/download/Arc-macos-arm64.dmg`. The root
+  `%REPO_URL%/releases/latest/download/Arc-macos-arm64.dmg`. The root
   workflow `.github/workflows/release.yml` publishes a GitHub Release on every push to `main`
   (other than website-only or docs-only changes) and uploads the dmg under that stable name, so
   the link always serves the newest build. The nav and hero buttons scroll to `#download`. If the
-  repository moves, update the URL in `index.html` (it is not read from `SITE_URL`).
+  repository moves, update `site.repoUrl` in `seo/content.ts`; index.html uses the `%REPO_URL%` token for every GitHub link (it is not read from `SITE_URL`).
 - Usage meter values in the models section are labeled as illustrative.
 - No igloo.inc assets are included. Raw captures from the analysis live in the git-ignored
   `.rea/` folder.

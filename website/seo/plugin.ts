@@ -7,7 +7,7 @@ import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
-import { PLACEHOLDER_SITE_URL } from './content.ts';
+import { PLACEHOLDER_SITE_URL, site } from './content.ts';
 import {
   basePath,
   faqHtml,
@@ -53,7 +53,7 @@ function fillHtml(html: string, siteUrl: string, fontPreloads: string[]): string
   html = fill('head', headTags(siteUrl, fontPreloads));
   html = fill('noscript', noscriptHtml(siteUrl));
   html = fill('faq', faqHtml());
-  return html;
+  return html.replaceAll('%REPO_URL%', site.repoUrl);
 }
 
 /** All generated files for a filled page, keyed by URL path. */
