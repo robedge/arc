@@ -1,0 +1,8 @@
+.rea/
+node_modules/
+dist/
+/screenshots/
+.DS_Store
+.tmp/
+.env
+.env.*

@@ -1,0 +1,47 @@
+/* Arc HUD tokens: navy ground, cyan primary, amber attention, green done, red error. */
+:root {
+  --ground: #03080f;
+  --ground-2: #060f1a;
+  --panel: rgb(6 15 26 / 0.86);
+  --panel-solid: #07111d;
+  --line: rgb(56 225 255 / 0.16);
+  --line-strong: rgb(56 225 255 / 0.38);
+  --grid: rgb(56 225 255 / 0.045);
+
+  --cyan: #38e1ff;
+  --cyan-soft: #8eefff;
+  --amber: #ffb547;
+  --green: #4be08a;
+  --red: #ff5c6c;
+
+  --text: #dcebf5;
+  --text-2: #b4c8d8;
+  --muted: #8fa7ba;
+  --on-accent: #03080f;
+
+  --font-display: 'Orbitron', 'Rajdhani', system-ui, sans-serif;
+  --font-label: 'Rajdhani', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius: 2px;
+  --gap: clamp(1rem, 2.4vw, 1.75rem);
+  --section-pad: clamp(5rem, 12vw, 9rem);
+  --content: 1200px;
+  /* Side padding that also clears notches and rounded corners in landscape. */
+  --pad-x: clamp(1.25rem, 4vw, 2.5rem);
+  --pad-l: max(var(--pad-x), env(safe-area-inset-left, 0px));
+  --pad-r: max(var(--pad-x), env(safe-area-inset-right, 0px));
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --header-h: 4.25rem;
+  --tap: 44px;
+
+  --focus: 0 0 0 2px var(--ground), 0 0 0 4px var(--cyan);
+  --glow-cyan: 0 0 24px rgb(56 225 255 / 0.25);
+  --glow-amber: 0 0 24px rgb(255 181 71 / 0.35);
+
+  --dur-fast: 160ms;
+  --dur: 320ms;
+  --dur-slow: 700ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+}

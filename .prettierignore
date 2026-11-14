@@ -9,3 +9,4 @@ pnpm-lock.yaml
 context
 .mcp.json
 src/main/db/migrations
+website

@@ -2,7 +2,7 @@
 
 Arc is a macOS desktop app for orchestrating coding agents across groups of projects. You organize project folders into named groups, and each group carries its own knowledge sections (notes, docs, playbooks, links, and custom sections) stored as plain files on disk, either inside the app's data folder or in a folder you link. Built with Electron, Svelte, and SQLite. Apple Silicon only.
 
-Pre-release website: https://tests.myedgenet.com
+Pre-release website: https://robedge.github.io/arc/ (source in [`website/`](website/README.md), a standalone pnpm project; pushes to `main` that touch `website/**` build it and deploy it to GitHub Pages through `.github/workflows/pages.yml`)
 
 ## What it does
 
