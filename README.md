@@ -75,9 +75,19 @@ HARNESS_USER_DATA="$(mktemp -d)" release/mac-arm64/Arc.app/Contents/MacOS/Arc --
 echo $?   # 0 on success, non-zero on failure
 ```
 
+## Releases
+
+Every push to `main` (except ones that only touch `website/**`, `docs/**` or Markdown) runs
+`.github/workflows/release.yml` on a `macos-14` runner. It runs `pnpm package` and publishes a
+GitHub Release tagged `v<version>-build.<run number>`, marked latest, with generated notes. The dmg
+is uploaded as `Arc-macos-arm64.dmg`, a stable name, so the newest build is always at
+https://github.com/robedge/arc/releases/latest/download/Arc-macos-arm64.dmg (the website's
+download button points there). Run it by hand from Actions > Release macOS build > Run workflow.
+
 ## Installing the .dmg
 
-1. Open `release/Arc-<version>-arm64.dmg` and drag Arc into Applications.
+1. Download `Arc-macos-arm64.dmg` from the latest release, or open a local
+   `release/Arc-<version>-arm64.dmg`, and drag Arc into Applications. and drag Arc into Applications.
 2. Builds are ad hoc signed (no Apple Developer ID, no notarization). If you copied the app from
    another machine or downloaded it, macOS marks it as quarantined and Gatekeeper will refuse to
    open it. Clear the flag once:
