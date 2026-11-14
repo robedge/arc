@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#03080F" />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <!-- seo:head -->
+    <noscript><link rel="stylesheet" href="/noscript.css" /></noscript>
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <symbol id="ring" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="96 23.4" stroke-linecap="round" transform="rotate(-62 24 24)" />
+        <circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="2" opacity=".7" />
+        <circle cx="24" cy="24" r="3.2" fill="currentColor" />
+      </symbol>
+    </svg>
+
+    <div class="loader" id="loader" aria-hidden="true">
+      <div class="loader__inner">
+        <svg class="loader__ring"><use href="#ring" /></svg>
+        <p class="loader__label">
+          <span>ARC</span><span class="loader__sep">//</span><span id="loader-status">INITIALIZING HARNESS</span>
+        </p>
+        <div class="loader__bar"><span id="loader-bar"></span></div>
+        <p class="loader__pct"><span id="loader-pct">000</span>%</p>
+      </div>
+    </div>
+
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <canvas class="stage" id="stage" aria-hidden="true"></canvas>
+    <div class="stage-labels" id="stage-labels" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="wordmark" href="#top" aria-label="Arc home">
+        <svg class="wordmark__ring" aria-hidden="true"><use href="#ring" /></svg>
+        <span class="wordmark__text">ARC</span>
+      </a>
+      <div class="site-header__end">
+        <nav aria-label="Primary">
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">
+            <span class="nav-toggle__bars" aria-hidden="true"></span><span class="nav-toggle__label">Menu</span>
+          </button>
+          <ul class="nav" id="primary-nav">
+            <li><a href="#groups">Groups</a></li>
+            <li><a href="#orchestration">Brain and workers</a></li>
+            <li><a href="#attention">Approvals</a></li>
+            <li><a href="#security">Security</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </nav>
+        <a class="nav__cta" href="#download">Download</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- seo:noscript -->
+
+      <!-- HERO -->
+      <section class="hero" id="top" data-stage="hero" aria-labelledby="hero-title">
+        <div class="hero__copy">
+          <p class="kicker" data-scramble>// Local-first agent harness for macOS</p>
+          <h1 id="hero-title" class="display">
+            One agent harness<br />across your <em>whole group</em> of repos.
+          </h1>
+          <p class="lede">
+            Arc points the Claude and Codex subscriptions you already pay for at every repository in a
+            group, with lasting notes, docs and playbooks attached. Ask once. A brain plans the work,
+            workers fan out across the repos, and the result lands on one session branch for you to review.
+          </p>
+          <div class="actions">
+            <a class="btn btn--primary" href="#download">Get Arc for macOS</a>
+            <a class="btn btn--ghost" href="#orchestration">See how it works</a>
+          </div>
+        </div>
+        <dl class="readout" aria-label="At a glance">
+          <div><dt>Providers</dt><dd>Claude Code + Codex CLI</dd></div>
+          <div><dt>API keys</dt><dd>None needed</dd></div>
+          <div><dt>Runs on</dt><dd>Your Mac, locally</dd></div>
+          <div><dt>Telemetry</dt><dd>None</dd></div>
+        </dl>
+        <p class="scroll-hint" aria-hidden="true"><span></span>Scroll to explore</p>
+      </section>
+
+      <!-- WHY -->
+      <section class="section" id="why" aria-labelledby="why-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 01 The problem</p>
+          <h2 id="why-title" class="display">CLI agents see one folder. Your system spans six.</h2>
+          <p class="lede">
+            Real products live across a handful of repositories and a database. Today that means re-explaining
+            context every session, juggling terminals, and guessing how much quota is left.
+          </p>
+        </header>
+        <ul class="grid grid--3" role="list">
+          <li class="panel">
+            <p class="panel__tag">One folder at a time</p>
+            <h3>Context stops at the repo edge</h3>
+            <p>Schemas, the other services and how they talk get pasted in by hand, again and again.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag">Lost sessions</p>
+            <h3>Close the terminal, lose the thread</h3>
+            <p>Long investigations vanish with the shell that ran them.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag">Invisible quota</p>
+            <h3>Rate limits arrive unannounced</h3>
+            <p>It is hard to tell how much subscription usage is left until you hit the wall.</p>
+          </li>
+        </ul>
+        <p class="note">
+          Arc answers all three: a session sees every repo in a group plus its knowledge, sessions are saved and
+          resumable, and usage is always on screen. Everything runs through your existing Claude and Codex
+          subscriptions, with no separate API billing.
+        </p>
+      </section>
+
+      <!-- GROUPS -->
+      <section class="section" id="groups" data-stage="groups" aria-labelledby="groups-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 02 Groups and knowledge</p>
+          <h2 id="groups-title" class="display">Organize repos into groups. Give them a memory.</h2>
+          <p class="lede">
+            Pick local folders and gather them into a named group, say "Storefront" with web, api and infra.
+            Each group carries lasting knowledge, so you stop re-explaining your system.
+          </p>
+        </header>
+        <ul class="grid grid--3 sections-list" role="list">
+          <li class="panel">
+            <p class="panel__tag mono">/projects</p>
+            <h3>Projects</h3>
+            <p>Code repositories the agents can read and modify.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag mono">/notes</p>
+            <h3>Notes</h3>
+            <p>Free-form notes you write for the agents, like how the services talk to each other.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag mono">/docs</p>
+            <h3>Docs</h3>
+            <p>Reference material: schema-only database dumps, API specs, architecture write-ups.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag mono">/playbooks</p>
+            <h3>Prompts and Playbooks</h3>
+            <p>Reusable instructions such as "how we write migrations" or a release checklist.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag mono">/links</p>
+            <h3>Links</h3>
+            <p>URLs to internal wikis or external docs that agents fetch with their own tools.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag mono">/custom</p>
+            <h3>Custom sections</h3>
+            <p>Name your own sections for anything else the agents should know.</p>
+          </li>
+        </ul>
+        <p class="note">
+          Knowledge is stored as plain files in Arc's data folder by default. Link any group to a folder you
+          choose, such as a git repo, to version and back it up. Every session belongs to one group and can see all
+          of its projects and knowledge.
+        </p>
+      </section>
+
+      <!-- ORCHESTRATION (centerpiece) -->
+      <section class="section story" id="orchestration" data-stage="story" aria-labelledby="story-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 03 Brain and workers</p>
+          <h2 id="story-title" class="display">A brain that plans. Workers that fan out. One branch at the end.</h2>
+        </header>
+
+        <figure class="story__fallback" aria-labelledby="fallback-caption">
+          <svg viewBox="0 0 640 360" role="img" aria-labelledby="fallback-caption">
+            <g class="fb-trunk">
+              <line x1="30" y1="300" x2="610" y2="300" />
+              <text x="30" y="330">dev</text>
+              <text class="fb-end" x="610" y="330">arc/orders-timeout</text>
+            </g>
+            <g class="fb-links">
+              <path d="M320 70 L150 170 M320 70 L320 170 M320 70 L490 170" />
+              <path class="fb-wt" d="M110 300 C110 240 150 220 150 185 M280 300 C280 240 320 220 320 185 M450 300 C450 240 490 220 490 185" />
+              <path class="fb-merge" d="M150 185 C170 230 200 270 220 300 M320 185 C340 230 370 270 390 300 M490 185 C510 230 540 270 560 300" />
+            </g>
+            <g class="fb-nodes">
+              <circle class="fb-brain" cx="320" cy="62" r="24" />
+              <circle cx="150" cy="178" r="12" />
+              <circle class="fb-amber" cx="320" cy="178" r="12" />
+              <circle cx="490" cy="178" r="12" />
+              <circle class="fb-commit" cx="220" cy="300" r="6" />
+              <circle class="fb-commit" cx="390" cy="300" r="6" />
+              <circle class="fb-commit" cx="560" cy="300" r="6" />
+            </g>
+            <g class="fb-labels">
+              <text x="356" y="68">BRAIN</text>
+              <text x="96" y="160">W1 api</text>
+              <text x="336" y="160">W2 infra</text>
+              <text x="506" y="160">W3 web</text>
+            </g>
+          </svg>
+          <figcaption id="fallback-caption">
+            The brain spawns one worker per task. Each worker gets its own git worktree branched from the session
+            branch, and the brain merges finished work back onto the session branch.
+          </figcaption>
+        </figure>
+
+        <ol class="steps" role="list">
+          <li class="step" data-step="0">
+            <div class="step__card">
+              <p class="step__num mono">01 / PLAN</p>
+              <h3>Ask once, from the group</h3>
+              <p>
+                "The orders report query is timing out. Find out why and fix it." The brain reads the group's
+                schema and notes, then decides which workers to start, on which repos, with which provider and
+                model.
+              </p>
+            </div>
+          </li>
+          <li class="step" data-step="1">
+            <div class="step__card">
+              <p class="step__num mono">02 / SPAWN</p>
+              <h3>Workers fan out, one per sub-task</h3>
+              <p>
+                In plan-first mode nothing runs until you approve the plan. In autonomous mode the brain spawns
+                workers on its own, up to the worker cap you set.
+              </p>
+            </div>
+          </li>
+          <li class="step" data-step="2">
+            <div class="step__card">
+              <p class="step__num mono">03 / WORKTREES</p>
+              <h3>Every worker in its own worktree</h3>
+              <p>
+                Starting a session creates a session branch off <code>dev</code> in each repo. Each worker gets its
+                own git worktree at the tip of that branch, so several workers can change the same codebase at once
+                without stepping on each other.
+              </p>
+            </div>
+          </li>
+          <li class="step" data-step="3">
+            <div class="step__card">
+              <p class="step__num mono">04 / MERGE</p>
+              <h3>The brain merges, one at a time</h3>
+              <p>
+                When a worker finishes, the brain merges its work into the session branch, queued one merge at a
+                time per repo. If another worker needs that change, the brain syncs it into the waiting worker's
+                worktree and tells it what changed and why.
+              </p>
+            </div>
+          </li>
+          <li class="step" data-step="4">
+            <div class="step__card">
+              <p class="step__num mono">05 / RESOLVE</p>
+              <h3>Conflicts get their own resolver</h3>
+              <p>
+                On a conflict, a short-lived resolver worker fixes it in a temporary merge worktree. The brain never
+                edits code itself, and the resolver only escalates to you when it is not confident. You review the
+                combined diff on the session branch; Arc never pushes or merges into <code>dev</code>.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- MODES -->
+      <section class="section" id="modes" aria-labelledby="modes-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 04 Spawn mode</p>
+          <h2 id="modes-title" class="display">Plan-first or autonomous. Your call, per session.</h2>
+        </header>
+        <div class="modes">
+          <div class="modes__tabs" role="tablist" aria-label="Spawn mode">
+            <button role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="true" tabindex="0">Plan-first</button>
+            <button role="tab" id="tab-auto" aria-controls="panel-auto" aria-selected="false" tabindex="-1">Autonomous</button>
+          </div>
+          <div class="panel panel--hud modes__panel" role="tabpanel" id="panel-plan" aria-labelledby="tab-plan" tabindex="0">
+            <p class="panel__tag mono">Proposed plan // awaiting approval</p>
+            <table class="plan">
+              <caption class="visually-hidden">Example plan: workers, repos and models</caption>
+              <thead><tr><th scope="col">Worker</th><th scope="col">Task</th><th scope="col">Provider / model</th></tr></thead>
+              <tbody>
+                <tr><td class="mono" data-label="Worker">W1 api</td><td data-label="Task">Inspect the API's query code</td><td class="mono" data-label="Provider / model">Claude / light <span class="chip chip--cyan">changed to strong</span></td></tr>
+                <tr><td class="mono" data-label="Worker">W2 infra</td><td data-label="Task">Review recent infra changes</td><td class="mono" data-label="Provider / model">Codex / second opinion</td></tr>
+              </tbody>
+            </table>
+            <p>The brain lists the workers it intends to start and the model for each. Nothing runs until you approve, and you can change any model first.</p>
+            <div class="actions actions--tight" aria-hidden="true">
+              <span class="btn btn--primary btn--static">Approve plan</span>
+              <span class="btn btn--ghost btn--static">Edit models</span>
+            </div>
+          </div>
+          <div class="panel panel--hud modes__panel" role="tabpanel" id="panel-auto" aria-labelledby="tab-auto" tabindex="0">
+            <p class="panel__tag mono">Autonomous // worker cap</p>
+            <p class="cap mono" aria-label="Example: 3 of 4 workers running">
+              <span class="cap__cell cap__cell--on"></span><span class="cap__cell cap__cell--on"></span><span class="cap__cell cap__cell--on"></span><span class="cap__cell"></span>
+              <span class="cap__label">3 / 4 workers</span>
+            </p>
+            <p>The brain spawns workers on its own, up to the cap you set. Once a plan is approved, or in autonomous mode, workers edit files and run commands freely, and you review the resulting diffs at the end.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- BRANCHES -->
+      <section class="section" id="branches" aria-labelledby="branches-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 05 Session branches</p>
+          <h2 id="branches-title" class="display">Real git, kept tidy for you.</h2>
+          <p class="lede">The session branch is checked out in your own folder, so you can look at the combined work in your own editor at any time.</p>
+        </header>
+        <div class="grid grid--2">
+          <div class="panel panel--hud">
+            <p class="panel__tag mono">Layout</p>
+            <dl class="kv">
+              <div><dt>Session branch</dt><dd class="mono">arc/&lt;session-slug&gt;</dd></div>
+              <div><dt>Branched from</dt><dd class="mono">dev <span class="muted">(or the default branch)</span></dd></div>
+              <div><dt>Worker worktree</dt><dd class="mono path">~/Library/Application Support/Arc/worktrees/&lt;session-id&gt;/&lt;worker-id&gt;/&lt;repo&gt;</dd></div>
+              <div><dt>Cleanup</dt><dd>Worktrees are removed once merged; session branches stay until you delete them.</dd></div>
+            </dl>
+          </div>
+          <div class="panel panel--hud">
+            <p class="panel__tag mono">Merge rules</p>
+            <ul class="bullets">
+              <li>Merges happen in a temporary merge worktree, then the session branch moves forward.</li>
+              <li>Uncommitted changes are never discarded: Arc asks you to stash, commit, carry them over, or cancel.</li>
+              <li>If your checkout has unsaved changes, the merge waits and is applied later.</li>
+              <li>Pushing, opening pull requests and merging into <code>dev</code> stay with you.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ATTENTION -->
+      <section class="section" id="attention" data-stage="attention" aria-labelledby="attention-title">
+        <header class="section__head">
+          <p class="kicker kicker--amber" data-scramble>// 06 Needs attention</p>
+          <h2 id="attention-title" class="display">Questions bubble up. Only the hard ones reach you.</h2>
+          <p class="lede">
+            When a worker needs a permission it does not have, or has a question, it pauses and asks the brain
+            first. The brain answers from the plan, the group's knowledge or other workers' results. Anything it
+            cannot, or is not allowed to decide, is escalated to you.
+          </p>
+        </header>
+        <ol class="chain" role="list" aria-label="Escalation path">
+          <li><span class="chain__node mono">Worker</span><span>pauses and asks</span></li>
+          <li><span class="chain__node mono">Brain</span><span>answers what it can</span></li>
+          <li><span class="chain__node chain__node--amber mono">You</span><span>approve, deny or answer</span></li>
+        </ol>
+        <div class="grid grid--2 attention">
+          <div class="panel panel--hud panel--amber" aria-label="Example needs attention dialog">
+            <div class="attention__head">
+              <span class="badge badge--amber"><span class="badge__dot" aria-hidden="true"></span>Needs attention <span class="badge__count">2</span></span>
+            </div>
+            <div class="card">
+              <p class="card__meta mono">W2 infra // permission</p>
+              <p>Wants to run a command outside its change policy.</p>
+              <div class="actions actions--tight" aria-hidden="true">
+                <span class="btn btn--amber btn--static">Approve</span>
+                <span class="btn btn--ghost btn--static">Deny</span>
+              </div>
+            </div>
+            <div class="card">
+              <p class="card__meta mono">W3 web // question</p>
+              <p>Should the report page show the new field by default?</p>
+              <div class="fake-input mono" aria-hidden="true">Type an answer<span class="caret"></span></div>
+            </div>
+          </div>
+          <ul class="bullets bullets--plain" role="list">
+            <li><strong>Who, what and why.</strong> Each alert shows which worker raised it, what it wants, and why. Your answer goes back to the worker and it resumes.</li>
+            <li><strong>Hard to miss.</strong> A pulsing amber badge with a count sits in the session header, the waiting worker shows as an amber card, and a macOS notification arrives when Arc is in the background.</li>
+            <li><strong>Never a pile-up.</strong> Alerts live in one dialog, not a growing column in the session view.</li>
+            <li><strong>Survives restarts.</strong> Pending requests persist when you close and resume a session; workers stay paused until answered.</li>
+            <li><strong>Guard rails.</strong> Policy decides what the brain may approve without you, for example anything outside a worker's worktree or a destructive git command.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- MODELS -->
+      <section class="section" id="models" aria-labelledby="models-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 07 Models and usage</p>
+          <h2 id="models-title" class="display">The right model per worker, with your limits in view.</h2>
+          <p class="lede">
+            The brain picks a provider and model for each worker based on how complex the task is and how much
+            subscription usage you have left: a lighter model for simple lookups, a stronger one for complex
+            changes, or Codex for a second opinion. Override it for the whole session or any single worker.
+          </p>
+        </header>
+        <div class="grid grid--2">
+          <figure class="panel panel--hud usage" aria-labelledby="usage-cap">
+            <p class="panel__tag mono">Usage // illustrative</p>
+            <div class="meter" data-level="ok">
+              <div class="meter__row"><span class="meter__name">Claude</span><span class="meter__value mono">42% used <span class="meter__state">OK</span></span></div>
+              <div class="meter__track"><span class="meter__fill meter__fill--42"></span></div>
+            </div>
+            <div class="meter" data-level="warn">
+              <div class="meter__row"><span class="meter__name">Codex</span><span class="meter__value mono">86% used <span class="meter__state">Near limit</span></span></div>
+              <div class="meter__track"><span class="meter__fill meter__fill--86"></span></div>
+            </div>
+            <figcaption id="usage-cap" class="muted">Sample values. Arc shows usage and rate-limit status per provider and per session, read from each CLI's own event stream.</figcaption>
+          </figure>
+          <ul class="bullets bullets--plain" role="list">
+            <li><strong>Mix providers in one session.</strong> Claude Code and Codex workers side by side.</li>
+            <li><strong>Usage-aware.</strong> When limits are close, the brain switches to lighter models.</li>
+            <li><strong>You have the last word.</strong> Session-level and worker-level overrides always beat the brain's choice.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SESSIONS -->
+      <section class="section" id="sessions" aria-labelledby="sessions-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 08 Sessions that last</p>
+          <h2 id="sessions-title" class="display">Pick up tomorrow where you left off today.</h2>
+        </header>
+        <div class="grid grid--2">
+          <div class="stack">
+            <div class="panel">
+              <p class="panel__tag">Saved and resumable</p>
+              <h3>Nothing lost when the window closes</h3>
+              <p>Sessions are saved with the brain's conversation, worker reports and changes. Reopen one the next morning and ask a follow-up.</p>
+            </div>
+            <div class="panel">
+              <p class="panel__tag">Learning loop</p>
+              <h3>The brain suggests what it learned</h3>
+              <p>
+                When the brain finishes a request, it can call <code>suggest_knowledge_update</code> for each thing
+                worth keeping: a new note, or a change to an existing one in Notes, Docs, Playbooks or a custom
+                section. You can also ask it for suggestions at any time.
+              </p>
+              <p>Nothing in the group's knowledge changes until you accept. The brain can suggest, but it cannot apply its own suggestions.</p>
+            </div>
+          </div>
+          <figure class="panel panel--hud suggest" aria-labelledby="suggest-cap">
+            <p class="panel__tag mono">Knowledge suggestions // illustrative</p>
+            <p class="suggest__head mono">Session header <span class="chip chip--cyan">Suggestions 2</span></p>
+            <p class="suggest__line">"I have 2 suggestions for this group's knowledge."</p>
+            <div class="card card--green">
+              <p class="card__meta mono">Update // Docs &rsaquo; Database schema</p>
+              <p><strong>Orders table is partitioned by month</strong></p>
+              <p class="muted small">Learned while W1 traced the slow orders report query.</p>
+              <pre class="kdiff mono" aria-label="Lines the suggestion removes and adds"><span class="kdiff__ctx">  ## orders</span><span class="kdiff__del">- One table, indexed on created_at.</span><span class="kdiff__add">+ Partitioned by month on created_at.</span><span class="kdiff__add">+ Reports must filter on created_at.</span></pre>
+              <div class="actions actions--tight" aria-hidden="true">
+                <span class="btn btn--green btn--static">Accept</span>
+                <span class="btn btn--ghost btn--static">Edit</span>
+                <span class="btn btn--ghost btn--static">Discard</span>
+              </div>
+            </div>
+            <figcaption id="suggest-cap" class="muted">Sample suggestion. Each card gives a title, where the brain learned it, where it would go, and the new note's text or the lines a change adds and removes.</figcaption>
+          </figure>
+        </div>
+        <ul class="bullets bullets--row" role="list">
+          <li><strong>Few, and never twice.</strong> Up to 5 per request, none while workers are still running, no repeats, and nothing you discarded comes back in that session.</li>
+          <li><strong>Easy to find, never in the way.</strong> A cyan Suggestions chip with the count sits in the session header, and the brain's answer ends with a line that opens the same dialog. No notification, no Needs attention.</li>
+          <li><strong>Accept, Edit or Discard.</strong> Per card, or Accept all and Discard all. Edit lets you change the text first, and a new note's name or section. If the note changed since the suggestion was made, Arc says so and writes nothing.</li>
+          <li><strong>Your switch.</strong> "Suggest knowledge updates" in Settings is on by default. Off, the brain suggests only when you ask. Every suggestion and what you did with it is in the session's event history.</li>
+        </ul>
+      </section>
+
+      <!-- TERMINALS -->
+      <section class="section" id="terminals" aria-labelledby="terminals-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 09 Terminals on demand</p>
+          <h2 id="terminals-title" class="display">Chat first. Step into any worker's terminal.</h2>
+          <p class="lede">
+            The main view is a clean chat with the brain and a live list of workers. Open any worker's real terminal to
+            watch, or step in: Arc pauses the headless process and attaches an interactive session for that worker,
+            then hands control back when you are done.
+          </p>
+        </header>
+        <div class="terminal panel panel--hud" role="img" aria-label="Example worker terminal output">
+          <div class="terminal__bar mono" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span>W1 api // terminal</div>
+          <pre class="terminal__body mono" aria-hidden="true"><span class="t-dim">$</span> claude --resume <span class="t-dim">&lt;worker-session&gt;</span>
+<span class="t-cyan">worker</span>  reading src/reports/orders.sql
+<span class="t-cyan">worker</span>  report_progress "tracing the orders report query"
+<span class="t-green">worker</span>  commit added migration and new response field
+<span class="t-amber">worker</span>  ask_brain "does web need the field today?"<span class="caret"></span></pre>
+        </div>
+        <p class="note">Under the hood Arc drives the locally installed Claude Code and Codex CLIs, so it runs on their logged-in subscriptions.</p>
+      </section>
+
+      <!-- MCP -->
+      <section class="section" id="bridge" aria-labelledby="bridge-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 10 The local MCP bridge</p>
+          <h2 id="bridge-title" class="display">Agents coordinate through a bridge on your machine.</h2>
+          <p class="lede">
+            Arc hosts a local MCP server on <code>127.0.0.1</code> with a per-session token. Every agent process is
+            configured to use it, so the brain and workers talk through typed tools instead of scraping terminals.
+          </p>
+        </header>
+        <div class="grid grid--2">
+          <div class="panel panel--hud">
+            <p class="panel__tag mono">Brain tools</p>
+            <ul class="tools mono" role="list">
+              <li>propose_plan</li><li>spawn_worker</li><li>message_worker</li><li>get_worker_status</li>
+              <li>merge_worker</li><li>sync_worker</li><li>get_usage</li><li>resolve_request</li>
+              <li>escalate_to_user</li><li>ask_user</li><li>suggest_knowledge_update</li>
+              <li>show_surface</li>
+            </ul>
+          </div>
+          <div class="panel panel--hud">
+            <p class="panel__tag mono">Worker tools</p>
+            <ul class="tools mono" role="list">
+              <li>report_progress</li><li>report_done</li><li>ask_brain</li><li>request_dependency</li><li>request_permission</li>
+            </ul>
+            <p class="muted small">A headless worker's permission prompt becomes a bridge call instead of a hung prompt.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SURFACES (A2UI preview) -->
+      <section class="section" id="surfaces" aria-labelledby="surfaces-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 11 Panels in the conversation</p>
+          <h2 id="surfaces-title" class="display">When text is not enough, the brain shows a panel.</h2>
+          <p class="lede">
+            <span class="chip chip--cyan chip--lead">Preview</span> The brain can now put an interactive panel
+            straight into the conversation: text, inputs, buttons, KPI tiles, tables, and bar and line charts. It
+            writes the panel in A2UI Express, a compact text form of the A2UI format, and Arc draws it in its own
+            HUD style from Arc's component catalog. This is an early spike, so expect it to change.
+          </p>
+        </header>
+        <div class="grid grid--2">
+          <figure class="panel panel--hud surface" aria-labelledby="surface-cap">
+            <p class="panel__tag mono">Panel // illustrative</p>
+            <div class="card">
+              <p class="surface__title">Release 2.4</p>
+              <div class="surface__stats">
+                <p class="surface__stat"><span class="surface__label mono">Deploys</span><span class="surface__value">13</span><span class="surface__delta mono">&#9650; +3</span></p>
+                <p class="surface__stat surface__stat--red"><span class="surface__label mono">Failures</span><span class="surface__value">1</span></p>
+              </div>
+              <p class="surface__label mono">Deploys per day</p>
+              <svg class="surface__chart" viewBox="0 0 320 96" aria-hidden="true" focusable="false">
+                <path class="surface__axis" d="M8 16.5H312M8 48.5H312M8 80.5H312" />
+                <rect class="surface__bar" x="26" y="52" width="36" height="28" />
+                <rect class="surface__bar" x="84" y="17" width="36" height="63" />
+                <rect class="surface__bar" x="142" y="66" width="36" height="14" />
+                <rect class="surface__bar" x="200" y="38" width="36" height="42" />
+                <rect class="surface__bar" x="258" y="59" width="36" height="21" />
+              </svg>
+              <p class="surface__field"><span class="surface__label mono">Environment</span><span class="surface__input mono">staging</span></p>
+              <p class="surface__check"><span class="surface__box" aria-hidden="true"></span>Notify the team</p>
+              <div class="actions actions--tight" aria-hidden="true">
+                <span class="btn btn--primary btn--static">Deploy</span>
+              </div>
+            </div>
+            <figcaption id="surface-cap" class="muted">Sample panel. Arc draws every part with its own controls and theme colors; the charts are SVG.</figcaption>
+          </figure>
+          <div class="stack">
+            <div class="panel">
+              <p class="panel__tag">A2UI Express</p>
+              <h3>One statement per line</h3>
+              <p>The brain calls <code>show_surface</code> with the panel as text. Each line names a component, the top one is assigned to <code>root</code>, and <code>$/path</code> binds a value to the panel's data.</p>
+              <pre class="surface__code mono" aria-label="Example panel written in A2UI Express">$/env = "staging"
+$/notify = true
+$/days = [{label: "Mon", value: 4}, {label: "Tue", value: 9}]
+kpis = Grid([Stat("Deploys", "13", "+3", "up"), Stat("Failures", "1", tone="danger")], 2)
+go = Button(Text("Deploy"), Event("deploy", {env: $/env, notify: $/notify}), "primary")
+root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data=$/days), TextField("Environment", $/env), CheckBox("Notify the team", $/notify), go])</pre>
+            </div>
+            <div class="panel">
+              <p class="panel__tag">The click comes back</p>
+              <h3>A button press is an event for the brain</h3>
+              <p>When you press a button, the brain gets a message that starts with <code>[Surface action]</code>. It carries the event name and its context values as you left them, so what you typed or ticked arrives with the click.</p>
+              <pre class="surface__code mono" aria-label="Example event the brain receives">[Surface action] {"surfaceId":"release","name":"deploy","label":"Deploy","context":{"env":"staging","notify":true}}</pre>
+            </div>
+          </div>
+        </div>
+        <ul class="bullets bullets--row" role="list">
+          <li><strong>A catalog, not free-form markup.</strong> Text, Column, Row, Card, Divider, Button, TextField, CheckBox and ChoicePicker from the A2UI basic catalog, plus Arc's own Grid, Stat, Callout, Badge, Table, BarChart and LineChart.</li>
+          <li><strong>Checked before it is shown.</strong> Arc compiles the text with the official A2UI agent SDK against its catalog. A refusal names what is wrong, and the brain fixes the text and calls again.</li>
+          <li><strong>It does not block.</strong> The tool returns at once. Each call adds a new panel at the end of the conversation, and earlier panels stay where they are.</li>
+          <li><strong>Kept small.</strong> Up to 300 components per panel, tables up to 8 columns and 100 rows, charts up to 60 points. What you type stays in the panel and reaches the brain only with a button press.</li>
+        </ul>
+        <p class="note">Preview: this is a spike on catalog <code>arc:catalog/spike-1</code>. The components, the text format and the event shape may change or be removed.</p>
+      </section>
+
+      <!-- SECURITY -->
+      <section class="section" id="security" aria-labelledby="security-title">
+        <header class="section__head">
+          <p class="kicker" data-scramble>// 12 Security and privacy</p>
+          <h2 id="security-title" class="display">Local by design. Nothing phones home.</h2>
+        </header>
+        <ul class="grid grid--3" role="list">
+          <li class="panel">
+            <p class="panel__tag">No API keys</p>
+            <h3>Your subscriptions, your logins</h3>
+            <p>Arc never handles credentials. The Claude and Codex CLIs handle their own login; Arc only tells you which login command to run.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag">No telemetry</p>
+            <h3>No backend, no cloud</h3>
+            <p>Everything runs on your Mac. The app makes no network calls of its own, and crash reports are written locally only.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag">Strict CSP</p>
+            <h3>Locked-down renderer</h3>
+            <p>A strict Content Security Policy, no new windows, and no navigation away from the app's own pages.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag">Typed IPC</p>
+            <h3>Validated at the boundary</h3>
+            <p>Every IPC channel is declared once and every message is checked with zod. Context isolation is on and there is no Node in the renderer.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag">Scoped files</p>
+            <h3>Knowledge stays in its folder</h3>
+            <p>Knowledge files are served through a custom protocol that only resolves paths inside the group's knowledge root.</p>
+          </li>
+          <li class="panel">
+            <p class="panel__tag">Local bridge</p>
+            <h3>Loopback only</h3>
+            <p>The MCP bridge listens on 127.0.0.1 and every session gets its own token.</p>
+          </li>
+        </ul>
+      </section>
+
+      <!-- FAQ (generated from seo/content.ts, the same data as the FAQPage JSON-LD) -->
+      <!-- seo:faq -->
+
+      <!-- DOWNLOAD -->
+      <section class="section download" id="download" aria-labelledby="download-title">
+        <div class="panel panel--hud download__panel">
+          <svg class="download__ring" aria-hidden="true"><use href="#ring" /></svg>
+          <p class="kicker" data-scramble>// 13 Get Arc</p>
+          <h2 id="download-title" class="display">Bring your whole system into one session.</h2>
+          <p class="lede">Arc for macOS, Apple Silicon first. Bring a Claude or Codex subscription and the matching CLI, installed and logged in.</p>
+          <div class="actions actions--center">
+            <a class="btn btn--primary btn--lg" id="download-link" href="#download">Download for macOS</a>
+            <a class="btn btn--ghost" href="#top">Back to top</a>
+          </div>
+          <ul class="reqs mono" role="list">
+            <li>macOS, single user</li>
+            <li>Claude Code and/or Codex CLI on your PATH</li>
+            <li>Personal build: signed ad hoc, not yet notarized</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="wordmark wordmark--small"><svg class="wordmark__ring" aria-hidden="true"><use href="#ring" /></svg><span class="wordmark__text">ARC</span></p>
+      <p class="muted small">A local-first agent harness for macOS. Product definition v1.0, status: proposed.</p>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -17,7 +17,9 @@ export default tseslint.config(
       '.awos',
       '.claude',
       'context',
-      'src/main/db/migrations'
+      'src/main/db/migrations',
+      // The marketing site is its own pnpm project with its own checks.
+      'website'
     ]
   },
   js.configs.recommended,

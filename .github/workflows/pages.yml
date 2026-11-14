@@ -1,0 +1,76 @@
+# Builds the marketing site in website/ and publishes website/dist to GitHub Pages.
+# One-time setup: repository Settings > Pages > Source: GitHub Actions.
+name: Deploy website to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer run waits for the one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the sitemap's lastmod is the last commit date of website/index.html.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: website/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      # SITE_URL sets canonical links, og tags, sitemap, robots and llms.txt, and its
+      # path becomes Vite's base. A committed website/public/CNAME wins; otherwise the
+      # URL Pages reports for this repository (https://robedge.github.io/arc).
+      - name: Resolve the site URL
+        env:
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          if [ -s public/CNAME ]; then
+            echo "SITE_URL=https://$(head -n 1 public/CNAME | tr -d '[:space:]')" >> "$GITHUB_ENV"
+          else
+            echo "SITE_URL=${PAGES_URL:-https://robedge.github.io/arc}" >> "$GITHUB_ENV"
+          fi
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

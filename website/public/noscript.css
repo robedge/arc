@@ -1,0 +1,15 @@
+/* Loaded only inside <noscript>: without scripts the page is a plain document.
+   An external file because the production CSP allows no inline styles. The
+   html prefix outranks main.css, which loads after this file. */
+html .loader {
+  display: none;
+}
+html .story__fallback {
+  display: block;
+}
+html .modes__tabs {
+  display: none;
+}
+html .modes__panel + .modes__panel {
+  margin-top: 1.5rem;
+}
