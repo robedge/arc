@@ -1,0 +1,7 @@
+# A Claude worker that calls a changing tool of the user's Figma server with twelve arguments (the request shows more than 10 lines).
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"personalTool": {"server": "figma", "tool": "figma_write", "input": {"field01": "value 1", "field02": "value 2", "field03": "value 3", "field04": "value 4", "field05": "value 5", "field06": "value 6", "field07": "value 7", "field08": "value 8", "field09": "value 9", "field10": "value 10", "field11": "value 11", "field12": "value 12"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Updated the Figma file"}}}
+{"say":"Done."}
+{"result":true}

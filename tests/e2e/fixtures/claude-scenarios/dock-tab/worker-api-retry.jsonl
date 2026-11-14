@@ -1,0 +1,9 @@
+# Quiet for a few seconds, then asks to write outside the working copy and finishes.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Reading the client"}}}
+{"delay":6000}
+{"tool": {"name": "Bash", "input": {"command": "cp a.txt /Users/redgell/v9-outside/tab-one.txt", "description": "Copy outside"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Wrote it"}}}
+{"say":"Done."}
+{"result":true}

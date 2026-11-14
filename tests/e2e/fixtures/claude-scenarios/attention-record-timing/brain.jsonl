@@ -1,0 +1,14 @@
+# Spec 014 record timing: names the session, starts a worker in web (whose repository has unsaved changes), and says one
+# more thing when asked, so a message sent right after "Continue" gets a reply.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Retry work\n\nReady when you are."}
+{"result":true}
+{"waitForStdin":"Start the web worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"web-note","task":"Look at the web client","repos":["web"]}}}
+{"say":"The web worker is waiting."}
+{"result":true}
+{"waitForStdin":"Say one more thing"}
+{"say":"One more thing from the brain."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

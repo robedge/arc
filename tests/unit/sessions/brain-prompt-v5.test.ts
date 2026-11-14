@@ -7,6 +7,7 @@ import {
   PROMPT_UPDATE_NOTE_V7,
   PROMPT_UPDATE_NOTE_V8,
   PROMPT_UPDATE_NOTE_V9,
+  PROMPT_UPDATE_NOTE_V10,
   buildBrainPrompt,
   promptUpdateNote
 } from '../../../src/main/sessions/orchestrator'
@@ -193,7 +194,7 @@ describe('the one-time upgrade note', () => {
     const note = promptUpdateNote(4, undefined, section)
     // The block comes once, with the version 5 note; the version 6 note after it is short.
     expect(note).toBe(
-      `${PROMPT_UPDATE_NOTE_V5}\n${section}\n\n${PROMPT_UPDATE_NOTE_V6}\n\n${PROMPT_UPDATE_NOTE_V7}\n\n${PROMPT_UPDATE_NOTE_V8}\n\n${PROMPT_UPDATE_NOTE_V9}`
+      `${PROMPT_UPDATE_NOTE_V5}\n${section}\n\n${PROMPT_UPDATE_NOTE_V6}\n\n${PROMPT_UPDATE_NOTE_V7}\n\n${PROMPT_UPDATE_NOTE_V8}\n\n${PROMPT_UPDATE_NOTE_V9}\n\n${PROMPT_UPDATE_NOTE_V10}`
     )
     expect(note?.match(/Providers and models:/g)).toHaveLength(1)
   })
@@ -205,7 +206,7 @@ describe('the one-time upgrade note', () => {
   })
 
   it('is left out for a current session and for a session without workers', () => {
-    expect(promptUpdateNote(9, [], section)).toBeUndefined()
+    expect(promptUpdateNote(10, [], section)).toBeUndefined()
     expect(promptUpdateNote(4, undefined, undefined)).toBeUndefined()
   })
 })

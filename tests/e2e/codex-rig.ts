@@ -248,8 +248,6 @@ export async function chooseFromMenu(page: Page, menu: string, item: string): Pr
   await page.getByRole('menuitemradio', { name: item, exact: true }).click()
 }
 
-export const NEEDS_ATTENTION = /Needs attention, \d+ waiting/
-
 /** Settings > Providers > a default picker ("Default brain" or "Default workers"), then back to the previous screen. */
 export async function setDefault(page: Page, picker: string, label: string): Promise<void> {
   await openSettings(page)

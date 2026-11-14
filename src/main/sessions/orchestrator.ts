@@ -57,6 +57,7 @@ import type { KnowledgeSuggestionPort } from './knowledge-suggestion-bridge'
 import type { ClassifyContext } from '../policy/classify'
 import type { IpcEvents } from '@shared/ipc/contract'
 import { AppErrorException } from '@shared/errors'
+import { recordText } from '@shared/attention-record'
 import { planRefusedText, providerName } from '@shared/provider-label'
 import { PLACEHOLDER_SESSION_NAME } from '@shared/types/session'
 import type { CommandInfo } from '@shared/types/commands'
@@ -251,7 +252,7 @@ export function suggestSettingNote(on: boolean): string {
  * stored `brain_prompt_version` is lower keeps its snapshotted old prompt on resume, so its next
  * message carries the notes from `promptUpdateNote` once.
  */
-export const BRAIN_PROMPT_VERSION = 9
+export const BRAIN_PROMPT_VERSION = 10
 
 const CAPABILITIES: Readonly<Record<ProviderId, readonly string[]>> = {
   claude: [
@@ -332,6 +333,13 @@ const QUEUED_WAITING_LINE =
 /** What version 9 added (the session branch is made when a repository's first worker starts). */
 export const PROMPT_UPDATE_NOTE_V9 = `[Arc] Updated instructions: ${BRANCH_ON_DEMAND_LINE} ${QUEUED_WAITING_LINE}`
 
+/** What a panel does once shown; the prompt's show_surface line and the version 10 note say it alike. */
+const SURFACE_REPLY_LINE =
+  'The user sees the panel, so do not repeat its contents in your reply. A click comes back as a message that starts with "[Surface action]".'
+
+/** What version 10 added (show_surface: an interactive panel in the conversation). */
+export const PROMPT_UPDATE_NOTE_V10 = `[Arc] Updated instructions: you can show the user an interactive panel in the conversation with show_surface: text, inputs, buttons, tiles, tables, charts, code and name/value lists. Write the panel as A2UI Express in the express field; the tool description has the format. ${SURFACE_REPLY_LINE}`
+
 /**
  * The note a resumed session gets once, in front of its next message: everything added after the
  * version it was stamped with, oldest first. Undefined when the session is current.
@@ -368,6 +376,8 @@ export function promptUpdateNote(
   if (storedVersion < 8 && providers !== undefined) notes.push(PROMPT_UPDATE_NOTE_V8)
   // Version 9 changes how spawn_worker behaves, so it is for the same sessions.
   if (storedVersion < 9 && providers !== undefined) notes.push(PROMPT_UPDATE_NOTE_V9)
+  // show_surface is a bridge tool, so only a brain with workers (the bridge) is told about it.
+  if (storedVersion < 10 && providers !== undefined) notes.push(PROMPT_UPDATE_NOTE_V10)
   return notes.length === 0 ? undefined : notes.join('\n\n')
 }
 
@@ -426,7 +436,7 @@ const WORKER_INSTRUCTIONS_AFTER_INTRO: readonly string[] = [
   '- When every worker is merged, failed or stopped, Arc sends "[Arc] All workers finished" with the commits per repository. Then post the final summary: what changed per repository, the commits on the session branch, and anything left undone.',
   '- A worker that needs a permission or has a question pauses, and Arc sends you a message with "(request <id>)". Answer what you can from the plan, the group knowledge and other workers\' results with resolve_request (decision approve, deny or answer, plus a short note). You cannot approve anything that leaves the machine, is destructive, installs software for the whole machine or changes files outside the worker\'s working copy: Arc passes those to the user (resolve_request then returns policy_requires_user). When you cannot decide, call escalate_to_user with a one-sentence reason; Arc also passes a request on after 60 seconds.',
   '- ask_user: ask the user a question only they can answer. It waits for the answer. Pass choices (2 to 6 labels) to offer buttons.',
-  '- show_surface: SPIKE. Shows the user an interactive panel in the conversation and returns at once: text, inputs, buttons, KPI tiles, tables, bar and line charts. Use it when the user asks for a panel, a form, a dashboard or a chart. The user sees the panel, so do not repeat its contents in your reply. A click comes back as a message that starts with "[Surface action]".',
+  `- show_surface: Shows the user an interactive panel in the conversation and returns at once: text, inputs, buttons, KPI tiles, tables, bar and line charts. Use it when the user asks for a panel, a form, a dashboard or a chart. ${SURFACE_REPLY_LINE}`,
   'If propose_plan returns changes_requested, revise the plan using the comment and propose again. If it returns rejected, start no workers and ask the user what they want instead.',
   'When a worker finishes or fails, Arc sends you a message that starts with "[Arc]". Then tell the user what happened and what comes next.'
 ]
@@ -849,6 +859,7 @@ export class Orchestrator {
         undeliveredAnswers: (workerId) => this.attention.undelivered(workerId),
         routeAttentionToTerminal: (workerId) => this.attention.routeToTerminal(workerId),
         routeAttentionBack: (workerId) => this.attention.routeBack(workerId),
+        cancelAttention: (workerId) => this.attention.cancelForWorker(workerId),
         markDelivered: (ids) => this.attention.markDelivered(ids),
         onSignedOut: deps.onSignedOut,
         emitTerminal: (workerId, chunk) =>
@@ -939,6 +950,7 @@ export class Orchestrator {
           deps.onHeaderChanged?.()
           return row
         },
+        recordAnswer: (prompt) => this.postSystemMessage(recordText(prompt), prompt),
         onBrainWaiting: (waiting) => {
           this.askWaiting = waiting
           this.syncBrainWaiting()
@@ -1462,8 +1474,8 @@ export class Orchestrator {
     }
   }
 
-  private setPromptStatus(messageId: number, prompt: MessagePrompt): void {
-    this.deps.messagesRepo.setPrompt(messageId, JSON.stringify(prompt), this.deps.now())
+  private setPromptStatus(messageId: number, prompt: MessagePrompt, content?: string): void {
+    this.deps.messagesRepo.setPrompt(messageId, JSON.stringify(prompt), this.deps.now(), content)
     const row = this.deps.messagesRepo.get(messageId)
     if (!row) return
     this.deltas.flush()
@@ -2591,7 +2603,7 @@ export class Orchestrator {
   }
 
   /** Appends a system message to the conversation and pushes it. */
-  postSystemMessage(text: string, prompt?: MessagePrompt): void {
+  postSystemMessage(text: string, prompt?: MessagePrompt): number {
     const now = this.deps.now()
     const row = this.deps.messagesRepo.append({
       sessionId: this.deps.sessionId,
@@ -2609,6 +2621,14 @@ export class Orchestrator {
       seq: this.nextSeq(),
       message: messageRowDto(row)
     })
+    return row.id
+  }
+
+  /** Changes a system message's text and prompt in place and pushes it again (the same id). */
+  updateSystemMessage(messageId: number, text: string, prompt: MessagePrompt): void {
+    const row = this.deps.messagesRepo.get(messageId)
+    if (row?.sessionId !== this.deps.sessionId || row.role !== 'system') return
+    this.setPromptStatus(messageId, prompt, text)
   }
 
   /** Pushes the changed header into the session's `seq` stream. */

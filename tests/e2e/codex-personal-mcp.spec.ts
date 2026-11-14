@@ -2,8 +2,15 @@
 // @regression
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
-import { FAKE_MCP, NEEDS_ATTENTION, launchCodexRig, readCodexLog } from './codex-rig'
+import { FAKE_MCP, launchCodexRig, readCodexLog } from './codex-rig'
+import {
+  approve,
+  deny,
+  expectNoneWaiting,
+  expectWaiting,
+  permissionAction,
+  request
+} from './attention-rig'
 import type { CodexRig } from './codex-rig'
 import {
   createGroupWithProjects,
@@ -27,9 +34,6 @@ test.afterEach(async () => {
   await rig?.dispose()
   rig = undefined
 })
-
-const badge = (page: Page) => page.getByRole('button', { name: NEEDS_ATTENTION })
-const attentionDialog = (page: Page) => page.getByRole('dialog', { name: /Needs attention/ })
 
 const FIGMA_CLAUDE_JSON = JSON.stringify({
   mcpServers: { figma: { command: process.execPath, args: [FAKE_MCP] } }
@@ -60,14 +64,13 @@ test('2.6: a Claude worker uses the user’s Figma server; reading runs unasked,
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval')
 
   // The changing tool asks (the brain passed it on): one request, naming the server, the tool and the details.
-  await expect(badge(page)).toHaveCount(1)
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog).toContainText('figma')
-  await expect(dialog).toContainText('figma_write')
-  await expect(dialog).toContainText('file-1')
-  await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Deny', exact: true })).toBeVisible()
+  await expectWaiting(page, 1)
+  const panel = request(page, 'permission')
+  await expect(panel).toContainText('figma')
+  await expect(panel).toContainText('figma_write')
+  await expect(panel).toContainText('file-1')
+  await expect(panel.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Deny', exact: true })).toBeVisible()
   // Nothing has been allowed yet: the only permission answered so far is the read.
   const decided = (): string[] =>
     readFakeLog(r).flatMap((l) => {
@@ -76,7 +79,7 @@ test('2.6: a Claude worker uses the user’s Figma server; reading runs unasked,
     })
   expect(decided()).toEqual(['mcp__figma__figma_read:allow'])
 
-  await dialog.getByRole('button', { name: 'Approve', exact: true }).click()
+  await approve(panel)
   await expect
     .poll(decided)
     .toEqual(['mcp__figma__figma_read:allow', 'mcp__figma__figma_write:allow'])
@@ -109,8 +112,7 @@ test('2.6: the user’s own “always allow git push” is not loaded, so a Clau
 
   const card = workerCard(page, 'W1 · api-retry')
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval')
-  await badge(page).click()
-  await expect(attentionDialog(page).locator('[data-action]')).toHaveText(
+  await expect(permissionAction(request(page, 'permission'))).toHaveText(
     'git push origin arc/fix-order-sync'
   )
   // The agent was started so the user's settings file (and its permission lists) cannot be read: project
@@ -128,8 +130,8 @@ test('2.6: the user’s own “always allow git push” is not loaded, so a Clau
     expect(Object.keys(JSON.parse(readFileSync(settings, 'utf8')) as object)).toEqual(['hooks'])
   }
   expect(readFakeLog(r).filter((l) => 'argvViolation' in l)).toEqual([])
-  await attentionDialog(page).getByRole('button', { name: 'Deny', exact: true }).click()
-  await expect(badge(page)).toHaveCount(0)
+  await deny(request(page, 'permission'))
+  await expectNoneWaiting(page)
 })
 
 test('2.6: a Codex worker’s read-only tool of the user’s server runs without a question; a changing one asks and waits', async () => {
@@ -156,14 +158,13 @@ test('2.6: a Codex worker’s read-only tool of the user’s server runs without
   // The read passed without anything in Needs attention: the worker went on to its progress report and then asked
   // about the write, so the only request is the write.
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval')
-  await expect(badge(page)).toHaveCount(1)
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog).toContainText('figma')
-  await expect(dialog).toContainText('figma_write')
-  await expect(dialog).not.toContainText('figma_read')
-  await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Deny', exact: true })).toBeVisible()
+  await expectWaiting(page, 1)
+  const panel = request(page, 'permission')
+  await expect(panel).toContainText('figma')
+  await expect(panel).toContainText('figma_write')
+  await expect(panel).not.toContainText('figma_read')
+  await expect(panel.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Deny', exact: true })).toBeVisible()
   // The tool has not run.
   await page.waitForTimeout(1000)
   const ran = (): number =>
@@ -172,7 +173,7 @@ test('2.6: a Codex worker’s read-only tool of the user’s server runs without
     ).length
   expect(ran()).toBe(0)
 
-  await dialog.getByRole('button', { name: 'Approve', exact: true }).click()
+  await approve(panel)
   await expect.poll(ran).toBe(1)
   await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 30_000 })
   await expect(eventLog(page).filter({ hasText: /figma/ }).first()).toBeVisible()

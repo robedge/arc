@@ -24,6 +24,7 @@ import {
 } from './sessions-rig'
 import type { Rig } from './sessions-rig'
 import { flag, sessionStarts } from './commands-rig'
+import { expectNoneWaiting } from './attention-rig'
 
 /**
  * Spec 011 slice 1: the brain suggests new notes with `suggest_knowledge_update`; the session shows them, they can be
@@ -39,8 +40,6 @@ test.afterEach(async () => {
 const chip = (page: Page) =>
   page.getByRole('button', { name: /Knowledge suggestions, \d+ waiting/ })
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Knowledge suggestions' })
-const attentionBadge = (page: Page) =>
-  page.getByRole('button', { name: /Needs attention, \d+ waiting/ })
 const editor = (page: Page) => dialog(page).locator('[data-knowledge-suggestion-editor]')
 const eventRows = (page: Page, kind: string) =>
   eventLog(page).and(page.locator(`[data-event-kind="${kind}"]`))
@@ -119,7 +118,7 @@ test('2.3: two suggested notes show as "Suggestions 2", discarding one survives 
   await expect(chip(page)).toBeVisible({ timeout: 20_000 })
   await expect(chip(page).locator('[data-count]')).toHaveText('2')
   await expect(chip(page)).toContainText('Suggestions')
-  await expect(attentionBadge(page)).toHaveCount(0)
+  await expectNoneWaiting(page)
 
   // The dialog lists both cards, newest first, with title, reason, destination and text.
   await chip(page).click()
@@ -189,9 +188,9 @@ test('2.3: two suggested notes show as "Suggestions 2", discarding one survives 
   )
   await expect(eventRows(page, 'knowledge-discarded')).toContainText('Discarded')
 
-  // No notification, and no Needs attention badge or dot.
+  // No notification, and no Needs attention dock or dot.
   expect(await notifications(app)).toEqual([])
-  await expect(attentionBadge(page)).toHaveCount(0)
+  await expectNoneWaiting(page)
   await expect(
     page.getByRole('navigation', { name: 'Groups' }).locator('[data-attention-dot]')
   ).toHaveCount(0)
@@ -218,7 +217,7 @@ test('2.3: two suggested notes show as "Suggestions 2", discarding one survives 
   await expect(eventRows(page2, 'knowledge-suggested')).toHaveCount(2)
   await expect(eventRows(page2, 'knowledge-discarded')).toHaveCount(1)
   expect(await notifications(r.app)).toEqual([])
-  await expect(attentionBadge(page2)).toHaveCount(0)
+  await expectNoneWaiting(page2)
   expect(knowledgeFiles(r.userDataDir)).toEqual(filesBefore)
 })
 

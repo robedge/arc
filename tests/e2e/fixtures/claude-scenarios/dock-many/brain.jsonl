@@ -1,0 +1,37 @@
+# Autonomous brain for the attention dock e2e: a long conversation first, then four workers that each ask to write outside the working copy.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say": "Title: Dock checks\n\nStarting out."}
+{"say": "Older note 1.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 2.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 3.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 4.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 5.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 6.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 7.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 8.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 9.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 10.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 11.\n\nA second paragraph so each note takes some room in the list."}
+{"say": "Older note 12.\n\nA second paragraph so each note takes some room in the list."}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "writer-one", "task": "Write one", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "writer-two", "task": "Write two", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "writer-three", "task": "Write three", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "writer-four", "task": "Write four", "repos": ["api"]}}}
+{"mcp": {"tool": "spawn_worker", "args": {"name": "writer-five", "task": "Write five", "repos": ["api"]}}}
+{"say":"All five running."}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"result":true}
+{"waitForStdin":"DOCK-PING"}
+{"say":"Heard you while requests wait."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

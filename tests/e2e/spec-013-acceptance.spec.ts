@@ -15,6 +15,7 @@ import {
   workerCard
 } from './sessions-rig'
 import type { Rig, RepoSpec } from './sessions-rig'
+import { expectWaiting } from './attention-rig'
 
 /*
  * Acceptance tests for spec 013 that fill the gaps the slice specs left: the brain reading a
@@ -148,8 +149,7 @@ test('2.3: a clean worker in api starts while the question about web is still wa
   await expect(workerCard(page, 'W1 · web-note')).toHaveAttribute('data-worker-card', 'queued', {
     timeout: 30_000
   })
-  const badge = page.getByRole('button', { name: /Needs attention, \d+ waiting/ })
-  await expect(badge.locator('[data-count]')).toHaveText('1')
+  await expectWaiting(page, 1)
 
   // While that question is waiting, the api worker starts without waiting.
   await sendToBrain(page, 'Start the api worker')
@@ -160,7 +160,7 @@ test('2.3: a clean worker in api starts while the question about web is still wa
 
   // The question is still waiting and web is untouched.
   await expect(workerCard(page, 'W1 · web-note')).toHaveAttribute('data-worker-card', 'queued')
-  await expect(badge.locator('[data-count]')).toHaveText('1')
+  await expectWaiting(page, 1)
   expect(branchOf(repos['web']!)).toBe('main')
   expect(arcBranches(repos['web']!)).toEqual([])
   expect(git(repos['web']!, 'status', '--porcelain').trim()).not.toBe('')

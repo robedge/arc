@@ -52,6 +52,21 @@ export function withE2eOffscreen(
   return { ...options, ...offscreenOrigin(getDisplayBounds()), enableLargerThanScreen: true }
 }
 
+/**
+ * Opens the window filling `getWorkArea()` (the display minus menu bar and Dock) as an ordinary
+ * window: explicit bounds in the constructor, so there is no small-window flash, and never
+ * fullscreen/simpleFullscreen, so no separate Space. E2E runs keep their fixed size and placement.
+ */
+export function withWorkAreaBounds(
+  options: BrowserWindowConstructorOptions,
+  env: Env,
+  getWorkArea: () => Rectangle
+): BrowserWindowConstructorOptions {
+  if (env['HARNESS_E2E'] === '1') return options
+  const { x, y, width, height } = getWorkArea()
+  return { ...options, x, y, width, height }
+}
+
 /** `showInactive()` (no focus steal) under both e2e env vars, else `show()`. */
 export function showWindow(win: { show(): void; showInactive(): void }, env: Env): void {
   if (isE2eOffscreen(env)) win.showInactive()

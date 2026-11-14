@@ -393,58 +393,49 @@ test('2.4 a renamed knowledge folder shows the warning banner with Locate and Us
   }
 })
 
-test('2.5/2.9 Design Preview: amber badge with 2, attention dialog cards, Close label, Escape keeps 2', async ({
+test('2.5/2.9 Design Preview: the Needs attention dock lists the sample requests with their actions, and no dialog opens', async ({
   app,
   window: main
 }) => {
   await expect(main.getByRole('heading', { name: 'Arc' })).toBeVisible()
   const preview = await openPreview(app)
-  const badge = preview.getByRole('button', { name: /Needs attention/ })
-  await expect(badge).toBeVisible()
-  await expect(badge).toContainText('Needs attention')
-  await expect(badge.locator('[data-count]')).toHaveText('2')
-  expect(await css(badge, 'border-top-color')).toBe('rgb(255, 183, 77)')
-
-  await badge.click()
-  const dialog = preview.getByRole('dialog')
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Approve' })).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Deny' })).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Send' })).toBeVisible()
-  await expect(dialog.getByRole('textbox')).toHaveCount(1)
-  // Measure at rest: the draw-in scales the dialog slightly while it runs.
-  await dialog.evaluate((el) =>
-    Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished))
+  const dock = preview.locator('[data-preview-dock] [data-attention-dock]')
+  await expect(dock).toBeVisible()
+  await expect(dock.getByRole('heading', { name: /^Needs attention · \d+$/ })).toBeVisible()
+  // The amber frame of a permission panel (the attention token at 55% opacity, computed as oklab).
+  const panel = dock.locator('article[data-request-panel][data-kind="permission"]').first()
+  await expect(panel).toBeVisible()
+  expect(await css(panel, 'border-top-color')).toMatch(
+    /^oklab\(0\.8\d* 0\.0\d* 0\.1\d* \/ 0\.55\)$/
   )
+
+  await expect(dock.getByRole('button', { name: 'Approve' }).first()).toBeVisible()
+  await expect(dock.getByRole('button', { name: 'Deny' }).first()).toBeVisible()
+  await expect(dock.getByRole('button', { name: 'Send' })).toBeVisible()
+  // The plain question's answer box and the structured question's "Other" box.
+  await expect(dock.getByRole('textbox')).toHaveCount(2)
   for (const name of ['Approve', 'Deny']) {
-    const h = (await dialog.getByRole('button', { name }).boundingBox())!.height
+    const h = (await dock.getByRole('button', { name }).first().boundingBox())!.height
     expect(h).toBeGreaterThanOrEqual(44)
   }
-  const action = dialog.locator('[data-action]')
-  expect(await css(action, 'font-family')).toContain('JetBrains Mono')
+  expect(await css(panel.locator('pre[data-code]').first(), 'font-family')).toContain(
+    'JetBrains Mono'
+  )
 
-  // VoiceOver reads the accessible name; the icon-only close button must be "Close".
-  await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeVisible()
-
-  await preview.keyboard.press('Escape')
-  await expect(dialog).toBeHidden()
-  await expect(badge.locator('[data-count]')).toHaveText('2')
+  // Nothing is a dialog: the requests sit in the page, so there is no Close button and no Escape to press.
+  await expect(preview.getByRole('dialog')).toHaveCount(0)
 })
 
-test('2.6 Reduce Motion: the badge glows steadily and a dialog appears with no animation; motion on pulses', async ({
+test('2.6 Reduce Motion: the dock runs no animation and a dialog appears with no animation', async ({
   app,
   window: page
 }) => {
   const preview = await openPreview(app)
-  const badge = preview.getByRole('button', { name: /Needs attention/ })
-  await expect(badge).toBeVisible()
-
-  await preview.emulateMedia({ reducedMotion: 'no-preference' })
-  await expect.poll(() => badge.evaluate((el) => el.getAnimations().length)).toBeGreaterThan(0)
+  const dock = preview.locator('[data-preview-dock] [data-attention-dock]')
+  await expect(dock).toBeVisible()
 
   await preview.emulateMedia({ reducedMotion: 'reduce' })
-  await expect.poll(() => badge.evaluate((el) => el.getAnimations().length)).toBe(0)
-  expect(await css(badge, 'box-shadow')).not.toBe('none')
+  await expect.poll(() => dock.evaluate((el) => el.getAnimations({ subtree: true }).length)).toBe(0)
 
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.getByRole('button', { name: 'New Group' }).click()

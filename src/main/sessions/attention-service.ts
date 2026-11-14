@@ -1,6 +1,7 @@
 import type {
   AnswerBranchQuestionResult,
   AttentionTool,
+  AttentionRequest,
   AttentionView,
   BranchChoiceValue
 } from '@shared/types/session'
@@ -12,6 +13,7 @@ import type { WorkerRow } from '../db/schema'
 import { HELPER_REASON, questionsOfRow } from './attention-questions'
 import { CODEX_PERMISSIONS_TOOL } from '../policy/normalized-action'
 import { workerLabel } from './worker-label'
+import { buildAttentionSurface } from '../surface/attention-surface'
 import type { AttentionAnswer, AttentionState } from './attention-coordinator'
 
 /** What a notification needs to know about a request that is new for the user. */
@@ -33,7 +35,7 @@ function stringList(value: unknown): string[] | undefined {
 }
 
 /** Server, tool and arguments of a stored `mcp__<server>__<tool>` call; the access of a stored `CodexPermissions` call. */
-function toolOfRow(row: AttentionRequestRow): AttentionTool | undefined {
+export function toolOfRow(row: AttentionRequestRow): AttentionTool | undefined {
   let input: Record<string, unknown> = {}
   try {
     const parsed: unknown = JSON.parse(row.toolInputJson ?? '{}')
@@ -63,31 +65,49 @@ function toolOfRow(row: AttentionRequestRow): AttentionTool | undefined {
   return { kind: 'mcp', server: match[1] ?? '', tool: match[2] ?? '', args: input }
 }
 
+/** Who is asking. Policy escalations never reached the brain, so only brain-handled requests say "via brain". */
+export function attentionFrom(
+  row: Pick<AttentionRequestRow, 'source' | 'mustEscalate'>,
+  label: string
+): string {
+  if (row.source === 'brain') return 'Brain'
+  return row.mustEscalate ? label : `${label} · via brain`
+}
+
+/**
+ * The label the panel shows for a request: `attentionFrom`, plus " (helper)" on a question one of a
+ * worker's background helpers asked. The records use it too, so they cannot disagree with the panel.
+ */
+export function requestFrom(row: AttentionRequestRow, label: string): string {
+  const from = attentionFrom(row, label)
+  return row.kind === 'question' && row.reason === HELPER_REASON ? `${from} (helper)` : from
+}
+
 /** The renderer-facing shape of a request that is with the user. */
 export function attentionView(
   row: AttentionRequestRow,
   worker: Pick<WorkerRow, 'number' | 'slug' | 'dependsOnJson'> | undefined
 ): AttentionView {
   const label = worker ? workerLabel(worker) : 'A worker'
-  // Policy escalations never reached the brain, so only brain-handled requests say "via brain".
-  const from = row.source === 'brain' ? 'Brain' : row.mustEscalate ? label : `${label} · via brain`
+  const from = requestFrom(row, label)
   // The asking worker, so a WorkerCard can open its own request first.
   const workerId = row.workerId ? { workerId: row.workerId } : {}
   const route = row.route
   if (row.kind === 'question') {
     const questions = questionsOfRow(row)
-    return {
+    const request: Extract<AttentionRequest, { kind: 'question' }> = {
       id: row.id,
       route,
       kind: 'question',
-      from: row.reason === HELPER_REASON ? `${from} (helper)` : from,
+      from,
       ...workerId,
       question: row.question ?? '',
       ...(questions ? { questions } : {})
     }
+    return { ...request, surface: buildAttentionSurface(request) }
   }
   const tool = toolOfRow(row)
-  return {
+  const view: Extract<AttentionRequest, { kind: 'permission' }> = {
     id: row.id,
     route,
     kind: 'permission',
@@ -97,6 +117,8 @@ export function attentionView(
     ...(tool ? { tool } : {}),
     ...(row.brainNote ? { reason: row.brainNote } : row.reason ? { reason: row.reason } : {})
   }
+  const allowAlways = route !== 'terminal' && tool?.kind !== 'permissions'
+  return { ...view, surface: buildAttentionSurface(view, { allowAlways }) }
 }
 
 export function attentionViews(

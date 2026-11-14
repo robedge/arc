@@ -176,11 +176,12 @@ export class BranchOnDemand {
    * that waited on that project and has no open question left, and lets the worker manager start
    * them. The project is looked at again now: changes the user saved meanwhile are simply not set
    * aside, and files added since are set aside with the rest. Arc never throws changes away.
+   * `onAccepted` runs once, when the answer is accepted and before the work starts; not for `not-open`.
    */
-  answer(questionId: string, choice: AnswerChoice): Promise<AnswerResult> {
+  answer(questionId: string, choice: AnswerChoice, onAccepted?: () => void): Promise<AnswerResult> {
     const question = this.deps.branchQuestionsRepo.getById(questionId)
     if (!question) return Promise.resolve({ status: 'not-open' })
-    return this.locked(question.sessionId, () => this.runAnswer(questionId, choice))
+    return this.locked(question.sessionId, () => this.runAnswer(questionId, choice, onAccepted))
   }
 
   private locked<T>(sessionId: string, task: () => Promise<T>): Promise<T> {
@@ -266,7 +267,11 @@ export class BranchOnDemand {
     this.cancelOrphansNow(sessionId)
   }
 
-  private async runAnswer(questionId: string, choice: AnswerChoice): Promise<AnswerResult> {
+  private async runAnswer(
+    questionId: string,
+    choice: AnswerChoice,
+    onAccepted?: () => void
+  ): Promise<AnswerResult> {
     const { branchQuestionsRepo: questions, sessionProjectsRepo: projects } = this.deps
     const question = questions.getById(questionId)
     if (!question || question.status !== 'pending') return { status: 'not-open' }
@@ -274,8 +279,14 @@ export class BranchOnDemand {
     const row = projects.listBySession(sessionId).find((r) => r.id === question.sessionProjectId)
     if (!row || row.projectId === null) return { status: 'not-open' }
     if (!questions.resolve(questionId, choice, this.deps.now())) return { status: 'not-open' }
-    // A carry can clash and bring the card back. Pushing the empty list first would close the user's
-    // Needs attention dialog, so for a carry the one push comes after the outcome is known.
+    // The click is accepted here, before any git work: whoever listens can note it at this moment.
+    try {
+      onAccepted?.()
+    } catch (error: unknown) {
+      this.deps.log.warn('could not note the accepted unsaved-changes answer', error)
+    }
+    // A carry can clash and bring the panel back. Pushing the empty list first would remove the user's
+    // request panel from the dock, so for a carry the one push comes after the outcome is known.
     if (choice !== 'carry') this.deps.onQuestionsChanged(sessionId)
 
     if (choice === 'skip') {

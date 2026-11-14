@@ -1,5 +1,7 @@
 import type { MessagePrompt, SessionMessage } from '@shared/types/session'
+import { ATTENTION_RECORD_DECISIONS } from '@shared/attention-record'
 import { surfaceProblem, surfaceSchema } from '@shared/surface'
+import { ARC_COMPONENT_NAMES } from '../surface/arc-catalog'
 import { attachmentView } from '../attachments/attachment-send'
 import type { MessageAttachmentRow } from '../db/schema'
 import type { MessageRow } from '../db/repositories/messages-repo'
@@ -14,13 +16,42 @@ export function parsePrompt(json: string | null): MessagePrompt | undefined {
       status?: unknown
       count?: unknown
       surface?: unknown
+      decision?: unknown
+      subject?: unknown
+      answer?: unknown
+      from?: unknown
+      failed?: unknown
     } | null
     if (parsed?.kind === 'surface') {
       const surface = surfaceSchema.safeParse(parsed.surface)
-      if (surface.success && surfaceProblem(surface.data) === null) {
+      if (
+        surface.success &&
+        surfaceProblem(surface.data) === null &&
+        surface.data.components.every((c) => ARC_COMPONENT_NAMES.has(c.component))
+      ) {
         return { kind: 'surface', surface: surface.data }
       }
       return undefined
+    }
+    if (parsed?.kind === 'attention-record') {
+      const decision = ATTENTION_RECORD_DECISIONS.find((d) => d === parsed.decision)
+      if (
+        decision === undefined ||
+        typeof parsed.subject !== 'string' ||
+        typeof parsed.from !== 'string' ||
+        (parsed.answer !== undefined && typeof parsed.answer !== 'string') ||
+        (parsed.failed !== undefined && typeof parsed.failed !== 'boolean')
+      ) {
+        return undefined
+      }
+      return {
+        kind: 'attention-record',
+        decision,
+        subject: parsed.subject,
+        ...(parsed.answer === undefined ? {} : { answer: parsed.answer }),
+        from: parsed.from,
+        ...(parsed.failed === true && decision === 'branch' ? { failed: true as const } : {})
+      }
     }
     if (parsed?.kind === 'review-link') return { kind: 'review-link' }
     if (

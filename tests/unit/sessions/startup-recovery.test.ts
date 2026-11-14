@@ -185,6 +185,39 @@ describe('recoverAtStartup', () => {
       })
     })
 
+    // @spec: 014-inline-needs-attention (a restart keeps a waiting worker's requests)
+    it('keeps the pending permission of a waiting worker pending and undelivered: recovery never cancels it', () => {
+      attention.create({
+        id: 'p1',
+        sessionId: 's1',
+        workerId: 'c',
+        source: 'worker',
+        kind: 'permission',
+        action: 'git push origin arc/x',
+        reason: null,
+        question: null,
+        toolName: 'Bash',
+        toolInputJson: JSON.stringify({ command: 'git push origin arc/x' }),
+        toolUseId: 'toolu_2',
+        category: 'leaves_machine',
+        mustEscalate: true,
+        escalated: true,
+        brainNote: null,
+        status: 'pending',
+        answer: null,
+        delivered: false,
+        createdAt: 5,
+        resolvedAt: null
+      })
+      recoverAtStartup(deps())
+      expect(attention.get('p1')).toMatchObject({
+        status: 'pending',
+        delivered: false,
+        resolvedAt: null
+      })
+      expect(workers.get('c')?.status).toBe('needs_approval')
+    })
+
     it('keeps the terminal-routed requests of a controlled worker in the terminal', () => {
       workers.beginControl('c', 'active', 5)
       question('q2', 'c', null)

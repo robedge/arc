@@ -258,7 +258,7 @@ it('shows the Suggestions chip with waiting suggestions and opens the dialog', a
   knowledgeSuggestions.reset()
 })
 
-it('shows no Suggestions chip at zero and leaves Needs attention alone', () => {
+it('shows no Suggestions chip at zero, and a waiting request adds no header button', () => {
   knowledgeSuggestions.reset()
   activeSession.attention = [
     {
@@ -273,6 +273,7 @@ it('shows no Suggestions chip at zero and leaves Needs attention alone', () => {
   ] as never
   render(SessionHeader, { header, groupName: 'Team', onback: vi.fn() })
   expect(document.querySelector('[data-knowledge-suggestions-chip]')).toBeNull()
-  expect(screen.getByRole('button', { name: 'Needs attention, 1 waiting' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /Needs attention/ })).toBeNull()
+  expect(screen.queryByRole('dialog')).toBeNull()
   activeSession.attention = []
 })

@@ -1,6 +1,11 @@
 import { beforeEach, expect, it } from 'vitest'
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
-import type { SessionMessage, SessionSnapshot } from '../../src/shared/types/session'
+import {
+  BRAIN_TAB,
+  workerTerminals
+} from '../../src/renderer/src/lib/stores/worker-terminals.svelte'
+import type { AttentionView, SessionMessage, SessionSnapshot } from '../../src/shared/types/session'
+import { permissionView } from './attention-fixtures'
 import { mockArc } from './helpers'
 
 function msg(id: number, over: Partial<SessionMessage> = {}): SessionMessage {
@@ -147,4 +152,48 @@ it('answerBranchQuestion sends the channel and maps the result to an error text'
   expect(await activeSession.answerBranchQuestion('bq1', 'stash')).toBeNull()
   mockArc(() => ({ ok: true, data: { status: 'failed', reason: 'Clash.' } }))
   expect(await activeSession.answerBranchQuestion('bq1', 'carry')).toBe('Clash.')
+})
+
+function openWith(attention: AttentionView[]): void {
+  mockArc(() => ({ ok: true, data: undefined }))
+  activeSession.setSnapshot(snapshot({ attention }))
+}
+
+it('toggleAttentionFold flips attentionFolded and a new session starts unfolded', () => {
+  openWith([permissionView({ id: 'p1' })])
+  activeSession.toggleAttentionFold()
+  expect(activeSession.attentionFolded).toBe(true)
+  activeSession.toggleAttentionFold()
+  expect(activeSession.attentionFolded).toBe(false)
+  activeSession.toggleAttentionFold()
+  activeSession.close()
+  expect(activeSession.attentionFolded).toBe(false)
+})
+
+it('a push with a new queue request unfolds; one that only removes a request does not', () => {
+  openWith([permissionView({ id: 'p1' }), permissionView({ id: 'p2' })])
+  activeSession.toggleAttentionFold()
+  activeSession.applyAttention({ sessionId: 's1', requests: [permissionView({ id: 'p1' })] })
+  expect(activeSession.attentionFolded).toBe(true)
+  activeSession.applyAttention({
+    sessionId: 's1',
+    requests: [permissionView({ id: 'p1' }), permissionView({ id: 'p3' })]
+  })
+  expect(activeSession.attentionFolded).toBe(false)
+})
+
+it('focusRequest selects the Brain tab, unfolds and bumps the nonce for the same id', () => {
+  openWith([permissionView({ id: 'p1' })])
+  workerTerminals.active = 'w1'
+  activeSession.toggleAttentionFold()
+  activeSession.focusRequest('p1')
+  expect(workerTerminals.active).toBe(BRAIN_TAB)
+  expect(activeSession.attentionFolded).toBe(false)
+  const first = activeSession.attentionFocus
+  activeSession.focusRequest('p1')
+  expect(activeSession.attentionFocus?.requestId).toBe('p1')
+  expect(activeSession.attentionFocus?.nonce).toBe((first?.nonce ?? 0) + 1)
+  activeSession.focusRequest()
+  expect(activeSession.attentionFocus?.requestId).toBeNull()
+  workerTerminals.reset()
 })

@@ -1,12 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { channelSchemas } from '../../../src/shared/ipc/contract'
 import type { IpcEvents } from '../../../src/shared/ipc/contract'
-import { AttentionService, attentionView } from '../../../src/main/sessions/attention-service'
+import {
+  AttentionService,
+  attentionFrom,
+  attentionView
+} from '../../../src/main/sessions/attention-service'
 import type { AttentionNotice } from '../../../src/main/sessions/attention-service'
 import type { KnowledgeSuggestionsRepo } from '../../../src/main/db/repositories/knowledge-suggestions-repo'
 import type { AttentionRequestRow } from '../../../src/main/db/repositories/attention-repo'
+import { buildAttentionSurface } from '../../../src/main/surface/attention-surface'
 import { useTempDir } from '../helpers/temp-dir'
 import { makeRig } from './helpers'
+import { noticeClicks } from './notice-click'
 import type { Rig } from './helpers'
 
 const dir = useTempDir('arc-attention-service-')
@@ -120,7 +126,8 @@ describe('request shape', () => {
       kind: 'permission',
       from: 'W1 api-retry · via brain',
       action: 'brew install jq',
-      reason: 'Not in the plan'
+      reason: 'Not in the plan',
+      surface: expect.objectContaining({ surfaceId: 'x' })
     })
   })
 
@@ -195,8 +202,65 @@ describe('request shape', () => {
       kind: 'permission',
       from: 'W1 api-retry',
       action: 'git push --force',
-      reason: 'Force push'
+      reason: 'Force push',
+      surface: expect.objectContaining({ surfaceId: 'p' })
     })
+  })
+
+  it('gives a permission a surface, with "always" unless it is for the terminal or asks for more access', () => {
+    const row = {
+      id: 'a',
+      source: 'brain',
+      kind: 'permission',
+      action: 'git push',
+      route: 'queue',
+      mustEscalate: true,
+      question: null
+    } as AttentionRequestRow
+    const ids = (r: AttentionRequestRow): string[] =>
+      (attentionView(r, undefined).surface?.components ?? []).map((c) => c.id)
+    expect(ids(row)).toContain('always')
+    expect(ids({ ...row, route: 'terminal' })).not.toContain('always')
+    const access = {
+      ...row,
+      toolName: 'CodexPermissions',
+      toolInputJson: JSON.stringify({ reason: 'Needs the cache', network: true })
+    }
+    expect(ids(access)).toContain('approve')
+    expect(ids(access)).not.toContain('always')
+  })
+
+  it('gives a plain question a surface with a Send button and an answer box', () => {
+    const row = {
+      id: 'q',
+      source: 'brain',
+      kind: 'question',
+      question: 'Which?'
+    } as AttentionRequestRow
+    const surface = attentionView(row, undefined).surface
+    expect(surface.surfaceId).toBe('q')
+    expect(surface.components.map((c) => c.id)).toEqual(
+      expect.arrayContaining(['question', 'answer', 'send'])
+    )
+    expect(surface.dataModel).toEqual({ answer: '' })
+  })
+
+  it('gives a question with choices a picker per question and Decline and Submit', () => {
+    const row = {
+      id: 'q',
+      source: 'brain',
+      kind: 'question',
+      question: 'Which?',
+      toolInputJson: JSON.stringify({
+        questions: [
+          { question: 'Which?', header: 'H', options: [{ label: 'a' }], multiSelect: false }
+        ]
+      })
+    } as AttentionRequestRow
+    const surface = attentionView(row, undefined).surface
+    expect(surface.components.map((c) => c.id)).toEqual(
+      expect.arrayContaining(['q0-pick', 'q0-other', 'decline', 'submit'])
+    )
   })
 
   it('shows a brain question as "Brain"', () => {
@@ -207,12 +271,46 @@ describe('request shape', () => {
       question: 'Which limit?',
       action: null
     } as AttentionRequestRow
-    expect(attentionView(row, undefined)).toEqual({
+    const view = attentionView(row, undefined)
+    const { surface, ...request } = view
+    expect(request).toEqual({
       id: 'q',
       kind: 'question',
       from: 'Brain',
       question: 'Which limit?'
     })
+    expect(surface).toEqual(buildAttentionSurface(request))
+  })
+})
+
+describe('attentionFrom', () => {
+  const row = (source: 'brain' | 'worker', mustEscalate: boolean) =>
+    ({ source, mustEscalate }) as AttentionRequestRow
+
+  it('says "Brain" for the brain, whatever the policy said', () => {
+    expect(attentionFrom(row('brain', false), 'W1 api-retry')).toBe('Brain')
+    expect(attentionFrom(row('brain', true), 'W1 api-retry')).toBe('Brain')
+  })
+
+  it('names the worker for a policy escalation and adds "via brain" otherwise', () => {
+    expect(attentionFrom(row('worker', true), 'W1 api-retry')).toBe('W1 api-retry')
+    expect(attentionFrom(row('worker', false), 'W1 api-retry')).toBe('W1 api-retry · via brain')
+  })
+
+  it('is what a helper question shows, followed by "(helper)"', () => {
+    const question = {
+      id: 'h',
+      source: 'worker',
+      kind: 'question',
+      reason: 'helper',
+      mustEscalate: true,
+      question: 'Which?'
+    } as AttentionRequestRow
+    const worker = { number: 2, slug: 'web-fix', dependsOnJson: '[]' }
+    expect(attentionView(question, worker)).toMatchObject({
+      from: `${attentionFrom(question, 'W2 web-fix')} (helper)`
+    })
+    expect(attentionView(question, worker)).toMatchObject({ from: 'W2 web-fix (helper)' })
   })
 })
 
@@ -243,7 +341,8 @@ describe('counts and pushes', () => {
         kind: 'permission',
         from: 'Brain',
         action: 'git push origin arc/fix-order-sync',
-        reason: 'Leaves the machine'
+        reason: 'Leaves the machine',
+        surface: expect.objectContaining({ surfaceId: 'r1' })
       }
     ])
   })
@@ -302,5 +401,66 @@ describe('counts and pushes', () => {
     addSession('s1', rig.groupId)
     attention.onAttentionChanged('s1', { count: 0, requests: [] })
     expect(pushes[0]).toMatchObject({ count: 0, requests: [] })
+  })
+})
+
+describe('the notification click target', () => {
+  function wire(): ReturnType<typeof noticeClicks> {
+    const clicks = noticeClicks()
+    attention = new AttentionService({
+      sessions: {
+        answerAttention: () => undefined,
+        answerBranchQuestion: () => Promise.resolve({ status: 'ok' }),
+        branchQuestionViews: (id) => rig.service.branchQuestionViews(id),
+        attentionState: (id) => rig.service.attentionState(id)
+      },
+      attentionRepo: rig.deps.attentionRepo,
+      branchQuestionsRepo: rig.deps.branchQuestionsRepo,
+      sessionsRepo: rig.sessionsRepo,
+      workerOf: (id) => rig.deps.workersRepo.get(id),
+      emit: (_event, payload) => void pushes.push(payload),
+      onNewRequest: clicks.notify
+    })
+    addSession('s1', rig.groupId)
+    return clicks
+  }
+
+  function expectClickOpensView(clicks: ReturnType<typeof noticeClicks>): void {
+    const view = pushes.at(-1)?.requests[0]
+    expect(clicks.count()).toBe(1)
+    expect(view?.id).toBeTruthy()
+    expect(clicks.click(0)).toEqual([
+      { sessionId: 's1', groupId: rig.groupId, requestId: view?.id }
+    ])
+  }
+
+  it('sends the id of a permission request', () => {
+    const clicks = wire()
+    addRequest('s1')
+    attention.onAttentionChanged('s1', rig.service.attentionState('s1'))
+    expectClickOpensView(clicks)
+  })
+
+  it('sends the id of a question', () => {
+    const clicks = wire()
+    addRequest('s1', { kind: 'question', question: 'Which?', action: null })
+    attention.onAttentionChanged('s1', rig.service.attentionState('s1'))
+    expectClickOpensView(clicks)
+  })
+
+  it('sends the id of a question with choices', () => {
+    const clicks = wire()
+    addRequest('s1', {
+      kind: 'question',
+      question: 'Which?',
+      action: null,
+      toolInputJson: JSON.stringify({
+        questions: [
+          { question: 'Which?', header: 'H', options: [{ label: 'a' }], multiSelect: false }
+        ]
+      })
+    })
+    attention.onAttentionChanged('s1', rig.service.attentionState('s1'))
+    expectClickOpensView(clicks)
   })
 })

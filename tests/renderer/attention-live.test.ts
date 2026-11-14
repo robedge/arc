@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte'
-import AttentionDialog from '../../src/renderer/src/lib/components/ui/attention/AttentionDialog.svelte'
+import ConversationTabs from '../../src/renderer/src/lib/components/sessions/ConversationTabs.svelte'
+import { permissionView, questionSurface } from './attention-fixtures'
 import SessionHeader from '../../src/renderer/src/lib/components/sessions/SessionHeader.svelte'
 import AgentColumn from '../../src/renderer/src/lib/components/sessions/AgentColumn.svelte'
 import GroupSidebar from '../../src/renderer/src/lib/components/shell/GroupSidebar.svelte'
@@ -18,7 +19,6 @@ import type {
   SessionSnapshot,
   WorkerView
 } from '../../src/shared/types/session'
-import type { AttentionRequest } from '../../src/renderer/src/lib/components/ui/attention/types'
 import { mockArc } from './helpers'
 
 const header: Header = {
@@ -37,21 +37,15 @@ const header: Header = {
   branches: []
 }
 
-const perm: AttentionView = {
-  id: 'p1',
-  route: 'queue',
-  kind: 'permission',
-  from: 'W1 api · via brain',
-  workerId: 'w1',
-  action: 'git push'
-}
+const perm: AttentionView = permissionView({ id: 'p1', action: 'git push' })
 const question: AttentionView = {
   id: 'q1',
   route: 'queue',
   kind: 'question',
   from: 'W2 docs · via brain',
   workerId: 'w2',
-  question: 'Which branch?'
+  question: 'Which branch?',
+  surface: questionSurface('q1', 'Which branch?')
 }
 
 function worker(id: string, number: number, status: WorkerView['status']): WorkerView {
@@ -112,40 +106,50 @@ afterEach(() => {
 })
 
 const renderHeader = () => render(SessionHeader, { header, groupName: 'Alpha', onback: vi.fn() })
+const renderConversation = (workers: WorkerView[] = []) =>
+  render(ConversationTabs, { sessionId: 's1', workers })
+const dock = () => document.querySelector('[data-attention-dock]')
 
-it('badge shows the count and is hidden at zero', async () => {
+it('the header has no Needs attention button; the dock heading shows the count and empties', async () => {
   activeSession.setSnapshot(snapshot([perm, question]))
-  renderHeader()
-  expect(screen.getByRole('button', { name: 'Needs attention, 2 waiting' })).toBeTruthy()
+  const { container: headerEl } = renderHeader()
+  renderConversation()
+  // The only "Needs attention" button is the fold button inside the dock heading.
+  expect(within(headerEl).queryByRole('button', { name: /Needs attention/ })).toBeNull()
+  expect(
+    screen
+      .getAllByRole('button', { name: /Needs attention/ })
+      .every((b) => b.closest('[data-attention-heading]') !== null)
+  ).toBe(true)
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(
+    within(screen.getByRole('region', { name: 'Needs attention' })).getByRole('heading', {
+      name: 'Needs attention · 2'
+    })
+  ).toBeTruthy()
   activeSession.applyAttention({ sessionId: 's1', requests: [] })
-  await waitFor(() => expect(screen.queryByRole('button', { name: /Needs attention/ })).toBeNull())
+  await waitFor(() => expect(dock()).toBeNull())
 })
 
-it('dialog approve, deny and answer send attention:answer payloads', async () => {
-  activeSession.setSnapshot(snapshot([perm, { ...perm, id: 'p2' }, question]))
-  renderHeader()
-  await fireEvent.click(screen.getByRole('button', { name: /Needs attention, 3/ }))
-  const dialog = screen.getByRole('dialog')
-  const approves = within(dialog).getAllByRole('button', { name: 'Approve' })
+it('the dock shows a pushed request without a click and answers send attention:answer payloads', async () => {
+  activeSession.setSnapshot(snapshot([]))
+  renderConversation()
+  expect(dock()).toBeNull()
+  activeSession.applyAttention({
+    sessionId: 's1',
+    requests: [perm, permissionView({ id: 'p2', action: 'ls' }), question]
+  })
+  const region = await screen.findByRole('region', { name: 'Needs attention' })
+  const approves = within(region).getAllByRole('button', { name: 'Approve' })
   await fireEvent.click(approves[0]!)
-  await fireEvent.click(within(dialog).getAllByRole('button', { name: 'Deny' })[1]!)
-  await fireEvent.input(within(dialog).getByRole('textbox'), { target: { value: 'main' } })
-  await fireEvent.click(within(dialog).getByRole('button', { name: /Send/ }))
+  await fireEvent.click(within(region).getAllByRole('button', { name: 'Deny' })[1]!)
+  await fireEvent.input(within(region).getByRole('textbox'), { target: { value: 'main' } })
+  await fireEvent.click(within(region).getByRole('button', { name: /Send/ }))
   await waitFor(() => {
     expect(invoke).toHaveBeenCalledWith('attention:answer', { requestId: 'p1', approve: true })
     expect(invoke).toHaveBeenCalledWith('attention:answer', { requestId: 'p2', approve: false })
     expect(invoke).toHaveBeenCalledWith('attention:answer', { requestId: 'q1', text: 'main' })
   })
-})
-
-it('dialog closes itself when the list empties', async () => {
-  activeSession.setSnapshot(snapshot([perm]))
-  renderHeader()
-  await fireEvent.click(screen.getByRole('button', { name: /Needs attention/ }))
-  expect(screen.getByRole('dialog')).toBeTruthy()
-  activeSession.applyAttention({ sessionId: 's1', requests: [] })
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-  expect(activeSession.attentionDialog).toBeNull()
 })
 
 it('session:attention for another session is ignored', () => {
@@ -154,56 +158,18 @@ it('session:attention for another session is ignored', () => {
   expect(activeSession.attention).toHaveLength(1)
 })
 
-const dialogRequests: AttentionRequest[] = [
-  { id: 'a', kind: 'permission', from: 'one', action: 'ls' },
-  { id: 'b', kind: 'question', from: 'two', question: 'Q?' },
-  { id: 'c', kind: 'permission', from: 'three', action: 'pwd' }
-]
-const order = () =>
-  [...document.querySelectorAll('[data-attention-list] article')].map(
-    (el) => el.getAttribute('aria-label') ?? ''
-  )
-
-it('initialRequestId puts that request first and keeps the rest in order', () => {
-  render(AttentionDialog, {
-    open: true,
-    requests: dialogRequests,
-    initialRequestId: 'c',
-    onApprove: vi.fn(),
-    onDeny: vi.fn(),
-    onAlwaysAllow: vi.fn(),
-    onAnswer: vi.fn(),
-    onClose: vi.fn()
-  })
-  expect(order()[0]).toContain('three')
-  expect(order()[1]).toContain('one')
-  expect(order()[2]).toContain('two')
-})
-
-it('initialRequestId falls back to the default order when missing', () => {
-  render(AttentionDialog, {
-    open: true,
-    requests: dialogRequests,
-    initialRequestId: 'nope',
-    onApprove: vi.fn(),
-    onDeny: vi.fn(),
-    onAlwaysAllow: vi.fn(),
-    onAnswer: vi.fn(),
-    onClose: vi.fn()
-  })
-  expect(order()[0]).toContain('one')
-  expect(order()[2]).toContain('three')
-})
-
-it('a worker card in an attention state opens the dialog with its request first', async () => {
+it('a worker card in an attention state brings its request panel into view', async () => {
   activeSession.setSnapshot(
     snapshot([perm, question], [worker('w1', 1, 'needs_approval'), worker('w2', 2, 'has_question')])
   )
   render(AgentColumn, { brainState: 'idle', workers: activeSession.workers })
-  render(SessionHeader, { header, groupName: 'Alpha', onback: vi.fn() })
+  renderConversation(activeSession.workers)
   await fireEvent.click(screen.getByText('W2 · task-2'))
-  expect(activeSession.attentionDialog).toEqual({ initialRequestId: 'q1' })
-  await waitFor(() => expect(order()[0]).toContain('W2 docs'))
+  expect(activeSession.attentionFocus).toMatchObject({ requestId: 'q1' })
+  expect(workerTerminals.active).toBe('brain')
+  expect(
+    document.querySelector('[data-attention-dock] article[aria-label*="W2 docs"]')
+  ).toBeTruthy()
 })
 
 it('a worker card that is not in an attention state opens its terminal instead', async () => {
@@ -211,7 +177,7 @@ it('a worker card that is not in an attention state opens its terminal instead',
   activeSession.setSnapshot(snapshot([], [worker('w1', 1, 'working')]))
   render(AgentColumn, { brainState: 'idle', workers: activeSession.workers })
   await fireEvent.click(screen.getByText('W1 · task-1'))
-  expect(activeSession.attentionDialog).toBeNull()
+  expect(activeSession.attentionFocus).toBeNull()
   expect(workerTerminals.tabs).toEqual(['w1'])
   workerTerminals.reset()
 })
@@ -264,7 +230,7 @@ it('shows an amber dot for groups with pending requests and follows pushes', asy
   )
 })
 
-it('navigateToAttention selects group, Sessions tab and session, then opens the dialog', async () => {
+it('navigateToAttention selects group, Sessions tab and session, then focuses the request', async () => {
   invoke = mockArc((channel) =>
     channel === 'sessions:open'
       ? { ok: true, data: snapshot([perm, question]) }
@@ -275,7 +241,7 @@ it('navigateToAttention selects group, Sessions tab and session, then opens the 
   expect(ui.selectedGroupId).toBe('g1')
   expect(ui.activeSectionId).toBe(SECTION_SESSIONS)
   expect(activeSession.sessionId).toBe('s1')
-  expect(activeSession.attentionDialog).toEqual({ initialRequestId: 'q1' })
+  expect(activeSession.attentionFocus).toMatchObject({ requestId: 'q1' })
 })
 
 it('navigateToAttention finds the group from loaded sessions when the payload has none', async () => {
@@ -306,24 +272,23 @@ it('navigateToAttention toasts and does nothing else when the leave guard refuse
   await navigateToAttention({ sessionId: 's1', groupId: 'g1', requestId: 'p1' })
   expect(ui.selectedGroupId).toBe('g2')
   expect(activeSession.sessionId).toBeNull()
-  expect(activeSession.attentionDialog).toBeNull()
+  expect(activeSession.attentionFocus).toBeNull()
   expect(invoke).not.toHaveBeenCalledWith('sessions:open', expect.anything())
   expect(toasts.list).toHaveLength(1)
   expect(toasts.list[0]!.message).toMatch(/unsaved/i)
 })
 
-it('the dialog and badge leave out terminal requests and those of controlled workers', async () => {
+it('the dock leaves out terminal requests and those of controlled workers', () => {
   const controlled = { ...worker('w1', 1, 'needs_approval'), userControl: 'active' as const }
-  const terminal: AttentionView = { ...perm, id: 'tp', route: 'terminal', workerId: 'w3' }
-  const ofControlled: AttentionView = { ...perm, id: 'pc', workerId: 'w1' }
+  const terminal: AttentionView = permissionView({ id: 'tp', route: 'terminal', workerId: 'w3' })
+  const ofControlled: AttentionView = permissionView({ id: 'pc', workerId: 'w1' })
   activeSession.setSnapshot(
     snapshot([terminal, ofControlled, question], [controlled, worker('w2', 2, 'has_question')])
   )
   expect(activeSession.queueAttention.map((r) => r.id)).toEqual(['q1'])
-  renderHeader()
-  expect(screen.getByRole('button', { name: 'Needs attention, 1 waiting' })).toBeTruthy()
-  await fireEvent.click(screen.getByRole('button', { name: /Needs attention, 1/ }))
-  const dialog = screen.getByRole('dialog')
-  expect(within(dialog).queryByText('git push')).toBeNull()
-  expect(within(dialog).getByText('Which branch?')).toBeTruthy()
+  renderConversation()
+  const region = screen.getByRole('region', { name: 'Needs attention' })
+  expect(within(region).getByRole('heading', { name: 'Needs attention · 1' })).toBeTruthy()
+  expect(within(region).queryByText('git push')).toBeNull()
+  expect(within(region).getByText('Which branch?')).toBeTruthy()
 })

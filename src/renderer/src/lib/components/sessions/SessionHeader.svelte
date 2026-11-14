@@ -18,8 +18,6 @@
   import { models } from '../../stores/models.svelte'
   import { providers } from '../../stores/providers.svelte'
   import { sessionsList } from '../../stores/sessions-list.svelte'
-  import AttentionBadge from '../ui/AttentionBadge.svelte'
-  import AttentionDialog from '../ui/attention/AttentionDialog.svelte'
   import KnowledgeSuggestionsChip from '../ui/KnowledgeSuggestionsChip.svelte'
   import KnowledgeSuggestionsDialog from '../knowledge-suggestions/KnowledgeSuggestionsDialog.svelte'
   import { knowledgeSuggestions } from '../../stores/knowledge-suggestions.svelte'
@@ -33,7 +31,6 @@
   import Panel from '../ui/Panel.svelte'
   import PopoverList from '../ui/PopoverList.svelte'
   import UsageChip from './UsageChip.svelte'
-  import { toasts } from '../../stores/toasts.svelte'
 
   interface Props {
     header: SessionHeader
@@ -50,24 +47,6 @@
   let draft = $state('')
   let error = $state<string | null>(null)
   let input: HTMLInputElement | undefined = $state()
-
-  const requests = $derived(activeSession.queueAttention)
-
-  async function answer(
-    requestId: string,
-    body:
-      | { approve: boolean; always?: boolean }
-      | { text: string }
-      | { answers: Record<string, string[]> }
-      | { decline: true }
-  ): Promise<string | null> {
-    const err = await activeSession.answerAttention(body, requestId)
-    if (err) {
-      toasts.show(messageFor(err), 'error')
-      return messageFor(err)
-    }
-    return null
-  }
 
   const modeText = $derived(
     `${header.mode === 'plan_first' ? 'Plan-first' : 'Autonomous'} · Limit ${header.workerLimit}`
@@ -264,9 +243,6 @@
     {#if !editing}
       <IconButton label="Rename session" icon="edit" onclick={() => void startEdit()} />
     {/if}
-    {#if requests.length > 0}
-      <AttentionBadge count={requests.length} onclick={() => activeSession.openAttention()} />
-    {/if}
     <KnowledgeSuggestionsChip
       count={knowledgeSuggestions.count}
       onclick={() => knowledgeSuggestions.open()}
@@ -375,19 +351,5 @@
   </div>
   {#if configError}<div class="px-3 pb-2"><ErrorText message={configError} /></div>{/if}
 </Panel>
-
-<AttentionDialog
-  open={activeSession.attentionDialog !== null}
-  {requests}
-  initialRequestId={activeSession.attentionDialog?.initialRequestId ?? null}
-  onApprove={(id) => void answer(id, { approve: true })}
-  onDeny={(id) => void answer(id, { approve: false })}
-  onAlwaysAllow={(id) => void answer(id, { approve: true, always: true })}
-  onAnswer={(id, text) => void answer(id, { text })}
-  onAnswerStructured={(id, answers) => answer(id, { answers })}
-  onDecline={(id) => answer(id, { decline: true })}
-  onAnswerBranch={(id, choice) => activeSession.answerBranchQuestion(id, choice)}
-  onClose={() => activeSession.closeAttention()}
-/>
 
 <KnowledgeSuggestionsDialog />

@@ -1,0 +1,7 @@
+# Asks permission to push the session branch, then reports progress and stays alive, so nothing else is said afterwards.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Pushing the branch"}}}
+{"tool":{"name":"Bash","input":{"command":"git push origin arc/records","description":"Push the session branch"}}}
+{"mcp":{"tool":"report_progress","args":{"note":"Carrying on"}}}
+{"hang":true}

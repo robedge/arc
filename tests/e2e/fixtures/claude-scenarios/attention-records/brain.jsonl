@@ -1,0 +1,26 @@
+# Spec 014 records: names the session, then on each cue starts the api worker (which asks to push), asks the user a
+# question, starts the web worker (whose repository has unsaved changes) and finally says one more thing.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Records\n\nReady when you are."}
+{"result":true}
+{"waitForStdin":"Start the api worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client, then push the branch","repos":["api"]}}}
+{"say":"The api worker is running."}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"result":true}
+{"waitForStdin":"Ask me something"}
+{"mcp":{"tool":"ask_user","args":{"question":"Should the retry count be configurable?"}}}
+{"say":"Thanks, noted."}
+{"result":true}
+{"waitForStdin":"Start the web worker"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"web-note","task":"Look at the web client","repos":["web"]}}}
+{"say":"The web worker is running."}
+{"result":true}
+{"waitForStdin":"Say one more thing"}
+{"say":"One more thing from the brain."}
+{"result":true}
+{"waitForStdin":"has started"}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

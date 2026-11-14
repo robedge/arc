@@ -1,8 +1,15 @@
 // @spec: 007-codex-as-a-second-provider
 // @regression
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
-import { NEEDS_ATTENTION, launchCodexRig, readCodexLog, setDefault } from './codex-rig'
+import { launchCodexRig, readCodexLog, setDefault } from './codex-rig'
+import {
+  answerQuestion,
+  approve,
+  expectNoneWaiting,
+  expectWaiting,
+  permissionAction,
+  request
+} from './attention-rig'
 import type { CodexRig } from './codex-rig'
 import { createGroupWithProjects, eventLog, startSession, workerCard } from './sessions-rig'
 
@@ -18,8 +25,6 @@ test.afterEach(async () => {
 })
 
 const W1 = 'W1 · api-retry'
-const badge = (page: Page) => page.getByRole('button', { name: NEEDS_ATTENTION })
-const attentionDialog = (page: Page) => page.getByRole('dialog', { name: /Needs attention/ })
 
 async function setup(scenario: string, codexScenario: string): Promise<CodexRig> {
   const r = await launchCodexRig({ scenario, codexScenario, repos: [{ name: 'api' }] })
@@ -44,18 +49,17 @@ test('2.4: a Codex worker asks to push; Needs attention shows the exact command 
   const card = workerCard(page, W1)
   await expect(card.locator('[data-worker-model]')).toHaveText('Codex · fake-deep')
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval')
-  await expect(badge(page)).toHaveCount(1)
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog.locator('[data-action]')).toHaveText('git push origin arc/fix-order-sync')
-  await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Deny', exact: true })).toBeVisible()
+  await expectWaiting(page, 1)
+  const panel = request(page, 'permission')
+  await expect(permissionAction(panel)).toHaveText('git push origin arc/fix-order-sync')
+  await expect(panel.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Deny', exact: true })).toBeVisible()
   // Waiting: the push has not run.
   await page.waitForTimeout(1000)
   expect(shellRuns(r)).toEqual([])
 
-  await dialog.getByRole('button', { name: 'Approve', exact: true }).click()
-  await expect(badge(page)).toHaveCount(0)
+  await approve(panel)
+  await expectNoneWaiting(page)
   await expect.poll(() => shellRuns(r).length).toBe(1)
   await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 30_000 })
 })
@@ -67,14 +71,12 @@ test('2.4: a Codex worker asks a question the brain cannot answer; it reaches Ne
 
   const card = workerCard(page, W1)
   await expect(card).toHaveAttribute('data-worker-card', 'has_question')
-  await expect(badge(page)).toHaveCount(1)
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog.getByText('How many retries should the client make?')).toBeVisible()
-  await dialog.getByLabel('Your answer').fill('Five attempts')
-  await dialog.getByRole('button', { name: 'Send' }).click()
+  await expectWaiting(page, 1)
+  const question = request(page, 'question')
+  await expect(question.getByText('How many retries should the client make?')).toBeVisible()
+  await answerQuestion(question, 'Five attempts')
 
-  await expect(badge(page)).toHaveCount(0)
+  await expectNoneWaiting(page)
   // The answer is the tool result the Codex worker gets, and it carries on.
   await expect
     .poll(() =>

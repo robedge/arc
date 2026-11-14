@@ -494,3 +494,21 @@ describe('suggest_knowledge_update', () => {
     expect(services.suggestKnowledgeUpdate).not.toHaveBeenCalled()
   })
 })
+
+describe('show_surface', () => {
+  it('rejects a call without express as invalid input, not as a changed format', async () => {
+    const services = fakeServices()
+    const config = readMcpConfig(bridge.registerAgent(brain, services).configPath)
+    const answer = await mcpRequest(config, 'tools/call', {
+      name: 'show_surface',
+      arguments: { surfaceId: 'p' }
+    })
+    const result = answer['result'] as
+      { isError?: boolean; content: { text: string }[] } | undefined
+    expect(answer['error'] !== undefined || result?.isError === true).toBe(true)
+    const text = JSON.stringify(answer)
+    expect(text).toContain('express')
+    expect(text).not.toContain('format_changed')
+    expect(services.showSurface).not.toHaveBeenCalled()
+  })
+})

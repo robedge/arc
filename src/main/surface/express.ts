@@ -1,7 +1,7 @@
 /**
- * SPIKE (A2UI): compiles A2UI Express, the compact text the brain writes, into the A2UI v1.0
- * `createSurface` body Arc stores and draws. The compiler is the official `@a2ui/agent` SDK; the
- * catalog it checks against is `ARC_CATALOG`. Throwaway.
+ * Compiles A2UI Express, the compact text the brain writes, into the A2UI v1.0 `createSurface`
+ * body Arc stores and draws. The compiler is the official `@a2ui/agent` SDK; the catalog it checks
+ * against is `ARC_CATALOG`.
  */
 import {
   A2uiError,

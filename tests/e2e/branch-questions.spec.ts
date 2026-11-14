@@ -17,15 +17,21 @@ import {
   workerCard
 } from './sessions-rig'
 import type { Rig, RepoKind } from './sessions-rig'
+import {
+  branchChoice,
+  chooseForBranch,
+  continueBranch,
+  expectNoDialog,
+  expectNoneWaiting,
+  expectWaiting,
+  requests
+} from './attention-rig'
 
 let rig: Rig | undefined
 test.afterEach(async () => {
   await rig?.dispose()
   rig = undefined
 })
-
-const badge = (page: Page) => page.getByRole('button', { name: /Needs attention, \d+ waiting/ })
-const attentionDialog = (page: Page) => page.getByRole('dialog', { name: /Needs attention/ })
 
 /** A dirty web (on main) and a clean api (on dev), with the session named "Retry work". */
 async function setup(webKind: RepoKind = 'dirty-no-dev'): Promise<Rig> {
@@ -68,28 +74,22 @@ async function startBothWorkers(r: Rig, webBranch = 'main'): Promise<void> {
   expect(arcBranches(repos['web']!)).toEqual([])
 }
 
-/** Opens Needs attention from the badge and checks the card. */
-async function openCard(page: Page, files = ['README.md', 'untracked.txt']) {
-  // Nothing opened on its own: the badge shows the count and the user opens the list.
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(badge(page)).toHaveCount(1)
-  await expect(badge(page).locator('[data-count]')).toHaveText('1')
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  const card = dialog.locator('[data-branch-card]')
+/** Checks the docked card: nothing was opened, the dock shows the count and the card names the files. */
+async function showCard(page: Page, files = ['README.md', 'untracked.txt']) {
+  await expectNoDialog(page)
+  await expectWaiting(page, 1)
+  const card = requests(page, 'branch')
   await expect(card).toHaveCount(1)
   await expect(card).toContainText('Unsaved changes in web')
-  for (const file of files) await expect(card.locator('[data-branch-files]')).toContainText(file)
-  await expect(card.locator('[data-branch-workers]')).toContainText('W2 web-note')
-  return { dialog, card }
+  for (const file of files) await expect(card).toContainText(file)
+  await expect(card).toContainText('W2 web-note')
+  return { card }
 }
 
 async function answer(page: Page, choiceLabel: string): Promise<void> {
-  const { dialog, card } = await openCard(page)
-  await card.getByRole('radio', { name: choiceLabel }).check()
-  await card.locator('[data-branch-continue]').getByRole('button', { name: 'Continue' }).click()
-  await expect(dialog).toHaveCount(0)
-  await expect(badge(page)).toHaveCount(0)
+  const { card } = await showCard(page)
+  await chooseForBranch(card, choiceLabel)
+  await expectNoneWaiting(page)
 }
 
 async function expectWebStarted(r: Rig): Promise<void> {
@@ -112,6 +112,28 @@ test('a dirty web waits in Needs attention while api starts; Set aside starts th
 
   expect(git(repos['web']!, 'stash', 'list').trim()).not.toBe('')
   expect(git(repos['web']!, 'status', '--porcelain').trim()).toBe('')
+})
+
+test('no choice is preselected and Continue is unavailable until one is picked; Set aside then Continue starts the worker', async () => {
+  const r = await setup()
+  const { page, repos } = r
+  await startBothWorkers(r)
+  const { card } = await showCard(page)
+
+  await expect(card.getByRole('radio')).toHaveCount(4)
+  await expect(card.getByRole('radio', { checked: true })).toHaveCount(0)
+  await expect(card.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  // Pressing it anyway changes nothing.
+  await card.getByRole('button', { name: 'Continue' }).click({ force: true })
+  await expectWaiting(page, 1)
+  expect(branchOf(repos['web']!)).toBe('main')
+
+  await branchChoice(card, 'Set aside').check()
+  await expect(card.getByRole('button', { name: 'Continue' })).toBeEnabled()
+  await continueBranch(card)
+  await expectNoneWaiting(page)
+  await expectWebStarted(r)
+  expect(git(repos['web']!, 'stash', 'list').trim()).not.toBe('')
 })
 
 test('Commit them first saves the changes on the original branch and starts the worker', async () => {
@@ -203,23 +225,23 @@ test('a failed carry shows a warning on the card, then Set aside starts the work
   const { page, repos } = r
   await startBothWorkers(r, 'side')
 
-  const { card } = await openCard(page, ['README.md'])
-  await card.getByRole('radio', { name: 'Bring them along' }).check()
-  await card.locator('[data-branch-continue]').getByRole('button', { name: 'Continue' }).click()
+  const { card } = await showCard(page, ['README.md'])
+  await chooseForBranch(card, 'Bring them along')
 
   // The card stays, with the warning, and Bring them along is gone.
-  await expect(card.locator('[data-branch-message]')).toContainText(clashText)
-  await expect(card.getByRole('radio', { name: 'Bring them along' })).toHaveCount(0)
+  await expect(card).toContainText(clashText)
+  await expect(branchChoice(card, 'Bring them along')).toHaveCount(0)
   for (const label of ['Set aside', 'Commit them first', "Don't start"]) {
-    await expect(card.getByRole('radio', { name: label })).toHaveCount(1)
+    await expect(branchChoice(card, label)).toHaveCount(1)
   }
+  await expect(card.getByRole('radio')).toHaveCount(3)
   expect(branchOf(repos['web']!)).toBe('side')
   expect(arcBranches(repos['web']!)).toEqual([])
   await expect(workerCard(page, 'W2 · web-note')).toHaveAttribute('data-worker-card', 'queued')
 
-  await card.getByRole('radio', { name: 'Set aside' }).check()
-  await card.locator('[data-branch-continue]').getByRole('button', { name: 'Continue' }).click()
-  await expect(attentionDialog(page)).toHaveCount(0)
+  await branchChoice(card, 'Set aside').check()
+  await continueBranch(card)
+  await expectNoneWaiting(page)
   await expect(workerCard(page, 'W2 · web-note')).toHaveAttribute('data-worker-card', 'working', {
     timeout: 30_000
   })
@@ -227,11 +249,11 @@ test('a failed carry shows a warning on the card, then Set aside starts the work
   expect(git(repos['web']!, 'stash', 'list').trim()).not.toBe('')
 })
 
-test('stopping the only waiting worker removes the card and clears the badge', async () => {
+test('stopping the only waiting worker removes the card and clears the dock', async () => {
   const r = await setup()
   const { page, repos } = r
   await startBothWorkers(r)
-  await expect(badge(page)).toHaveCount(1)
+  await expectWaiting(page, 1)
 
   await page.getByRole('button', { name: 'Details for W2 · web-note' }).click()
   const dialog = page.getByRole('dialog', { name: 'W2 · web-note' })
@@ -239,8 +261,8 @@ test('stopping the only waiting worker removes the card and clears the badge', a
   await dialog.getByRole('button', { name: 'Stop worker' }).click()
   await expect(workerCard(page, 'W2 · web-note')).toHaveAttribute('data-worker-card', 'stopped')
 
-  await expect(badge(page)).toHaveCount(0)
-  await expect(page.locator('[data-branch-card]')).toHaveCount(0)
+  await expectNoneWaiting(page)
+  await expect(requests(page, 'branch')).toHaveCount(0)
   expect(branchOf(repos['web']!)).toBe('main')
   expect(arcBranches(repos['web']!)).toEqual([])
 })

@@ -21,21 +21,40 @@ it('labels samples and has the Design Preview heading', () => {
   expect(screen.getAllByText('Sample').length).toBeGreaterThan(10)
 })
 
-it('opens the attention dialog with one permission and one question; Escape keeps count 2', async () => {
+it('shows the dock with a panel for every request kind, a failed carry, and no standalone cards', () => {
   render(DesignPreview)
-  const badge = screen.getByRole('button', { name: 'Needs attention, 2 waiting' })
-  expect(badge.querySelector('[data-count]')?.textContent).toBe('2')
-  await fireEvent.click(badge)
-  const dialog = screen.getByRole('dialog')
-  expect(dialog.querySelectorAll('[data-kind="permission"]')).toHaveLength(1)
-  expect(dialog.querySelectorAll('[data-kind="question"]')).toHaveLength(1)
-  expect(within(dialog).getByText('git push origin arc/fix-order-sync')).toBeTruthy()
-  await fireEvent.keyDown(dialog, { key: 'Escape' })
+  const dock = document.querySelector('[data-preview-dock] [data-attention-dock]') as HTMLElement
+  expect(dock).toBeTruthy()
+  expect(within(dock).getByRole('heading', { name: 'Needs attention · 7' })).toBeTruthy()
+  expect(dock.querySelectorAll('[data-request-panel][data-kind="permission"]')).toHaveLength(3)
+  expect(within(dock).getByText('git push origin arc/fix-order-sync')).toBeTruthy()
+  expect(within(dock).getByText('create_issue')).toBeTruthy()
+  expect(within(dock).getByText('Wants network access')).toBeTruthy()
+  expect(dock.querySelectorAll('[data-request-panel][data-kind="question"]')).toHaveLength(2)
+  expect(dock.querySelectorAll('[data-request-panel][data-structured]')).toHaveLength(1)
+  const branches = dock.querySelectorAll('[data-request-panel][data-kind="branch"]')
+  expect(branches).toHaveLength(2)
+  // The failed carry shows the reason and offers three choices.
+  const failed = branches[1] as HTMLElement
+  expect(within(failed).getByText(/could not bring the changes along/)).toBeTruthy()
+  expect(within(failed).getAllByRole('radio')).toHaveLength(3)
+  expect(within(branches[0] as HTMLElement).getAllByRole('radio')).toHaveLength(4)
+  expect(document.querySelector('[data-branch-card]')).toBeNull()
   expect(screen.queryByRole('dialog')).toBeNull()
-  expect(
-    screen.getByRole('button', { name: 'Needs attention, 2 waiting' }).querySelector('[data-count]')
-      ?.textContent
-  ).toBe('2')
+})
+
+it('shows a folded dock sample whose list is hidden and opens from its heading button', async () => {
+  render(DesignPreview)
+  const dock = document.querySelector(
+    '[data-preview-dock-folded] [data-attention-dock]'
+  ) as HTMLElement
+  expect(dock).toBeTruthy()
+  const button = within(dock).getByRole('button', { name: 'Needs attention · 7' })
+  expect(button.getAttribute('aria-expanded')).toBe('false')
+  expect(dock.querySelector('[data-attention-list]')!.hasAttribute('hidden')).toBe(true)
+  await fireEvent.click(button)
+  expect(button.getAttribute('aria-expanded')).toBe('true')
+  expect(dock.querySelector('[data-attention-list]')!.hasAttribute('hidden')).toBe(false)
 })
 
 it('shows the knowledge suggestions block: chip counts, diff snippet and one card per state', async () => {
@@ -113,4 +132,13 @@ it('shows the attachments block: chip states, a long row, notices, the warning a
     expect(within(block).getAllByText(text).length).toBeGreaterThan(0)
   }
   expect(within(block).getByText('Drop to attach')).toBeTruthy()
+})
+
+it('shows a short and a very long answered-request record', () => {
+  const { container } = render(DesignPreview)
+  const records = container.querySelectorAll('[data-preview-records] [data-record]')
+  expect(records).toHaveLength(2)
+  expect(records[0]?.textContent).toContain('git push origin arc/fix-order-sync')
+  expect((records[1]?.getAttribute('title') ?? '').length).toBeGreaterThan(300)
+  expect(records[1]?.classList.contains('truncate')).toBe(true)
 })

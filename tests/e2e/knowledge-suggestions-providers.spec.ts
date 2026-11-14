@@ -2,7 +2,8 @@
 // @regression
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { NEEDS_ATTENTION, launchCodexRig, readCodexLog, setDefault } from './codex-rig'
+import { launchCodexRig, readCodexLog, setDefault } from './codex-rig'
+import { expectNoneWaiting } from './attention-rig'
 import type { CodexRig } from './codex-rig'
 import {
   cursorMcpResults,
@@ -29,7 +30,6 @@ test.afterEach(async () => {
 const chip = (page: Page) =>
   page.getByRole('button', { name: /Knowledge suggestions, \d+ waiting/ })
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Knowledge suggestions' })
-const attentionBadge = (page: Page) => page.getByRole('button', { name: NEEDS_ATTENTION })
 
 const ORDERS_TEXT =
   'The orders table is partitioned by month.\nQueries should filter on created_at to hit one partition.'
@@ -50,7 +50,7 @@ async function expectOneSuggestion(page: Page): Promise<void> {
   await expect(card).toContainText('The schema dump in the orders migration')
   await expect(card.locator('pre')).toHaveText(ORDERS_TEXT)
   // It never needed the user: nothing is waiting under Needs attention.
-  await expect(attentionBadge(page)).toHaveCount(0)
+  await expectNoneWaiting(page)
 }
 
 test('Codex brain: it calls suggest_knowledge_update, which is enabled for the brain and not asked about, and the chip reads "Suggestions 1"', async () => {

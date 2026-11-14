@@ -1,0 +1,11 @@
+# Spec 014 acceptance: starts the worker the request names (worker-alpha or worker-beta), which asks to push. The push goes to the user.
+{"waitForStdin":"worker-"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"capture":{"as":"w","regex":"worker-(alpha|beta)"}}
+{"say":"Title: Session {{VAR:w}}\n\nStarting the worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"{{VAR:w}}","task":"Push the branch","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"cannot approve it"}
+{"say":"The push needs your approval."}
+{"result":true}

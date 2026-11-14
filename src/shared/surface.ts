@@ -1,8 +1,8 @@
 /**
- * SPIKE (A2UI): the body of an A2UI v1.0 `createSurface` as Arc stores and draws it. A surface is a
+ * The body of an A2UI v1.0 `createSurface` as Arc stores and draws it. A surface is a
  * flat list of components that refer to each other by id, plus a data model the components bind to
  * with `{"@path": "/json/pointer"}`. The main process checks the components against Arc's catalog
- * when it compiles them (`main/surface/express.ts`); this file only checks the shape. Throwaway.
+ * when it compiles them (`main/surface/express.ts`); this file only checks the shape.
  */
 import { z } from 'zod'
 
@@ -139,4 +139,77 @@ export function parseSurfaceAction(content: string): SurfaceActionView | null {
   } catch {
     return null
   }
+}
+
+/** The event a button raises: its name and the context bindings it carries. */
+export interface SurfaceEvent {
+  name: string
+  context: Record<string, unknown>
+}
+
+/** Reads `action.event` off a component; null when it names no event. */
+export function eventOf(node: SurfaceNode): SurfaceEvent | null {
+  const event = (node['action'] as { event?: { name?: unknown; context?: unknown } } | undefined)
+    ?.event
+  if (typeof event?.name !== 'string') return null
+  const context =
+    event.context !== null && typeof event.context === 'object'
+      ? (event.context as Record<string, unknown>)
+      : {}
+  return { name: event.name, context }
+}
+
+/** A literal, or the value its `@path` points at in the data model. */
+export function resolveValue(model: unknown, value: unknown): unknown {
+  const path = pathOf(value)
+  return path === null ? value : readPointer(model, path)
+}
+
+/** An event context with every binding replaced by a plain copy of its value (absent becomes null). */
+export function resolveContext(
+  model: unknown,
+  context: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(context)) {
+    const resolved = resolveValue(model, value)
+    out[key] = resolved === undefined ? null : (JSON.parse(JSON.stringify(resolved)) as unknown)
+  }
+  return out
+}
+
+/** What a button click hands to `onAction`. */
+export interface SurfaceAction {
+  surfaceId: string
+  name: string
+  label: string
+  sourceComponentId: string
+  context: Record<string, unknown>
+}
+
+/** True for a non-empty (trimmed) string or a non-empty list: what counts as "filled in". */
+function isFilled(value: unknown): boolean {
+  if (typeof value === 'string') return value.trim() !== ''
+  return Array.isArray(value) && value.length > 0
+}
+
+/**
+ * Whether a button's `requires` holds. Every entry must be satisfied; an entry that is a list is
+ * satisfied when any one of its paths is. No `requires` (or one that is not a list) is met.
+ */
+export function requiresMet(requires: unknown, model: unknown): boolean {
+  if (!Array.isArray(requires)) return true
+  const filled = (entry: unknown): boolean => {
+    const path = pathOf(entry)
+    return path !== null && isFilled(readPointer(model, path))
+  }
+  return requires.every((entry) => (Array.isArray(entry) ? entry.some(filled) : filled(entry)))
+}
+
+/** The first `maxLines` lines, then at most `maxChars` characters, then "…"; null when nothing is cut. */
+export function cutText(text: string, maxLines: number, maxChars: number): string | null {
+  const lines = text.split('\n')
+  if (lines.length <= maxLines && text.length <= maxChars) return null
+  const head = lines.slice(0, maxLines).join('\n')
+  return (head.length > maxChars ? head.slice(0, maxChars) : head) + '\n…'
 }

@@ -1,86 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import type { BypassReport } from '../../src/shared/types/provider'
-import PermissionCard from '../../src/renderer/src/lib/components/ui/attention/PermissionCard.svelte'
 import ProvidersSettings from '../../src/renderer/src/lib/components/settings/ProvidersSettings.svelte'
 import { providers } from '../../src/renderer/src/lib/stores/providers.svelte'
 import { mockArc } from './helpers'
 
 afterEach(cleanup)
-
-const handlers = { onApprove: () => {}, onDeny: () => {}, onAlwaysAllow: () => {} }
-
-it('shows the server, the tool and the arguments of an MCP call', () => {
-  render(PermissionCard, {
-    id: 'm1',
-    from: 'W1',
-    action: 'mcp__claude_ai_Figma__use_figma {"fileKey":"abc"}',
-    tool: {
-      kind: 'mcp',
-      server: 'claude_ai_Figma',
-      tool: 'use_figma',
-      args: { fileKey: 'abc' }
-    },
-    ...handlers
-  })
-  expect(document.querySelector('[data-mcp-server]')!.textContent).toBe('claude_ai_Figma')
-  expect(document.querySelector('[data-mcp-tool]')!.textContent).toBe('use_figma')
-  expect(document.querySelector('[data-mcp-args]')!.textContent).toContain('"fileKey": "abc"')
-  expect(screen.queryByText(/mcp__claude_ai_Figma__use_figma/)).toBeNull()
-  expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Deny' })).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Always allow this in this session' })).toBeTruthy()
-  expect(screen.queryByRole('button', { name: /Show/ })).toBeNull()
-})
-
-it('truncates long arguments behind a show-more control', async () => {
-  render(PermissionCard, {
-    id: 'm2',
-    from: 'W1',
-    action: 'x',
-    tool: { kind: 'mcp', server: 's', tool: 't', args: { body: 'z'.repeat(1500) } },
-    ...handlers
-  })
-  const args = document.querySelector('[data-mcp-args]')!
-  expect(args.textContent!.length).toBeLessThan(600)
-  await fireEvent.click(screen.getByRole('button', { name: 'Show all arguments' }))
-  expect(args.textContent).toContain('z'.repeat(1500))
-  await fireEvent.click(screen.getByRole('button', { name: 'Show fewer arguments' }))
-  expect(args.textContent!.length).toBeLessThan(600)
-})
-
-it('says so when an MCP call has no arguments', () => {
-  render(PermissionCard, {
-    id: 'm3',
-    from: 'W1',
-    action: 'x',
-    tool: { kind: 'mcp', server: 's', tool: 't', args: {} },
-    ...handlers
-  })
-  expect(document.querySelector('[data-mcp-args-empty]')).toBeTruthy()
-})
-
-it('shows the reason and the requested access of a permissions request, with no Always allow', () => {
-  render(PermissionCard, {
-    id: 'c1',
-    from: 'W2',
-    action: 'Extra access: cache',
-    tool: {
-      kind: 'permissions',
-      reason: 'Needs the build cache',
-      read: ['/cache'],
-      write: ['/out'],
-      network: true
-    },
-    ...handlers
-  })
-  expect(document.querySelector('[data-access-reason]')!.textContent).toBe('Needs the build cache')
-  expect(screen.getByRole('list', { name: 'Paths to read' }).textContent).toContain('/cache')
-  expect(screen.getByRole('list', { name: 'Paths to write' }).textContent).toContain('/out')
-  expect(document.querySelector('[data-access-network]')!.textContent).toContain('network')
-  expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy()
-  expect(screen.queryByRole('button', { name: /Always allow/ })).toBeNull()
-})
 
 const report = (patch: Partial<BypassReport> = {}): BypassReport => ({
   claudeHookEvents: [],
