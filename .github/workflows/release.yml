@@ -39,7 +39,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # electron-vite build + electron-builder --mac --arm64 (ad hoc signed, no keychain).
-      - run: pnpm package
+      # pnpm appends the extra args to the end of the script, so --publish never
+      # reaches electron-builder and stops its implicit publish on CI.
+      # The release is created by the next steps, not by electron-builder.
+      - run: pnpm package --publish never
 
       - name: Stage the dmg under a stable name
         run: |
