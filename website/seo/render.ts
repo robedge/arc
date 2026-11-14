@@ -95,6 +95,8 @@ export function jsonLd(siteUrl: string): Record<string, unknown> {
         operatingSystem: 'macOS',
         softwareRequirements: requirements,
         featureList: features,
+        isAccessibleForFree: true,
+        sameAs: [site.repoUrl],
         image: abs(siteUrl, OG_IMAGE.path),
       },
       {
@@ -227,7 +229,7 @@ export function llmsTxt(siteUrl: string, sections: PageSection[]): string {
 
 > ${site.summary}
 
-Arc is a macOS app for a single developer. It needs no API keys: it drives the locally installed Claude Code and Codex CLIs on their logged-in subscriptions, runs everything on the user's Mac, and never pushes or merges into the user's dev branch. The brain can also show interactive panels in the conversation, written in A2UI Express and drawn from Arc's component catalog; a button press returns a "[Surface action]" event to the brain. ${site.status}
+Arc is a macOS app for a single developer. It needs no API keys: it drives the locally installed Claude Code and Codex CLIs on their logged-in subscriptions, runs everything on the user's Mac, and never pushes or merges into the user's dev branch. Arc is open source: the code is at ${site.repoUrl}. The brain can also show interactive panels in the conversation, written in A2UI Express and drawn from Arc's component catalog; a button press returns a "[Surface action]" event to the brain. ${site.status}
 
 ## Docs
 
