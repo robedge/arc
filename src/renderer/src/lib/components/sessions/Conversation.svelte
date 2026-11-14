@@ -12,13 +12,15 @@
   import PlanCard from './PlanCard.svelte'
   import ContinueWorkersPrompt from './ContinueWorkersPrompt.svelte'
   import MessageBubble from './MessageBubble.svelte'
+  import { dockCap } from '../../dock-cap'
 
-  /** Rendered under the message list (the Composer). */
-  let { footer }: { footer?: Snippet } = $props()
+  /** `dock` sits between the message list and the footer, outside the scrolling list. */
+  let { footer, dock }: { footer?: Snippet; dock?: Snippet } = $props()
 
   const STICK_THRESHOLD_PX = 48
 
   let scroller: HTMLDivElement | undefined = $state()
+  let dockEl: HTMLDivElement | undefined = $state()
   let seenBump = activeSession.forceBottom
   const memoryKey = activeSession.sessionId
   let stuck = $state(
@@ -60,6 +62,69 @@
   $effect(() => {
     void activeSession.messages
     if (untrack(() => stuck)) void tick().then(toBottom)
+  })
+
+  // When the dock grows or shrinks the list changes height; a reader at the bottom stays there.
+  $effect(() => {
+    if (!dockEl || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      if (untrack(() => stuck)) toBottom()
+    })
+    observer.observe(dockEl)
+    return () => observer.disconnect()
+  })
+
+  // The dock shows its first panel in full: its height limit is raised from half to what heading and
+  // first panel need (up to 80%). Without sizes (jsdom, hidden) the class's 50% stays.
+  function applyDockCap(): void {
+    if (!dockEl) return
+    const host = dockEl.parentElement
+    const heading = dockEl.querySelector<HTMLElement>('[data-attention-heading]')
+    const first = dockEl.querySelector<HTMLElement>('[data-request-panel]')
+    const list = dockEl.querySelector<HTMLElement>('[data-attention-list]')
+    let paddings = 0
+    if (list) {
+      const style = getComputedStyle(list)
+      paddings = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+    }
+    // The dock's own top border.
+    paddings += 1
+    const cap = dockCap(
+      host?.clientHeight ?? 0,
+      heading?.offsetHeight ?? 0,
+      first?.offsetHeight ?? 0,
+      paddings
+    )
+    const next = cap === null ? '' : `${Math.round(cap)}px`
+    if (dockEl.style.maxHeight !== next) dockEl.style.maxHeight = next
+  }
+
+  $effect(() => {
+    if (!dockEl || typeof ResizeObserver === 'undefined') return
+    const root = dockEl
+    const sizes = new ResizeObserver(applyDockCap)
+    const watch = (): void => {
+      sizes.disconnect()
+      if (root.parentElement) sizes.observe(root.parentElement)
+      sizes.observe(root)
+      for (const el of root.querySelectorAll('[data-attention-heading], [data-request-panel]')) {
+        sizes.observe(el)
+      }
+      applyDockCap()
+    }
+    // Panels come and go and the list hides when folded: watch the ones there now.
+    const changes = new MutationObserver(watch)
+    changes.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['hidden']
+    })
+    watch()
+    return () => {
+      sizes.disconnect()
+      changes.disconnect()
+    }
   })
 
   $effect(() => {
@@ -108,6 +173,11 @@
         </div>
       {/if}
     </div>
+    {#if dock}
+      <div bind:this={dockEl} class="flex max-h-[50%] min-h-0 shrink-0 flex-col" data-dock-region>
+        {@render dock()}
+      </div>
+    {/if}
     <div data-footer-region>{@render footer?.()}</div>
   </div>
 </Panel>

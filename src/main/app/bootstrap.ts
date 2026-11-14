@@ -38,7 +38,12 @@ import { isSmokeRun, runSmoke } from './smoke'
 import { createCloseGate } from './close-gate'
 import type { CloseGate } from './close-gate'
 import { getMainWindow, setMainWindow } from './main-window'
-import { mainWindowOptions, showWindow, withE2eOffscreen } from './window-options'
+import {
+  mainWindowOptions,
+  showWindow,
+  withE2eOffscreen,
+  withWorkAreaBounds
+} from './window-options'
 import { lockDownWindow } from './lockdown'
 import { buildAppMenuTemplate } from './app-menu'
 import { openDesignPreview } from './preview-window'
@@ -80,7 +85,12 @@ const displayBounds = (): Rectangle[] => screen.getAllDisplays().map((d) => d.bo
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow(
     withE2eOffscreen(
-      mainWindowOptions(join(import.meta.dirname, '../preload/index.cjs')),
+      // The primary display, which is where Electron already opens a window with no position.
+      withWorkAreaBounds(
+        mainWindowOptions(join(import.meta.dirname, '../preload/index.cjs')),
+        process.env,
+        () => screen.getPrimaryDisplay().workArea
+      ),
       process.env,
       displayBounds
     )

@@ -1,0 +1,9 @@
+# Brain for the surface spec: shows a dashboard panel, then answers the click in one line.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"show_surface","args":{"surfaceId":"release","express":"$/env = \"staging\"\nkpis = Grid([Stat(\"Deploys\", \"13\", \"+3\", \"up\"), Stat(\"Failures\", \"1\", tone=\"danger\")], 2)\ngo = Button(Text(\"Deploy\"), Event(\"deploy\", {env: $/env}), \"primary\")\nroot = Column([Text(\"Release 2.4\", \"h2\"), kpis, TextField(\"Environment\", $/env), go])"}}}
+{"say":"Title: Release panel\n\nThe panel is up."}
+{"result":true}
+{"waitForStdin":"[Surface action]"}
+{"say":"Got the click."}
+{"result":true}

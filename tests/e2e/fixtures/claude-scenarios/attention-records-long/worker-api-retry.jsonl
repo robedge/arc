@@ -1,0 +1,5 @@
+# Asks permission to push with a 300 character command, then stays alive.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool": {"name": "Bash", "input": {"command": "git push origin arc/long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-branch-name-long-bra", "description": "Push the branch"}}}
+{"hang":true}

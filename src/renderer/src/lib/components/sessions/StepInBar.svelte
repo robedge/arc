@@ -5,10 +5,7 @@
   import { workerControl } from '../../stores/worker-control.svelte'
   import Button from '../ui/Button.svelte'
   import ErrorText from '../ui/ErrorText.svelte'
-  import PermissionCard from '../ui/attention/PermissionCard.svelte'
-  import QuestionCard from '../ui/attention/QuestionCard.svelte'
-  import StructuredQuestionCard from '../ui/attention/StructuredQuestionCard.svelte'
-  import { messageFor } from '../../ipc/messages'
+  import RequestPanel from './RequestPanel.svelte'
   import CommandMenu from './CommandMenu.svelte'
   import { commandOptionId } from './command-filter'
   import { SlashMenu } from './slash-menu.svelte'
@@ -49,21 +46,6 @@
   })
 
   const pinned = $derived(activeSession.terminalAttentionFor(workerId))
-  let answerError = $state<string | null>(null)
-
-  async function answer(
-    requestId: string,
-    body:
-      | { approve: boolean }
-      | { text: string }
-      | { answers: Record<string, string[]> }
-      | { decline: true }
-  ): Promise<string | null> {
-    const err = await activeSession.answerAttention(body, requestId)
-    answerError = err ? messageFor(err) : null
-    return answerError
-  }
-
   const canSend = $derived(text.trim().length > 0 && !sending)
 
   function oninput(event: Event): void {
@@ -109,35 +91,8 @@
         Needs your answer
       </p>
       {#each pinned as request (request.id)}
-        {#if request.kind === 'permission'}
-          <PermissionCard
-            id={request.id}
-            from={request.from}
-            action={request.action}
-            reason={request.reason}
-            tool={request.tool}
-            allowAlways={false}
-            onApprove={(id) => void answer(id, { approve: true })}
-            onDeny={(id) => void answer(id, { approve: false })}
-          />
-        {:else if request.questions && request.questions.length > 0}
-          <StructuredQuestionCard
-            id={request.id}
-            from={request.from}
-            questions={request.questions}
-            onSubmit={(id, answers) => answer(id, { answers })}
-            onDecline={(id) => answer(id, { decline: true })}
-          />
-        {:else}
-          <QuestionCard
-            id={request.id}
-            from={request.from}
-            question={request.question}
-            onSend={(id, text) => void answer(id, { text })}
-          />
-        {/if}
+        <RequestPanel {request} />
       {/each}
-      {#if answerError}<ErrorText message={answerError} />{/if}
     </div>
   {/if}
   {#if error}<ErrorText message={error} />{/if}

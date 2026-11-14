@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
+import AttentionDock from '../../src/renderer/src/lib/components/sessions/AttentionDock.svelte'
+import { permissionView } from './attention-fixtures'
 import SessionHeader from '../../src/renderer/src/lib/components/sessions/SessionHeader.svelte'
 import { eventStyle } from '../../src/renderer/src/lib/components/sessions/event-kinds'
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
@@ -32,30 +34,20 @@ afterEach(cleanup)
 const show = (over: Partial<Header> = {}) =>
   render(SessionHeader, { header: { ...header, ...over }, groupName: 'Team', onback: vi.fn() })
 
-it('Always allow in the attention dialog sends approve with always:true', async () => {
+it('Always allow on the docked panel sends approve with always:true', async () => {
   activeSession.setSnapshot({
     header,
     messages: [],
     events: [],
     workers: [],
     plan: null,
-    attention: [
-      {
-        id: 'p1',
-        route: 'queue',
-        kind: 'permission',
-        from: 'W1',
-        workerId: 'w1',
-        action: 'mkdir x'
-      }
-    ],
+    attention: [permissionView({ id: 'p1', from: 'W1', workerId: 'w1', action: 'mkdir x' })],
     knowledgeSuggestions: [],
     brainState: 'idle',
     changedFileCount: 0,
     seq: 0
   })
-  show()
-  activeSession.openAttention()
+  render(AttentionDock)
   await fireEvent.click(
     await screen.findByRole('button', { name: 'Always allow this in this session' })
   )

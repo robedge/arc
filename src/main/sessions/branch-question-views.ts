@@ -1,8 +1,9 @@
-import type { AttentionView } from '@shared/types/session'
+import type { AttentionRequest, AttentionView } from '@shared/types/session'
 import type { BranchQuestionsRepo } from '../db/repositories/branch-questions-repo'
 import type { SessionProjectsRepo } from '../db/repositories/session-projects-repo'
 import type { WorkersRepo } from '../db/repositories/workers-repo'
 import type { SessionGit } from '../git/session-git'
+import { buildAttentionSurface } from '../surface/attention-surface'
 import { workerLabel } from './worker-label'
 
 /** How many changed paths a card lists; the rest is counted in `moreFiles`. */
@@ -49,7 +50,7 @@ export async function branchQuestionViews(
     } catch (error: unknown) {
       deps.log.warn(`could not read the changed files of ${project.projectName}`, error)
     }
-    views.push({
+    const request: Extract<AttentionRequest, { kind: 'branch' }> = {
       id: question.id,
       route: 'queue',
       kind: 'branch',
@@ -62,7 +63,8 @@ export async function branchQuestionViews(
         .filter((w) => projectIdsOf(w.projectIdsJson).includes(projectId))
         .map(workerLabel),
       ...(question.message ? { message: question.message } : {})
-    })
+    }
+    views.push({ ...request, surface: buildAttentionSurface(request) })
   }
   return views
 }

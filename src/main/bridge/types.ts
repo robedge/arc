@@ -246,7 +246,7 @@ export interface BridgeServices {
     agent: BridgeAgent,
     input: SuggestKnowledgeInput
   ): Promise<{ id: string; remainingThisRequest: number }>
-  /** SPIKE (A2UI). Brain. Posts the surface into the conversation; does not wait. */
+  /** Brain. Posts the surface into the conversation; does not wait. */
   showSurface(agent: BridgeAgent, input: Surface): { ok: true; surfaceId: string }
 }
 

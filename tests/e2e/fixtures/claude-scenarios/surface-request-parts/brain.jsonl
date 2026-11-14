@@ -1,0 +1,9 @@
+# Brain for the surface spec, request parts: code, key-value list, radio choice and a button that requires it. It answers only the click message whose context carries the picked value.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"show_surface","args":{"surfaceId":"parts","express":"$/choice = []\ncode = CodeBlock(\"line 1\\nline 2\\nline 3\\nline 4\\nline 5\\nline 6\\nline 7\\nline 8\\nline 9\\nline 10\\nline 11\\nline 12\\nline 13\\nline 14\\nline 15\\nline 16\\nline 17\\nline 18\\nline 19\\nline 20\\nline 21\\nline 22\\nline 23\\nline 24\\nline 25\\nline 26\\nline 27\\nline 28\\nline 29\\nline 30\", 10)\nfacts = KeyValue([{label: \"Command\", value: \"pnpm test\"}, {label: \"Files\", value: [\"a.ts\", \"b.ts\"]}])\npick = ChoicePicker(\"What now\", [{label: \"Set aside\", value: \"aside\", description: \"Keep them\"}, {label: \"Bring along\", value: \"carry\", description: \"Take them with you\"}], $/choice, \"mutuallyExclusive\", \"radio\")\ngo = Button(Text(\"Continue\"), Event(\"continue\", {choice: $/choice}), \"primary\", [$/choice])\nroot = Column([Text(\"Parts panel\", \"h2\"), code, facts, pick, go])"}}}
+{"say":"Title: Parts panel\n\nThe panel is up."}
+{"result":true}
+{"waitForStdin": "carry"}
+{"say":"Got the choice."}
+{"result":true}

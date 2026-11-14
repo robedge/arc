@@ -8,9 +8,12 @@ import type { IpcEvents } from '../../../src/shared/ipc/contract'
 import { AttentionService } from '../../../src/main/sessions/attention-service'
 import type { AttentionNotice } from '../../../src/main/sessions/attention-service'
 import { SessionService } from '../../../src/main/sessions/session-service'
+import { buildAttentionSurface } from '../../../src/main/surface/attention-surface'
+import type { AttentionRequest } from '../../../src/shared/types/session'
 import { trackedFile } from '../../helpers/git-fixtures'
 import { useTempDir } from '../helpers/temp-dir'
-import { makeEngineRig, until } from './engine-rig'
+import { gitIn, makeEngineRig, until } from './engine-rig'
+import { noticeClicks } from './notice-click'
 import type { EngineRig } from './engine-rig'
 
 const dir = useTempDir('arc-branch-attention-')
@@ -81,19 +84,18 @@ describe('the unsaved-changes card in the attention snapshot and push', () => {
     const apiRow = rig.rig.deps.sessionProjectsRepo
       .listBySession(sessionId)
       .find((p) => p.projectName === 'api')
-    expect(push?.requests).toEqual([
-      {
-        id: rig.rig.deps.branchQuestionsRepo.listPending(sessionId)[0]?.id,
-        route: 'queue',
-        kind: 'branch',
-        from: 'Arc',
-        projectId: apiRow?.projectId,
-        projectName: 'api',
-        files: [trackedFile],
-        moreFiles: 0,
-        workers: ['W1 api-fix']
-      }
-    ])
+    const request: Extract<AttentionRequest, { kind: 'branch' }> = {
+      id: rig.rig.deps.branchQuestionsRepo.listPending(sessionId)[0]?.id ?? '',
+      route: 'queue',
+      kind: 'branch',
+      from: 'Arc',
+      projectId: apiRow?.projectId ?? '',
+      projectName: 'api',
+      files: [trackedFile],
+      moreFiles: 0,
+      workers: ['W1 api-fix']
+    }
+    expect(push?.requests).toEqual([{ ...request, surface: buildAttentionSurface(request) }])
     // The session snapshot a renderer gets on open carries the same card.
     const opened = await rig.rig.service.open(sessionId)
     expect('attention' in opened && opened.attention.map((r) => r.kind)).toEqual(['branch'])
@@ -141,6 +143,25 @@ describe('the unsaved-changes card in the attention snapshot and push', () => {
   })
 })
 
+describe('the notification click target', () => {
+  it('sends the question id, which is the id of the unsaved-changes card', async () => {
+    const { rig, wired } = await rigWithAttention()
+    e = rig
+    const clicks = noticeClicks()
+    const forward = wired.attention
+    const { sessionId } = await waitingOnApi(rig)
+    await until(() => wired.notices.length > 0)
+    forward.onBranchQuestionsChanged(sessionId)
+    const card = wired.pushes.at(-1)?.requests.find((r) => r.kind === 'branch')
+    const notice = wired.notices.at(-1)
+    if (!notice) throw new Error('no notice')
+    clicks.notify(notice)
+    const questionId = rig.rig.deps.branchQuestionsRepo.listPending(sessionId)[0]?.id
+    expect(card?.id).toBe(questionId)
+    expect(clicks.click(0)).toEqual([{ sessionId, groupId: notice.groupId, requestId: card?.id }])
+  })
+})
+
 describe('counts include pending branch questions', () => {
   it('counts a pending question in the push, the group summary and the session list badge', async () => {
     const { rig, wired } = await rigWithAttention()
@@ -165,6 +186,26 @@ describe('counts include pending branch questions', () => {
     expect(wired.attention.summary()).toEqual({ byGroup: {} })
     await until(() => rig.rig.deps.workersRepo.get(workerId)?.status !== 'queued')
   })
+
+  // @spec: 014-inline-needs-attention (the panel leaves with the only worker that waited on it)
+  it('drops the card when the user stops the only worker waiting on it, with no record', async () => {
+    const { rig, wired } = await rigWithAttention()
+    e = rig
+    const { sessionId, workerId } = await waitingOnApi(rig)
+    const question = rig.rig.deps.branchQuestionsRepo.listPending(sessionId)[0]
+    await until(() => wired.pushes.some((p) => p.requests.some((r) => r.kind === 'branch')))
+
+    await rig.rig.service.stopWorker(workerId)
+
+    await until(() => wired.pushes.at(-1)?.requests.length === 0)
+    expect(rig.rig.deps.branchQuestionsRepo.getById(String(question?.id))?.status).toBe('cancelled')
+    expect(wired.pushes.at(-1)?.count).toBe(0)
+    expect(
+      rig.rig.messagesRepo
+        .latest(sessionId, 100)
+        .filter((m) => m.promptJson?.includes('attention-record'))
+    ).toEqual([])
+  })
 })
 
 describe('sessions:answer-branch-question', () => {
@@ -185,6 +226,136 @@ describe('sessions:answer-branch-question', () => {
     expect(await wired.attention.answerBranchQuestion('nope', 'stash')).toEqual({
       status: 'not-open'
     })
+  })
+})
+
+describe('the record an unsaved-changes answer leaves in the conversation', () => {
+  /** The records in the session's conversation, as stored. */
+  function recordLines(rig: EngineRig, sessionId: string): string[] {
+    return rig.rig.messagesRepo
+      .latest(sessionId, 100)
+      .filter((m) => m.promptJson?.includes('attention-record'))
+      .map((m) => {
+        expect(m.role).toBe('system')
+        return m.content
+      })
+  }
+
+  const openQuestion = (rig: EngineRig, sessionId: string): string =>
+    String(rig.rig.deps.branchQuestionsRepo.listPending(sessionId)[0]?.id)
+
+  it('is one line "Unsaved changes in <project>: Set aside (Arc)" for a choice that worked', async () => {
+    const { rig, wired } = await rigWithAttention()
+    e = rig
+    const { sessionId } = await waitingOnApi(rig)
+    const result = await wired.attention.answerBranchQuestion(openQuestion(rig, sessionId), 'stash')
+    expect(result).toEqual({ status: 'ok' })
+    expect(recordLines(rig, sessionId)).toEqual(['Unsaved changes in api: Set aside (Arc)'])
+    const stored = rig.rig.messagesRepo.latest(sessionId, 100).at(-1)
+    expect(JSON.parse(stored?.promptJson ?? '{}')).toEqual({
+      kind: 'attention-record',
+      decision: 'branch',
+      subject: 'api',
+      answer: 'Set aside',
+      from: 'Arc'
+    })
+  })
+
+  it('says "Don\'t start" when the user chose not to start', async () => {
+    const { rig, wired } = await rigWithAttention()
+    e = rig
+    const { sessionId } = await waitingOnApi(rig)
+    const result = await wired.attention.answerBranchQuestion(openQuestion(rig, sessionId), 'skip')
+    expect(result).toEqual({ status: 'ok' })
+    expect(recordLines(rig, sessionId)).toEqual(["Unsaved changes in api: Don't start (Arc)"])
+  })
+
+  it('is none for a question that is not open, and none for the same question answered twice', async () => {
+    const { rig, wired } = await rigWithAttention()
+    e = rig
+    const { sessionId } = await waitingOnApi(rig)
+    expect(await wired.attention.answerBranchQuestion('nope', 'stash')).toEqual({
+      status: 'not-open'
+    })
+    expect(recordLines(rig, sessionId)).toEqual([])
+    const id = openQuestion(rig, sessionId)
+    await wired.attention.answerBranchQuestion(id, 'stash')
+    expect(await wired.attention.answerBranchQuestion(id, 'skip')).toEqual({ status: 'not-open' })
+    expect(recordLines(rig, sessionId)).toHaveLength(1)
+  })
+
+  it('is posted when the click is accepted, before the branch work starts', async () => {
+    const { rig, wired } = await rigWithAttention()
+    e = rig
+    const { sessionId } = await waitingOnApi(rig)
+    const git = rig.rig.deps.sessionGit
+    const original = git.applySessionStart.bind(git)
+    let seenAtWork: string[] | undefined
+    vi.spyOn(git, 'applySessionStart').mockImplementation((...args) => {
+      seenAtWork = recordLines(rig, sessionId)
+      return original(...args)
+    })
+    const result = await wired.attention.answerBranchQuestion(openQuestion(rig, sessionId), 'stash')
+    expect(result).toEqual({ status: 'ok' })
+    expect(seenAtWork).toEqual(['Unsaved changes in api: Set aside (Arc)'])
+    expect(recordLines(rig, sessionId)).toHaveLength(1)
+  })
+
+  it('leaves one record with failed: true, on the same message, for a failed "Bring them along"', async () => {
+    const { rig, wired } = await rigWithAttention()
+    e = rig
+    const { sessionId } = await waitingOnApi(rig)
+    const repo = rig.api.path
+    // The checked-out branch has a change to the tracked file that its base does not, so carrying clashes.
+    gitIn(repo, 'checkout', '-b', 'side')
+    gitIn(repo, 'commit', '-am', 'Side change')
+    writeFileSync(join(repo, trackedFile), 'side\nmore\n')
+    const id = openQuestion(rig, sessionId)
+    const git = rig.rig.deps.sessionGit
+    const original = git.applySessionStart.bind(git)
+    let firstId: number | undefined
+    vi.spyOn(git, 'applySessionStart').mockImplementation((...args) => {
+      firstId = rig.rig.messagesRepo
+        .latest(sessionId, 100)
+        .find((m) => m.promptJson?.includes('attention-record'))?.id
+      return original(...args)
+    })
+
+    const failed = await wired.attention.answerBranchQuestion(id, 'carry')
+    expect(failed.status).toBe('failed')
+    expect(firstId).toBeDefined()
+    expect(recordLines(rig, sessionId)).toEqual([
+      'Unsaved changes in api: Bring them along did not work (Arc)'
+    ])
+    const stored = rig.rig.messagesRepo
+      .latest(sessionId, 100)
+      .filter((m) => m.promptJson?.includes('attention-record'))
+    expect(stored.map((m) => m.id)).toEqual([firstId])
+    expect(JSON.parse(stored[0]?.promptJson ?? '{}')).toEqual({
+      kind: 'attention-record',
+      decision: 'branch',
+      subject: 'api',
+      answer: 'Bring them along',
+      from: 'Arc',
+      failed: true
+    })
+
+    // The failed line was pushed again with the same id.
+    const pushes = rig.rig.pushed
+      .filter((p) => p.event === 'session:message')
+      .map((p) => (p.payload as { message: { id: number; content: string } }).message)
+      .filter((m) => m.id === firstId)
+    expect(pushes.map((m) => m.content)).toEqual([
+      'Unsaved changes in api: Bring them along (Arc)',
+      'Unsaved changes in api: Bring them along did not work (Arc)'
+    ])
+
+    const later = await wired.attention.answerBranchQuestion(id, 'stash')
+    expect(later).toEqual({ status: 'ok' })
+    expect(recordLines(rig, sessionId)).toEqual([
+      'Unsaved changes in api: Bring them along did not work (Arc)',
+      'Unsaved changes in api: Set aside (Arc)'
+    ])
   })
 })
 

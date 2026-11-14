@@ -3,7 +3,6 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
 import {
   createGroupWithProjects,
   launchRig,
@@ -12,6 +11,7 @@ import {
   workerCard
 } from './sessions-rig'
 import type { Rig } from './sessions-rig'
+import { choice, expectWaiting, request, submitChoices } from './attention-rig'
 import { makeFakeHome, saveRepoCommand, sendMessage, sessionStarts, flag } from './commands-rig'
 import type { FakeHome } from './commands-rig'
 import { fileRow, openReview, reviewButton } from './review-rig'
@@ -27,9 +27,6 @@ test.afterEach(async () => {
   rig = undefined
   home = undefined
 })
-
-const badge = (page: Page) => page.getByRole('button', { name: /Needs attention, \d+ waiting/ })
-const attentionDialog = (page: Page) => page.getByRole('dialog', { name: /Needs attention/ })
 
 /** A group over the named repositories, each saving `/awos:spec`, and a session in the given mode. */
 async function setup(
@@ -132,17 +129,16 @@ test('2.2: with two repositories and none named, the brain asks which one and of
   await sendMessage(page, '/awos:spec for retry settings')
 
   // The brain is told to pick the repository or ask with the names as choices.
-  await expect(badge(page)).toHaveCount(1)
+  await expectWaiting(page, 1)
   expect(userTexts(r).join('\n')).toContain(
     'if it is unclear, call ask_user with the repository names as choices'
   )
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog.getByText('Which repository should /awos:spec run in?')).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'api', exact: true })).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'web', exact: true })).toBeVisible()
-  await dialog.getByRole('button', { name: 'web', exact: true }).click()
-  await dialog.getByRole('button', { name: 'Submit' }).click()
+  const question = request(page, 'question')
+  await expect(question.getByText('Which repository should /awos:spec run in?')).toBeVisible()
+  await expect(choice(question, /^api$/)).toBeVisible()
+  await expect(choice(question, /^web$/)).toBeVisible()
+  await choice(question, /^web$/).click()
+  await submitChoices(question)
 
   await expect(workerCard(page, 'W1 · /awos:spec')).toHaveAttribute('data-worker-card', 'merged', {
     timeout: 60_000

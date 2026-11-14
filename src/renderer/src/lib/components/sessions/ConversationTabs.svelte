@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { WorkerView } from '@shared/types/session'
+  import type { AttentionView, WorkerView } from '@shared/types/session'
   import { activeSession } from '../../stores/active-session.svelte'
   import { tick } from 'svelte'
   import { BRAIN_TAB, workerTerminals } from '../../stores/worker-terminals.svelte'
@@ -9,6 +9,7 @@
   import Modal from '../ui/Modal.svelte'
   import Panel from '../ui/Panel.svelte'
   import ProviderTag from '../ui/ProviderTag.svelte'
+  import AttentionDock from './AttentionDock.svelte'
   import Composer from './Composer.svelte'
   import Conversation from './Conversation.svelte'
   import StepInBar from './StepInBar.svelte'
@@ -41,6 +42,8 @@
   const order = $derived([BRAIN_TAB, ...tabs.map((t) => t.id)])
   const current = $derived(tabs.find((t) => t.id === workerTerminals.active) ?? null)
   const activeTab = $derived(current ? current.id : BRAIN_TAB)
+  /** The requests waiting, shown on the Brain tab while a worker tab hides the dock. */
+  const waiting = $derived(current ? activeSession.queueAttention.length : 0)
 
   /** Pending Remove confirmation for a Done worker with unmerged commits. */
   let removeAsk = $state<{ id: string; count: number } | null>(null)
@@ -103,6 +106,40 @@
     void tick().then(() => stepInEl?.querySelector('button')?.focus())
   })
 
+  // Coming back to the Brain tab shows the requests again.
+  let lastActive: string = workerTerminals.active
+  $effect(() => {
+    const now = workerTerminals.active
+    if (now === BRAIN_TAB && lastActive !== BRAIN_TAB) activeSession.attentionFolded = false
+    lastActive = now
+  })
+
+  // Tell screen readers about a request that arrives while the dock is folded or out of sight. What was
+  // already waiting when the session opened is not announced. Plain variables: bookkeeping, not state.
+  let announcedFor: string | null = null
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- bookkeeping, never rendered
+  let announced = new Set<string>()
+  let announcement = $state('')
+  $effect(() => {
+    const key = activeSession.header?.id ?? null
+    const queue = activeSession.queueAttention
+    if (key !== announcedFor) {
+      announcedFor = key
+      announced = new Set(queue.map((r) => r.id))
+      announcement = ''
+      return
+    }
+    const fresh = queue.filter((r) => !announced.has(r.id))
+    for (const r of fresh) announced.add(r.id)
+    if (fresh.length > 0) announcement = fresh.map(announceText).join('. ')
+  })
+
+  function announceText(r: AttentionView): string {
+    return r.kind === 'branch'
+      ? `New request: Unsaved changes in ${r.projectName} from ${r.from}`
+      : `New request: ${r.kind === 'permission' ? 'Permission' : 'Question'} from ${r.from}`
+  }
+
   let tabEls = $state<Record<string, HTMLElement | undefined>>({})
 
   function focusTab(id: string | undefined): void {
@@ -133,6 +170,7 @@
   class="grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-2"
   data-conversation-tabs
 >
+  <div role="status" aria-live="polite" class="sr-only" data-attention-status>{announcement}</div>
   <div
     role="tablist"
     aria-label="Conversation"
@@ -154,7 +192,14 @@
         bind:this={tabEls[BRAIN_TAB]}
         onclick={() => workerTerminals.select(BRAIN_TAB)}
         onkeydown={(e) => onkeydown(e, BRAIN_TAB)}
-        class={tabClass(activeTab === BRAIN_TAB)}>Brain</button
+        aria-label={waiting > 0 ? `Brain, ${waiting} waiting` : undefined}
+        class="{tabClass(activeTab === BRAIN_TAB)} {waiting > 0
+          ? 'inline-flex items-center gap-2'
+          : ''}"
+        >Brain{#if waiting > 0}<span
+            class="rounded-full bg-attention px-1.5 text-xs leading-5 font-semibold text-attention-ink"
+            data-attention-count>{waiting}</span
+          >{/if}</button
       >
     </span>
     {#each tabs as tab (tab.id)}
@@ -290,7 +335,7 @@
       aria-labelledby="tab-{BRAIN_TAB}"
       class="min-h-0 min-w-0"
     >
-      <Conversation>
+      <Conversation {dock}>
         {#snippet footer()}
           {#key sessionId}
             <Composer {sessionId} brainState={activeSession.brainState} />
@@ -300,6 +345,10 @@
     </div>
   {/if}
 </div>
+
+{#snippet dock()}
+  <AttentionDock />
+{/snippet}
 
 {#if closeAskTab}
   {@const askId = closeAskTab.id}

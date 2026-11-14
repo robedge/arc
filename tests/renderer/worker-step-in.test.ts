@@ -13,6 +13,7 @@ import type {
   WorkerView
 } from '../../src/shared/types/session'
 import { mockArc } from './helpers'
+import { permissionView, plainSurface, questionView } from './attention-fixtures'
 
 const header: Header = {
   id: 's1',
@@ -240,7 +241,8 @@ it('a controlled card shows the control label, stays default-toned and opens its
         kind: 'permission',
         from: 'W1',
         workerId: 'w1',
-        action: 'git push'
+        action: 'git push',
+        surface: plainSurface('p1')
       }
     ],
     knowledgeSuggestions: [],
@@ -252,26 +254,28 @@ it('a controlled card shows the control label, stays default-toned and opens its
   expect(label?.getAttribute('data-worker-control')).toBe('paused')
   expect(document.querySelector('[data-worker-card]')?.getAttribute('data-tone')).toBe('default')
   await fireEvent.click(screen.getByText('W1 · api-retry', { selector: '[data-worker-title]' }))
-  expect(activeSession.attentionDialog).toBeNull()
+  expect(activeSession.attentionFocus).toBeNull()
   expect(workerTerminals.tabs).toEqual(['w1'])
 })
 
-const terminalPerm: AttentionView = {
-  id: 'tp1',
-  route: 'terminal',
-  kind: 'permission',
-  from: 'W1 api-retry',
-  workerId: 'w1',
-  action: 'rm -rf build'
-}
-const terminalQuestion: AttentionView = {
+// Main builds the terminal-routed surfaces without "Always allow".
+const terminalPerm: AttentionView = permissionView(
+  {
+    id: 'tp1',
+    route: 'terminal',
+    from: 'W1 api-retry',
+    workerId: 'w1',
+    action: 'rm -rf build'
+  },
+  false
+)
+const terminalQuestion: AttentionView = questionView({
   id: 'tq1',
   route: 'terminal',
-  kind: 'question',
   from: 'W1 api-retry',
   workerId: 'w1',
   question: 'Which branch?'
-}
+})
 
 function loadControlled(attention: AttentionView[]): void {
   activeSession.setSnapshot({
@@ -309,6 +313,18 @@ it('answers a pinned request through attention:answer', async () => {
     expect(sent('attention:answer')).toContainEqual({ requestId: 'tp1', approve: true })
     expect(sent('attention:answer')).toContainEqual({ requestId: 'tq1', text: 'main' })
   })
+})
+
+it('pins each request as a request panel and shows a failed answer inside the group', async () => {
+  loadControlled([terminalPerm, terminalQuestion])
+  await openTab()
+  const group = screen.getByRole('group', { name: 'Needs your answer' })
+  expect(group.querySelectorAll('[data-request-panel]')).toHaveLength(2)
+  mockArc(() => ({ ok: false, error: { code: 'SESSION_NOT_FOUND' } }))
+  await fireEvent.click(within(group).getByRole('button', { name: 'Approve' }))
+  expect((await within(group).findByRole('alert')).textContent).toContain(
+    'That session no longer exists.'
+  )
 })
 
 it('shows no group when nothing is waiting in the terminal', async () => {

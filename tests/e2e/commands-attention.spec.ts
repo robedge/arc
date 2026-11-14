@@ -3,7 +3,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
 import {
   createGroupWithProjects,
   launchRig,
@@ -14,6 +13,19 @@ import {
 import type { Rig } from './sessions-rig'
 import { flag, makeFakeHome, saveRepoCommand, sendMessage, sessionStarts } from './commands-rig'
 import type { FakeHome } from './commands-rig'
+import {
+  approve,
+  choice,
+  decline,
+  deny,
+  expectNoneWaiting,
+  expectWaiting,
+  otherBox,
+  permissionAction,
+  request,
+  requests,
+  submitChoices
+} from './attention-rig'
 
 // One Arc run per test, so no test depends on another.
 test.setTimeout(120_000)
@@ -26,9 +38,6 @@ test.afterEach(async () => {
   rig = undefined
   home = undefined
 })
-
-const badge = (page: Page) => page.getByRole('button', { name: /Needs attention, \d+ waiting/ })
-const attentionDialog = (page: Page) => page.getByRole('dialog', { name: /Needs attention/ })
 
 async function setup(
   scenario: string,
@@ -59,7 +68,7 @@ test('2.4: a command question reaches Needs attention with both choices and an O
   const { page } = r
   const card = workerCard(page, 'W1 · /awos:spec')
   await expect(card).toHaveAttribute('data-worker-card', 'has_question')
-  await expect(badge(page)).toHaveCount(1)
+  await expectWaiting(page, 1)
 
   // Auto-approve never answers a command's question.
   await page.getByRole('button', { name: 'Approvals' }).click()
@@ -68,20 +77,19 @@ test('2.4: a command question reaches Needs attention with both choices and an O
   await expect(page.locator('[data-auto-approve-on]')).toBeVisible()
   await expect(card).toHaveAttribute('data-worker-card', 'has_question')
 
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  const question = dialog.getByRole('article', { name: /Question from W1 · \/awos:spec/ })
+  // The question is already docked above the message box.
+  const question = request(page, 'question', /W1 · \/awos:spec/)
   await expect(question).toBeVisible()
   await expect(question.getByText('Where should the review open?')).toBeVisible()
-  await expect(question.getByRole('button', { name: /^Browser/ })).toBeVisible()
-  await expect(question.getByRole('button', { name: /^Terminal/ })).toBeVisible()
-  await expect(question.getByLabel('Other')).toBeVisible()
+  await expect(choice(question, 'Browser')).toBeVisible()
+  await expect(choice(question, 'Terminal')).toBeVisible()
+  await expect(otherBox(question)).toBeVisible()
 
   // The brain was told it cannot answer; its scripted reply appears only after that note.
   await expect(page.getByText('The question is for you to answer.')).toBeVisible()
-  await question.getByRole('button', { name: /^Browser/ }).click()
-  await question.getByRole('button', { name: 'Submit' }).click()
-  await expect(badge(page)).toHaveCount(0)
+  await choice(question, 'Browser').click()
+  await submitChoices(question)
+  await expectNoneWaiting(page)
 
   // The command continues with that answer: its next output names the choice.
   await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 60_000 })
@@ -94,16 +102,52 @@ test('2.4: a command question reaches Needs attention with both choices and an O
   expect(permission).toMatchObject({ tool_name: 'AskUserQuestion', behavior: 'allow' })
 })
 
+test('2.4: Other text replaces the pick and is the answer the command receives', async () => {
+  const r = await setup('cmd-question')
+  const { page } = r
+  const card = workerCard(page, 'W1 · /awos:spec')
+  await expectWaiting(page, 1)
+  const question = request(page, 'question', /W1 · \/awos:spec/)
+
+  await choice(question, 'Browser').click()
+  await otherBox(question).fill('In my editor')
+  await submitChoices(question)
+  await expectNoneWaiting(page)
+
+  await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 60_000 })
+  await card.getByRole('button').first().click()
+  const output = page.getByRole('log', { name: 'W1 · /awos:spec output' })
+  await expect(output).toContainText(
+    'AskUserQuestion answers: {"Where should the review open?":"In my editor"}'
+  )
+  await expect(output).not.toContainText('"Browser"')
+})
+
+test('2.4: Decline tells the command the user declined to answer', async () => {
+  const r = await setup('cmd-question')
+  const { page } = r
+  const card = workerCard(page, 'W1 · /awos:spec')
+  await expectWaiting(page, 1)
+
+  await decline(request(page, 'question', /W1 · \/awos:spec/))
+  await expectNoneWaiting(page)
+
+  await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 60_000 })
+  await card.getByRole('button').first().click()
+  await expect(page.getByRole('log', { name: 'W1 · /awos:spec output' })).toContainText(
+    'AskUserQuestion declined:'
+  )
+})
+
 test('2.5: a command that pushes a branch asks the user to approve the exact push command', async () => {
   const r = await setup('cmd-safe')
   const { page } = r
   const card = workerCard(page, 'W1 · /awos:spec')
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval')
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog.locator('[data-action]')).toHaveText('git push origin arc/retry-settings')
-  await expect(dialog.getByRole('article', { name: /W1 · \/awos:spec/ })).toBeVisible()
-  await dialog.getByRole('button', { name: 'Approve', exact: true }).click()
+  const panel = request(page, 'permission')
+  await expect(permissionAction(panel)).toHaveText('git push origin arc/retry-settings')
+  await expect(requests(page, 'permission', /W1 · \/awos:spec/)).toBeVisible()
+  await approve(panel)
   await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 60_000 })
 })
 
@@ -205,7 +249,6 @@ test('2.6: personal and plugin hooks and MCP servers load in Arc agents, their p
   expect(manifest).not.toHaveProperty('lspServers')
   expect(statSync(join(view, 'warp', 'commands')).isDirectory()).toBe(true)
 
-  await badge(page).click()
-  await attentionDialog(page).getByRole('button', { name: 'Deny' }).click()
+  await deny(request(page, 'permission'))
   await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 60_000 })
 })

@@ -1,0 +1,7 @@
+# A Codex worker that asks for more access than its sandbox gives: two folders and the network.
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Asking for more access."}
+{"request":{"method":"item/permissions/requestApproval","params":{"itemId":"perm-1","cwd":"/work","reason":"Needs the shared fixtures and the package registry","permissions":{"fileSystem":{"read":["/srv/fixtures"],"write":["/srv/cache"]},"network":{"enabled":true}}}},"saveAs":"access"}
+{"mcp":{"tool":"report_done","args":{"summary":"Got the access"}}}
+{"turnCompleted":"completed"}

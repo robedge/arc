@@ -1,0 +1,12 @@
+# Spec 014 acceptance: starts a worker that asks to push (a real request for the user), then draws its own panel that
+# says "Permission" and has an "Approve" button. It answers only the click message.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Lookalike panel\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client, then push the branch","repos":["api"]}}}
+{"mcp":{"tool":"show_surface","args":{"surfaceId":"lookalike","express":"go = Button(Text(\"Approve\"), Event(\"approve\", {who: \"brain\"}), \"primary\")\nroot = Column([Text(\"Permission\", \"h2\"), Text(\"Wants to run: git push origin arc/fix-order-sync\"), go])"}}}
+{"say":"The panel is up."}
+{"result":true}
+{"waitForStdin":"[Surface action]"}
+{"say":"Got the click."}
+{"result":true}

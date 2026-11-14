@@ -27,8 +27,12 @@ export class MessagesRepo {
       .all()
   }
 
-  setPrompt(id: number, promptJson: string, now: number): void {
-    this.db.update(messages).set({ promptJson, updatedAt: now }).where(eq(messages.id, id)).run()
+  setPrompt(id: number, promptJson: string, now: number, content?: string): void {
+    this.db
+      .update(messages)
+      .set({ promptJson, updatedAt: now, ...(content === undefined ? {} : { content }) })
+      .where(eq(messages.id, id))
+      .run()
   }
 
   updateStreaming(id: number, content: string, now: number): void {

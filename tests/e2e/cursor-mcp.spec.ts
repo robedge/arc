@@ -5,7 +5,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { NEEDS_ATTENTION, setDefault } from './codex-rig'
+import { setDefault } from './codex-rig'
+import { approve, expectNoneWaiting, expectWaiting, permissionFrom } from './attention-rig'
 import {
   cursorMcpResults,
   cursorPermissionAnswers,
@@ -115,9 +116,6 @@ async function backToMain(page: Page): Promise<void> {
 }
 
 const item = (page: Page, key: string): Locator => page.locator(`[data-load-item="${key}"]`)
-const badge = (page: Page): Locator => page.getByRole('button', { name: NEEDS_ATTENTION })
-const attentionDialog = (page: Page): Locator =>
-  page.getByRole('dialog', { name: /Needs attention/ })
 
 /** The stored selection, read through the same IPC the page uses. */
 async function storedOff(page: Page): Promise<{ brain: string[]; workers: string[] }> {
@@ -192,18 +190,16 @@ test('2.7: Agent loading lists the user’s Cursor server; a Cursor worker has i
   // `remove` (destructive) is an approval request: the brain (cm-use) passes it on, so it waits in Needs attention as
   // a request for the user's MCP server, and the fake Cursor gets its answer only on Approve.
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval', { timeout: 20_000 })
-  await expect(badge(page)).toHaveCount(1)
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  const request = dialog.getByRole('article', { name: /Permission request from W1 review/ })
-  await expect(request).toHaveCount(1)
-  await expect(request).toContainText('Wants to use a tool from one of your MCP servers')
-  await expect(request.locator('dt:has-text("Server") + dd')).toHaveText(SERVER)
-  await expect(request.locator('dt:has-text("Tool") + dd')).toHaveText('remove')
+  await expectWaiting(page, 1)
+  const panel = permissionFrom(page, 'W1 review')
+  await expect(panel).toHaveCount(1)
+  await expect(panel).toContainText('Wants to use a tool from one of your MCP servers')
+  await expect(panel.locator('dt:has-text("Server") + dd')).toHaveText(SERVER)
+  await expect(panel.locator('dt:has-text("Tool") + dd')).toHaveText('remove')
   await page.waitForTimeout(1000)
   expect(answersFor(r, 'mcp-remove')).toEqual([])
-  await request.getByRole('button', { name: 'Approve', exact: true }).click()
-  await expect(badge(page)).toHaveCount(0)
+  await approve(panel)
+  await expectNoneWaiting(page)
   await expect
     .poll(() => answersFor(r, 'mcp-remove'))
     .toEqual([{ toolCallId: 'mcp-remove', outcome: 'selected', optionId: 'allow-once' }])
@@ -252,7 +248,7 @@ test('2.7: a server off for Workers gets an /off/ stand-in and a deny entry on t
   expect(answersFor(r, 'mcp-remove')).toEqual([
     { toolCallId: 'mcp-remove', outcome: 'selected', optionId: 'reject-once' }
   ])
-  await expect(badge(page)).toHaveCount(0)
+  await expectNoneWaiting(page)
 
   // The Cursor brain (on for Brain): Arc's bridge only, no stand-in for fakeuser, so Cursor loads it.
   expect(brain[0]!.mcpServers.map((s) => s.name)).toEqual(['arc'])

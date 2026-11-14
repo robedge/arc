@@ -14,6 +14,7 @@ import type {
   WorkerView
 } from '../../src/shared/types/session'
 import { mockArc } from './helpers'
+import { permissionView, plainSurface } from './attention-fixtures'
 
 const header: Header = {
   id: 's1',
@@ -215,7 +216,7 @@ it('a card Details button opens details without opening a tab', async () => {
   expect(calls('workers:open-terminal')).toBe(0)
 })
 
-it('an amber card opens Needs attention instead of a tab', async () => {
+it('an amber card brings its panel into view instead of opening a tab', async () => {
   load(
     [worker('w1', 1, 'needs_approval')],
     [
@@ -225,13 +226,15 @@ it('an amber card opens Needs attention instead of a tab', async () => {
         kind: 'permission',
         from: 'W1',
         workerId: 'w1',
-        action: 'git push'
+        action: 'git push',
+        surface: plainSurface('p1')
       }
     ]
   )
   render(SessionScreen)
   await fireEvent.click(screen.getByText('W1 · api-retry', { selector: '[data-worker-title]' }))
-  expect(activeSession.attentionDialog).toEqual({ initialRequestId: 'p1' })
+  expect(activeSession.attentionFocus).toMatchObject({ requestId: 'p1' })
+  expect(workerTerminals.active).toBe('brain')
   expect(screen.getAllByRole('tab')).toHaveLength(1)
 })
 
@@ -338,4 +341,39 @@ it("keeps a tab's output while another tab is shown", async () => {
   await fireEvent.click(screen.getByRole('tab', { name: 'W1 · api-retry' }))
   await waitFor(() => expect(screen.getByText('while away')).toBeTruthy())
   expect(calls('workers:open-terminal')).toBe(1)
+})
+
+it('the Brain tab shows an amber count and the name "Brain, N waiting" only while a worker tab is in front', async () => {
+  load([worker('w1', 1)], [permissionView({ id: 'p1' }), permissionView({ id: 'p2' })])
+  render(SessionScreen)
+  // On the Brain tab: plain name, no pill.
+  expect(
+    screen.getByRole('tab', { name: 'Brain' }).querySelector('[data-attention-count]')
+  ).toBeNull()
+  await fireEvent.click(screen.getByText('W1 · api-retry', { selector: '[data-worker-title]' }))
+  const brain = screen.getByRole('tab', { name: 'Brain, 2 waiting' })
+  expect(brain.querySelector('[data-attention-count]')?.textContent).toBe('2')
+  await fireEvent.click(brain)
+  const back = screen.getByRole('tab', { name: 'Brain' })
+  expect(back.querySelector('[data-attention-count]')).toBeNull()
+})
+
+it('the Brain tab count follows the queue and leaves with the last request', async () => {
+  load([worker('w1', 1)], [permissionView({ id: 'p1' })])
+  render(SessionScreen)
+  await fireEvent.click(screen.getByText('W1 · api-retry', { selector: '[data-worker-title]' }))
+  expect(screen.getByRole('tab', { name: 'Brain, 1 waiting' })).toBeTruthy()
+  activeSession.applyAttention({ sessionId: 's1', requests: [] })
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Brain' })).toBeTruthy())
+  expect(document.querySelector('[data-attention-count]')).toBeNull()
+})
+
+it('selecting the Brain tab unfolds the dock', async () => {
+  load([worker('w1', 1)], [permissionView({ id: 'p1' })])
+  render(SessionScreen)
+  activeSession.toggleAttentionFold()
+  await fireEvent.click(screen.getByText('W1 · api-retry', { selector: '[data-worker-title]' }))
+  expect(activeSession.attentionFolded).toBe(true)
+  await fireEvent.click(screen.getByRole('tab', { name: 'Brain, 1 waiting' }))
+  expect(activeSession.attentionFolded).toBe(false)
 })

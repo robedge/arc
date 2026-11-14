@@ -4,8 +4,11 @@ import { mkdirSync, statSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { AppErrorException } from '@shared/errors'
+import { BRANCH_CHOICE_LABELS, recordText } from '@shared/attention-record'
+import type { BranchQuestionRow } from '../db/schema'
 import type { PersonalLaunchConfig } from '../personal/personal-config'
 import type {
+  AttentionRecordPrompt,
   BrainState,
   CliStatus,
   CreateSessionResult,
@@ -411,9 +414,45 @@ export class SessionService {
     this.newId = deps.newId ?? (() => ulid(this.now()))
   }
 
-  /** The user's answer to an unsaved-changes question (`sessions:answer-branch-question`). */
-  answerBranchQuestion(questionId: string, choice: BranchChoiceValue): Promise<AnswerResult> {
-    return this.branchOnDemand.answer(questionId, choice)
+  /**
+   * The user's answer to an unsaved-changes question (`sessions:answer-branch-question`). The record
+   * is posted when the answer is accepted, before the worker starts, so later messages land below it.
+   * A choice that then fails changes the same line to "did not work".
+   */
+  async answerBranchQuestion(questionId: string, choice: BranchChoiceValue): Promise<AnswerResult> {
+    // Read before answering: the record names the project, and the question may close meanwhile.
+    const question = this.deps.branchQuestionsRepo.getById(questionId)
+    let recorded: { messageId: number; prompt: AttentionRecordPrompt } | undefined
+    const result = await this.branchOnDemand.answer(questionId, choice, () => {
+      if (question) recorded = this.recordBranchAnswer(question, choice)
+    })
+    if (result.status === 'failed' && recorded && question) {
+      const failed: AttentionRecordPrompt = { ...recorded.prompt, failed: true }
+      this.orchestrators
+        .get(question.sessionId)
+        ?.updateSystemMessage(recorded.messageId, recordText(failed), failed)
+    }
+    return result
+  }
+
+  /** One line in the conversation for an unsaved-changes choice, posted at the click. */
+  private recordBranchAnswer(
+    question: BranchQuestionRow,
+    choice: BranchChoiceValue
+  ): { messageId: number; prompt: AttentionRecordPrompt } | undefined {
+    const project = this.deps.sessionProjectsRepo
+      .listBySession(question.sessionId)
+      .find((p) => p.id === question.sessionProjectId)
+    const orchestrator = this.orchestrators.get(question.sessionId)
+    if (!project || !orchestrator) return undefined
+    const prompt: AttentionRecordPrompt = {
+      kind: 'attention-record',
+      decision: 'branch',
+      subject: project.projectName,
+      answer: BRANCH_CHOICE_LABELS[choice],
+      from: 'Arc'
+    }
+    return { messageId: orchestrator.postSystemMessage(recordText(prompt), prompt), prompt }
   }
 
   /** Closes the questions no worker waits on (a worker was stopped or removed, a project left, a session opened). */

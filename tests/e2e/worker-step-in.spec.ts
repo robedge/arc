@@ -12,6 +12,7 @@ import {
   workerCard
 } from './sessions-rig'
 import type { Rig } from './sessions-rig'
+import { expectNoneWaiting, expectWaiting, permissionAction, request } from './attention-rig'
 
 /**
  * Acceptance flows for spec 006, driven through the built app with the fake CLI (no model call).
@@ -31,7 +32,6 @@ test.afterEach(async () => {
 const W1 = 'W1 · api-retry'
 /** The event log names a worker without the middle dot (`workerLabel`), unlike the card and tab titles. */
 const W1_LOG = 'W1 api-retry'
-const badge = (page: Page) => page.getByRole('button', { name: /Needs attention, \d+ waiting/ })
 const tabs = (page: Page) => page.getByRole('tablist', { name: 'Conversation' })
 const terminal = (page: Page) => page.getByRole('log', { name: `${W1} output` })
 const input = (page: Page) => page.getByLabel(`Message to ${W1}`)
@@ -59,6 +59,22 @@ async function expectHeaderFits(page: Page): Promise<void> {
   expect(panel).not.toBeNull()
   expect(details).not.toBeNull()
   expect(details!.x + details!.width).toBeLessThanOrEqual(panel!.x + panel!.width)
+}
+
+/**
+ * The dock only shows on the Brain tab, so a worker tab in front proves nothing about the queue. Look at
+ * the Brain tab to confirm nothing waits there, then return to the worker's tab.
+ */
+async function expectNothingDocked(page: Page, title: string): Promise<void> {
+  await tabs(page)
+    .getByRole('tab', { name: /^Brain/ })
+    .click()
+  await expectNoneWaiting(page)
+  await tabs(page).getByRole('tab', { name: title }).click()
+  await expect(tabs(page).getByRole('tab', { name: title })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
 }
 
 async function openTab(page: Page, title: string): Promise<void> {
@@ -222,9 +238,9 @@ test('2.1: a worker waiting on a question moves it from Needs attention into its
 
   const card = workerCard(page, W1)
   await expect(card).toHaveAttribute('data-worker-card', 'has_question')
-  await expect(badge(page)).toHaveCount(1)
+  await expectWaiting(page, 1)
 
-  // A card in an attention state opens the dialog, so the way in is the worker's details.
+  // A card in an attention state shows its request, so the way in is the worker's details.
   await page.getByRole('button', { name: `Details for ${W1}` }).click()
   await page
     .getByRole('dialog', { name: W1 })
@@ -233,7 +249,7 @@ test('2.1: a worker waiting on a question moves it from Needs attention into its
   await expect(tabs(page).getByRole('tab', { name: W1 })).toHaveAttribute('aria-selected', 'true')
 
   // The question leaves Needs attention and is pinned above the input in the terminal.
-  await expect(badge(page)).toHaveCount(0)
+  await expectNothingDocked(page, W1)
   const pinned = page.getByRole('group', { name: 'Needs your answer' })
   await expect(pinned.getByText('How many retries should the client make?')).toBeVisible()
   await expectHeaderFits(page)
@@ -244,7 +260,7 @@ test('2.1: a worker waiting on a question moves it from Needs attention into its
   await expect(pinned).toHaveCount(0)
   // The answer given in the terminal is the tool result the worker gets.
   await expect.poll(() => mcpResult(r, 'ask_brain')?.text ?? '').toContain('Five attempts')
-  await expect(badge(page)).toHaveCount(0)
+  await expectNothingDocked(page, W1)
 })
 
 test('2.2: a push asks in the terminal, not in Needs attention, and runs only after Approve; Escape stops a reply', async () => {
@@ -262,13 +278,13 @@ test('2.2: a push asks in the terminal, not in Needs attention, and runs only af
   await input(page).press('Enter')
 
   const pinned = page.getByRole('group', { name: 'Needs your answer' })
-  await expect(pinned.locator('[data-action]')).toHaveText('git push origin arc/push-change')
+  await expect(permissionAction(pinned)).toHaveText('git push origin arc/push-change')
   await expect(pinned.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
   await expect(pinned.getByRole('button', { name: 'Deny', exact: true })).toBeVisible()
   await expectHeaderFits(page)
   await expect(pinned.getByRole('button', { name: /Always allow/ })).toHaveCount(0)
   // Nothing in Needs attention, the brain was never asked, and the push has not run.
-  await expect(badge(page)).toHaveCount(0)
+  await expectNothingDocked(page, W1)
   await page.waitForTimeout(1000)
   expect(readFakeLog(r).filter((l) => 'permission' in l)).toEqual([])
   await expect(terminal(page).getByText('(fake) ran: git push')).toHaveCount(0)
@@ -293,6 +309,35 @@ test('2.2: a push asks in the terminal, not in Needs attention, and runs only af
   await expect(terminal(page).getByText('Interrupted')).toBeVisible()
   await expect(input(page)).toBeEnabled()
   await expect(card.locator('[data-worker-status]')).toHaveText("You're in control")
+})
+
+test('2.2: a request left unanswered returns to Needs attention, with Always allow, after hand-back', async () => {
+  const r = await setup('step-in-push')
+  const { page } = r
+  await startSession(page, { request: 'Add retry then push', mode: 'Autonomous' })
+  await expect(workerCard(page, W1)).toHaveAttribute('data-worker-card', 'working')
+  await openTab(page, W1)
+  await stepInButton(page).click()
+  await input(page).fill('Please push the branch')
+  await input(page).press('Enter')
+
+  // While stepped in the request is in the terminal bar, offers no "Always allow" and is not docked.
+  const pinned = page.getByRole('group', { name: 'Needs your answer' })
+  await expect(permissionAction(pinned)).toHaveText('git push origin arc/push-change')
+  await expect(pinned.getByRole('button', { name: /Always allow/ })).toHaveCount(0)
+  await expectNothingDocked(page, W1)
+
+  await handBackButton(page).click()
+  await expect(pinned).toHaveCount(0)
+
+  // After hand-back the same request waits in the dock on the Brain tab, where Always allow is offered.
+  await tabs(page)
+    .getByRole('tab', { name: /^Brain/ })
+    .click()
+  await expectWaiting(page, 1)
+  const docked = request(page, 'permission')
+  await expect(permissionAction(docked)).toHaveText('git push origin arc/push-change')
+  await expect(docked.getByRole('button', { name: /Always allow/ })).toHaveCount(1)
 })
 
 test('2.3: the brain waits while the user is in control; another worker merges as usual; hand-back delivers the held message', async () => {

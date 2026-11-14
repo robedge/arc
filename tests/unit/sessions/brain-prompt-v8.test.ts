@@ -7,6 +7,7 @@ import {
   PROMPT_UPDATE_NOTE_V7_OFF,
   PROMPT_UPDATE_NOTE_V8,
   PROMPT_UPDATE_NOTE_V9,
+  PROMPT_UPDATE_NOTE_V10,
   buildBrainPrompt,
   promptUpdateNote
 } from '../../../src/main/sessions/orchestrator'
@@ -96,10 +97,13 @@ describe('the version 8 update note', () => {
 
   it('gives a version 7 session the note once and a current one nothing', () => {
     expect(promptUpdateNote(7, undefined, 'PROVIDERS')).toBe(
-      `${PROMPT_UPDATE_NOTE_V8}\n\n${PROMPT_UPDATE_NOTE_V9}`
+      `${PROMPT_UPDATE_NOTE_V8}\n\n${PROMPT_UPDATE_NOTE_V9}\n\n${PROMPT_UPDATE_NOTE_V10}`
     )
-    expect(promptUpdateNote(8, undefined, 'PROVIDERS')).toBe(PROMPT_UPDATE_NOTE_V9)
-    expect(promptUpdateNote(9, undefined, 'PROVIDERS')).toBeUndefined()
+    expect(promptUpdateNote(8, undefined, 'PROVIDERS')).toBe(
+      `${PROMPT_UPDATE_NOTE_V9}\n\n${PROMPT_UPDATE_NOTE_V10}`
+    )
+    expect(promptUpdateNote(9, undefined, 'PROVIDERS')).toBe(PROMPT_UPDATE_NOTE_V10)
+    expect(promptUpdateNote(10, undefined, 'PROVIDERS')).toBeUndefined()
   })
 
   it('leaves it out for a brain without workers', () => {
@@ -109,7 +113,7 @@ describe('the version 8 update note', () => {
   it('follows the earlier notes of an older session, in order, each once', () => {
     const note = promptUpdateNote(6, undefined, 'PROVIDERS', true) ?? ''
     expect(note.indexOf(PROMPT_UPDATE_NOTE_V7)).toBeGreaterThanOrEqual(0)
-    expect(note.endsWith(PROMPT_UPDATE_NOTE_V9)).toBe(true)
+    expect(note.endsWith(PROMPT_UPDATE_NOTE_V10)).toBe(true)
     expect(note.split(PROMPT_UPDATE_NOTE_V8)).toHaveLength(2)
     expect(note.indexOf(PROMPT_UPDATE_NOTE_V7)).toBeLessThan(note.indexOf(PROMPT_UPDATE_NOTE_V8))
     const older = promptUpdateNote(5, undefined, 'PROVIDERS') ?? ''
@@ -119,7 +123,7 @@ describe('the version 8 update note', () => {
   it('comes after the version 7 off note when suggestions are switched off', () => {
     const note = promptUpdateNote(6, undefined, 'PROVIDERS', false) ?? ''
     expect(note).toBe(
-      `${PROMPT_UPDATE_NOTE_V7_OFF}\n\n${PROMPT_UPDATE_NOTE_V8}\n\n${PROMPT_UPDATE_NOTE_V9}`
+      `${PROMPT_UPDATE_NOTE_V7_OFF}\n\n${PROMPT_UPDATE_NOTE_V8}\n\n${PROMPT_UPDATE_NOTE_V9}\n\n${PROMPT_UPDATE_NOTE_V10}`
     )
   })
 })

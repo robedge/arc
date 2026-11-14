@@ -108,8 +108,28 @@ export type MessagePrompt =
   | ReviewLinkPrompt
   | KnowledgeSuggestionsPrompt
   | SurfacePrompt
+  | AttentionRecordPrompt
 
-/** SPIKE (A2UI): the brain's `show_surface` panel, drawn in place of the message text. */
+/** What the user decided on a request; `branch` is an unsaved-changes choice. */
+export type AttentionRecordDecision =
+  'approved' | 'denied' | 'always' | 'answered' | 'declined' | 'branch'
+
+/**
+ * Marks the one-line record a system message keeps of a request the user answered in its panel.
+ * `subject` is the full command, tool, question or project; `answer` is the answer or the choice
+ * label; `from` is the label the panel showed. Truncation is the renderer's job.
+ */
+export interface AttentionRecordPrompt {
+  kind: 'attention-record'
+  decision: AttentionRecordDecision
+  subject: string
+  answer?: string
+  from: string
+  /** An unsaved-changes choice (`decision: 'branch'`) that did not work: the line says so. */
+  failed?: true
+}
+
+/** The brain's `show_surface` panel, drawn in place of the message text. */
 export interface SurfacePrompt {
   kind: 'surface'
   surface: Surface
@@ -365,8 +385,8 @@ export type AttentionTool =
       network?: boolean
     }
 
-/** A request that is with the user, shaped for the renderer's AttentionDialog. */
-export type AttentionView =
+/** What a request is, before its body is built as a surface. */
+export type AttentionRequest =
   | (AttentionViewBase & {
       kind: 'permission'
       /** The exact action requested (mono command text). */
@@ -404,6 +424,12 @@ export type AttentionView =
       /** Why "Bring them along" did not work; the other choices are offered again. */
       message?: string
     })
+
+/**
+ * A request that is with the user, shaped for the renderer's dock. `surface` is its body (what it
+ * says and its buttons); the renderer draws it inside a frame made from the other fields.
+ */
+export type AttentionView = AttentionRequest & { surface: Surface }
 
 /** What the user can choose for unsaved changes in a repository (`sessions:answer-branch-question`). */
 export type BranchChoiceValue = 'stash' | 'commit' | 'carry' | 'skip'

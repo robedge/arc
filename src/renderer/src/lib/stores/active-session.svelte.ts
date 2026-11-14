@@ -16,6 +16,7 @@ import { messageFor } from '../ipc/messages'
 import { createStreamBuffer } from './stream-buffer'
 import { knowledgeSuggestions } from './knowledge-suggestions.svelte'
 import { attachments, sessionKey } from './attachments.svelte'
+import { BRAIN_TAB, workerTerminals } from './worker-terminals.svelte'
 
 /** Snapshot window and page size for messages. */
 const PAGE_SIZE = 100
@@ -53,8 +54,10 @@ class ActiveSessionStore {
   workers = $state.raw<WorkerView[]>([])
   /** Requests waiting for the user in the open session. */
   attention = $state.raw<AttentionView[]>([])
-  /** The attention dialog: null when closed, else the request to show first (if any). */
-  attentionDialog = $state<{ initialRequestId: string | null } | null>(null)
+  /** The panel the dock should bring into view; `nonce` makes the same request count again. */
+  attentionFocus = $state<{ requestId: string | null; nonce: number } | null>(null)
+  /** The dock's list is folded away (hidden, not unmounted); a new request or a focus request unfolds it. */
+  attentionFolded = $state(false)
   loading = $state(false)
   loadError = $state<AppError | null>(null)
   /** Older messages may exist beyond the loaded window. */
@@ -93,7 +96,8 @@ class ActiveSessionStore {
     this.plans = {}
     this.workers = []
     this.attention = []
-    this.attentionDialog = null
+    this.attentionFocus = null
+    this.attentionFolded = false
     knowledgeSuggestions.reset()
     this.changedFileCount = 0
     this.loading = true
@@ -172,7 +176,8 @@ class ActiveSessionStore {
     this.plans = {}
     this.workers = []
     this.attention = []
-    this.attentionDialog = null
+    this.attentionFocus = null
+    this.attentionFolded = false
     this.changedFileCount = 0
     this.loading = false
     this.loadError = null
@@ -274,7 +279,15 @@ class ActiveSessionStore {
   /** `session:attention` carries no seq (the list is absolute), so it is guarded by session only. */
   applyAttention(e: { sessionId: string; requests: AttentionView[] }): void {
     if (this.sessionId !== e.sessionId || this.header === null) return
+    const known = new Set(this.attention.filter((r) => r.route === 'queue').map((r) => r.id))
+    if (e.requests.some((r) => r.route === 'queue' && !known.has(r.id))) {
+      this.attentionFolded = false
+    }
     this.attention = e.requests
+  }
+
+  toggleAttentionFold(): void {
+    this.attentionFolded = !this.attentionFolded
   }
 
   /**
@@ -298,12 +311,14 @@ class ActiveSessionStore {
     )
   }
 
-  openAttention(requestId?: string): void {
-    this.attentionDialog = { initialRequestId: requestId ?? null }
-  }
-
-  closeAttention(): void {
-    this.attentionDialog = null
+  /** Brings the dock into view: selects the Brain tab and names the panel to scroll to. */
+  focusRequest(requestId?: string): void {
+    workerTerminals.select(BRAIN_TAB)
+    this.attentionFolded = false
+    this.attentionFocus = {
+      requestId: requestId ?? null,
+      nonce: (this.attentionFocus?.nonce ?? 0) + 1
+    }
   }
 
   /** Approve or deny a permission, or answer a question; main pushes the new list. */

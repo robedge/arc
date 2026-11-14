@@ -30,6 +30,7 @@
   import SessionRow from '../components/sessions/SessionRow.svelte'
   import BrainCard from '../components/sessions/BrainCard.svelte'
   import ContinueWorkersPrompt from '../components/sessions/ContinueWorkersPrompt.svelte'
+  import { recordText } from '@shared/attention-record'
   import MessageBubble from '../components/sessions/MessageBubble.svelte'
   import Composer from '../components/sessions/Composer.svelte'
   import CommandMenu from '../components/sessions/CommandMenu.svelte'
@@ -42,6 +43,7 @@
   import NewSessionDialog from '../components/sessions/NewSessionDialog.svelte'
   import type { SessionEventEntry, SessionMessage } from '@shared/types/session'
   import type { Surface } from '@shared/surface'
+  import SurfaceView from '../components/surface/SurfaceView.svelte'
   import HeaderMenu from '../components/sessions/HeaderMenu.svelte'
   import { workersEntries } from '../model-options'
   import type { AppSettings, ProviderModels, WorkersPref } from '@shared/types/provider'
@@ -58,10 +60,8 @@
   import EmptyState from '../components/ui/EmptyState.svelte'
   import Menu from '../components/ui/Menu.svelte'
   import MenuItem from '../components/ui/MenuItem.svelte'
-  import AttentionBadge from '../components/ui/AttentionBadge.svelte'
-  import PermissionCard from '../components/ui/attention/PermissionCard.svelte'
-  import AttentionDialog from '../components/ui/attention/AttentionDialog.svelte'
-  import type { AttentionRequest } from '../components/ui/attention/types'
+  import AttentionDock from '../components/sessions/AttentionDock.svelte'
+  import { sampleRequests } from './attention-samples'
   import { messageKinds, type MessageKind } from '../components/ui/kinds'
   import UndoDialog from '../components/review/UndoDialog.svelte'
   import PushDialog from '../components/review/PushDialog.svelte'
@@ -593,7 +593,78 @@
     text,
     workerId: null
   }))
-  // SPIKE (A2UI): a dashboard compiled from Express (tests/unit/surface-express.test.ts).
+  // Samples of the generic parts a request panel is built from.
+  const partsSurface: Surface = {
+    surfaceId: 'parts',
+    components: [
+      {
+        id: 'root',
+        component: 'Column',
+        children: ['intro', 'code', 'kv', 'pick', 'radio', 'other', 'send']
+      },
+      {
+        id: 'intro',
+        component: 'Text',
+        text: 'Wants to run a command.\nIt asks to write outside its folder.\nIt names three files.\nIt wants the network.',
+        maxLines: 2
+      },
+      {
+        id: 'code',
+        component: 'CodeBlock',
+        text: Array.from({ length: 14 }, (_, i) => `line ${i + 1}`).join('\n'),
+        maxLines: 10,
+        maxChars: 400
+      },
+      {
+        id: 'kv',
+        component: 'KeyValue',
+        items: [
+          { label: 'Command', value: 'pnpm test' },
+          { label: 'Files', value: ['a.ts', 'b.ts'] }
+        ]
+      },
+      {
+        id: 'pick',
+        component: 'ChoicePicker',
+        label: 'Which one',
+        options: [
+          { label: 'First', value: 'first', description: 'The quick way' },
+          { label: 'Second', value: 'second' }
+        ],
+        value: { '@path': '/q' },
+        overriddenBy: { '@path': '/o' }
+      },
+      {
+        id: 'radio',
+        component: 'ChoicePicker',
+        label: 'What now',
+        display: 'radio',
+        options: [
+          { label: 'Carry', value: 'carry', description: 'Bring the changes along' },
+          { label: 'Leave', value: 'leave', description: 'Keep them here' }
+        ],
+        value: { '@path': '/choice' }
+      },
+      {
+        id: 'other',
+        component: 'TextField',
+        label: 'Other',
+        value: { '@path': '/o' },
+        submit: 'send'
+      },
+      {
+        id: 'send',
+        component: 'Button',
+        child: 'send_t',
+        variant: 'primary',
+        requires: [[{ '@path': '/q' }, { '@path': '/o' }], { '@path': '/choice' }],
+        action: { event: { name: 'send', context: {} } }
+      },
+      { id: 'send_t', component: 'Text', text: 'Send' }
+    ],
+    dataModel: { q: [], o: '', choice: [] }
+  }
+  // A dashboard compiled from Express (tests/unit/surface-express.test.ts).
   const sampleSurface: SessionMessage = {
     id: 900,
     sessionId: 's1',
@@ -620,6 +691,29 @@
     createdAt: 0,
     updatedAt: 0
   }
+  function sampleRecord(id: number, subject: string): SessionMessage {
+    return {
+      id,
+      sessionId: 'preview',
+      role: 'system',
+      content: recordText({
+        kind: 'attention-record',
+        decision: 'approved',
+        subject,
+        from: 'Brain'
+      }),
+      state: 'complete',
+      planId: null,
+      prompt: { kind: 'attention-record', decision: 'approved', subject, from: 'Brain' },
+      createdAt: 0,
+      updatedAt: 0
+    }
+  }
+  const longCommand =
+    `pnpm exec vitest run ${'tests/renderer/some-very-long-test-file-name.test.ts '.repeat(6)}`.slice(
+      0,
+      300
+    )
   function samplePrompt(status: 'open' | 'continued'): SessionMessage {
     return {
       id: status === 'open' ? 2 : 3,
@@ -684,143 +778,7 @@
     ],
     codexRulesCovered: 12
   }
-  const mcpCall = {
-    kind: 'mcp' as const,
-    server: 'claude_ai_Figma',
-    tool: 'use_figma',
-    args: {
-      fileKey: 'abc123',
-      nodeId: '12:34',
-      description: 'Sample: move the checkout button to the header and recolor it.',
-      options: { dryRun: false, layers: ['Header', 'Footer', 'Buttons', 'Icons', 'Badges'] }
-    }
-  }
-
   const saveStates: DraftStatus[] = ['idle', 'saving', 'saved', 'error']
-
-  let attentionOpen = $state(false)
-  const attentionCount = 2
-  let structuredOpen = $state(false)
-  let branchOpen = $state(false)
-  const branchRequests: AttentionRequest[] = [
-    {
-      id: 'bq-normal',
-      kind: 'branch',
-      from: 'Arc',
-      projectId: 'web',
-      projectName: 'web',
-      files: ['src/routes/orders.ts', 'src/lib/retry.ts', 'README.md'],
-      moreFiles: 0,
-      workers: ['W3 web-fix']
-    },
-    {
-      id: 'bq-long',
-      kind: 'branch',
-      from: 'Arc',
-      projectId: 'api',
-      projectName: 'api',
-      files: Array.from({ length: 10 }, (_, i) => `src/services/handlers/file-${i + 1}.ts`),
-      moreFiles: 14,
-      workers: ['W1 api-retry', 'W2 api-docs']
-    },
-    {
-      id: 'bq-carry-failed',
-      kind: 'branch',
-      from: 'Arc',
-      projectId: 'web',
-      projectName: 'web',
-      files: ['src/routes/orders.ts', 'src/lib/retry.ts'],
-      moreFiles: 0,
-      workers: ['W3 web-fix'],
-      message: 'The changes could not be brought along. Pick another choice.'
-    }
-  ]
-  const requests: AttentionRequest[] = [
-    {
-      id: 'p1',
-      kind: 'permission',
-      from: 'W1 api-retry · via brain',
-      action: 'git push origin arc/fix-order-sync',
-      reason: 'Sample: pushes the worker branch.'
-    },
-    {
-      id: 'q1',
-      kind: 'question',
-      from: 'W2 order-sync · via brain',
-      question: 'Sample: which retry limit should the worker use?'
-    }
-  ]
-  const structuredRequests: AttentionRequest[] = [
-    {
-      id: 'sq-single',
-      kind: 'question',
-      from: 'W3 · /awos:spec',
-      question: 'Sample: where should the review open?',
-      questions: [
-        {
-          question: 'Sample: where should the review open?',
-          header: 'Review',
-          multiSelect: false,
-          options: [
-            { label: 'In the app', description: 'Opens the diff view in Arc.' },
-            { label: 'In the editor', description: 'Opens the changed files.' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'sq-multi',
-      kind: 'question',
-      from: 'W3 · /awos:spec',
-      question: 'Sample: which colors?',
-      questions: [
-        {
-          question: 'Sample: which colors?',
-          header: 'Colors',
-          multiSelect: true,
-          options: [
-            { label: 'Red' },
-            { label: 'Blue', description: 'Cool tone.' },
-            { label: 'Green' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'sq-two',
-      kind: 'question',
-      from: 'W4 api-retry (helper)',
-      question: 'Sample: library?',
-      questions: [
-        {
-          question: 'Sample: which library?',
-          header: 'Library',
-          multiSelect: false,
-          options: [{ label: 'zod' }, { label: 'valibot' }]
-        },
-        {
-          question: 'Sample: which checks?',
-          header: 'Checks',
-          multiSelect: true,
-          options: [{ label: 'lint' }, { label: 'types' }]
-        }
-      ]
-    },
-    {
-      id: 'sq-brain',
-      kind: 'question',
-      from: 'Brain',
-      question: 'Which repository?',
-      questions: [
-        {
-          question: 'Which repository?',
-          header: '',
-          multiSelect: false,
-          options: [{ label: 'api' }, { label: 'web' }]
-        }
-      ]
-    }
-  ]
 </script>
 
 {#snippet noteParts()}
@@ -1117,44 +1075,6 @@
         }}
       />
     {/snippet}
-    {#snippet mcpCards()}
-      <PermissionCard
-        id="mcp-1"
-        from="W1 api-retry · via brain"
-        action="mcp__claude_ai_Figma__use_figma"
-        reason="Sample: this tool changes a file."
-        tool={mcpCall}
-        onApprove={() => {}}
-        onDeny={() => {}}
-        onAlwaysAllow={() => {}}
-      />
-      <PermissionCard
-        id="mcp-2"
-        from="W2 order-sync"
-        action="mcp__notes__add_note"
-        tool={{ kind: 'mcp', server: 'notes', tool: 'add_note', args: { title: 'Sample' } }}
-        onApprove={() => {}}
-        onDeny={() => {}}
-        onAlwaysAllow={() => {}}
-      />
-      <PermissionCard
-        id="perm-1"
-        from="W3 deploy"
-        action="Extra access: needs to read the build cache"
-        reason="Sample: more access than the sandbox gives."
-        tool={{
-          kind: 'permissions',
-          reason: 'Needs to read the build cache and fetch packages.',
-          read: ['/Users/sample/.cache/build'],
-          write: ['/Users/sample/Projects/out'],
-          network: true
-        }}
-        onApprove={() => {}}
-        onDeny={() => {}}
-        onAlwaysAllow={() => {}}
-      />
-    {/snippet}
-    {@render block('MCP and extra access cards', mcpCards)}
 
     {@render block('Providers settings', providersStates)}
 
@@ -1284,6 +1204,18 @@
         </div>
         <MessageBubble message={sampleBrain} />
         <MessageBubble message={sampleSurface} />
+        <div data-preview-records class="flex flex-col gap-1">
+          <MessageBubble message={sampleRecord(910, 'git push origin arc/fix-order-sync')} />
+          <MessageBubble message={sampleRecord(911, longCommand)} />
+        </div>
+        <!-- inert: the sample buttons would call the main process -->
+        <div inert data-preview-surface-parts>
+          <SurfaceView
+            surface={partsSurface}
+            idPrefix="preview-parts"
+            onAction={async () => null}
+          />
+        </div>
         <!-- inert: the buttons would call the main process, which the preview never reaches -->
         <div inert class="flex flex-col gap-3" data-preview-continue-prompts>
           {#each ['open', 'continued'] as const as status (status)}
@@ -1786,12 +1718,16 @@
 
     {#snippet attention()}
       <div class="flex items-center gap-4">
-        <AttentionBadge count={attentionCount} onclick={() => (attentionOpen = true)} />
-        <Button onclick={() => (structuredOpen = true)}>Open structured questions</Button>
-        <Button onclick={() => (branchOpen = true)}>Open unsaved changes</Button>
+        <!-- inert: the panels' buttons would call the main process, which the preview never reaches -->
+        <div inert class="flex h-[32rem] w-full max-w-3xl flex-col justify-end" data-preview-dock>
+          <AttentionDock requests={sampleRequests} />
+        </div>
         <p class="font-mono text-xs text-text-muted" data-last-action>
           Sample last action: {lastAction}
         </p>
+      </div>
+      <div class="mt-4 flex w-full max-w-3xl flex-col justify-end" data-preview-dock-folded>
+        <AttentionDock requests={sampleRequests} folded />
       </div>
     {/snippet}
     {@render block('Attention', attention)}
@@ -1924,45 +1860,6 @@
     </div>
   </Modal>
 {/if}
-
-<AttentionDialog
-  open={attentionOpen}
-  {requests}
-  onApprove={(id) => (lastAction = `approve ${id}`)}
-  onDeny={(id) => (lastAction = `deny ${id}`)}
-  onAlwaysAllow={(id) => (lastAction = `always allow ${id}`)}
-  onAnswer={(id, text) => (lastAction = `answer ${id}: ${text}`)}
-  onClose={() => (attentionOpen = false)}
-/>
-
-<AttentionDialog
-  open={structuredOpen}
-  requests={structuredRequests}
-  onApprove={() => {}}
-  onDeny={() => {}}
-  onAlwaysAllow={() => {}}
-  onAnswer={() => {}}
-  onAnswerStructured={(id, answers) => {
-    lastAction = `answers ${id}: ${JSON.stringify(answers)}`
-  }}
-  onDecline={(id) => {
-    lastAction = `decline ${id}`
-  }}
-  onClose={() => (structuredOpen = false)}
-/>
-
-<AttentionDialog
-  open={branchOpen}
-  requests={branchRequests}
-  onApprove={() => {}}
-  onDeny={() => {}}
-  onAlwaysAllow={() => {}}
-  onAnswer={() => {}}
-  onAnswerBranch={(id, choice) => {
-    lastAction = `branch ${id}: ${choice}`
-  }}
-  onClose={() => (branchOpen = false)}
-/>
 
 <div class="pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col gap-2">
   {#each toastList as toast (toast.id)}

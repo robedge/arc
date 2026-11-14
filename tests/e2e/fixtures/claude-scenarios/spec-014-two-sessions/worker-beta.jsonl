@@ -1,0 +1,7 @@
+# Asks permission to push its own branch.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool":{"name":"Bash","input":{"command":"git push origin arc/beta-branch","description":"Push the branch"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Pushed beta"}}}
+{"say":"Done."}
+{"result":true}

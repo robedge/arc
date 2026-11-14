@@ -19,7 +19,9 @@ import {
   toStoredCall
 } from '../policy/normalized-action'
 import type { ActionDecision, ActionMeta, NormalizedAction } from '../policy/normalized-action'
+import type { AttentionRecordPrompt } from '@shared/types/session'
 import type { SessionAllowRuleRow } from '../db/repositories/allow-rules-repo'
+import { requestRecord } from './attention-record'
 import {
   ASK_USER_QUESTION_TOOL,
   DECLINED_MESSAGE,
@@ -120,6 +122,8 @@ export interface AttentionHost {
     tool: string,
     input: Record<string, unknown>
   ) => Promise<NormalizedAction | null>
+  /** A one-line record of an answer the user gave in the request's panel, kept in the conversation. */
+  recordAnswer?: (prompt: AttentionRecordPrompt) => void
   /** The session's "Always allow this in this session" rules. */
   allowRules: () => SessionAllowRuleRow[]
   /** Stores a rule and tells the renderer (the header lists the rules). */
@@ -693,6 +697,7 @@ export class AttentionCoordinator {
         { requestId: row.id, worker: this.workerLabel(row) },
         row.workerId
       )
+      this.record(row, 'declined')
       return
     }
     if ('answers' in answer) {
@@ -710,6 +715,7 @@ export class AttentionCoordinator {
         { requestId: row.id },
         row.workerId
       )
+      this.record(row, 'answered', Object.values(chosen).join('; '))
       return
     }
     if ('text' in answer) {
@@ -728,6 +734,7 @@ export class AttentionCoordinator {
         { requestId: row.id },
         row.workerId
       )
+      this.record(row, 'answered', text)
       return
     }
     if (row.kind !== 'permission') throw new AppErrorException('VALIDATION_FAILED')
@@ -745,6 +752,7 @@ export class AttentionCoordinator {
       { requestId: row.id, worker: this.workerLabel(row) },
       row.workerId
     )
+    this.record(row, answer.approve ? (rule ? 'always' : 'approved') : 'denied')
     if (rule) {
       const stored = this.host.addAllowRule(rule)
       this.host.logEvent('allow-rule', `Always allowed in this session: ${stored.text}`, {
@@ -752,6 +760,20 @@ export class AttentionCoordinator {
       })
       this.resolveCovered()
     }
+  }
+
+  /**
+   * Keeps the user's answer in the conversation. Only a request answered in the panel (the queue
+   * route) gets a record; the requests an "always" answer clears afterwards get none.
+   */
+  private record(
+    row: AttentionRequestRow,
+    decision: AttentionRecordPrompt['decision'],
+    answer?: string
+  ): void {
+    if (row.route !== 'queue' || this.host.recordAnswer === undefined) return
+    const label = row.workerId === null ? 'A worker' : this.host.workerLabel(row.workerId)
+    this.host.recordAnswer(requestRecord(row, label, decision, answer))
   }
 
   /**
@@ -835,6 +857,37 @@ export class AttentionCoordinator {
         this.tellBrainOfQuestion(row, label)
       }
     }
+    this.host.onChanged()
+  }
+
+  /**
+   * The user stopped the worker, or removed it: its waiting requests are over and leave the list
+   * (both routes). They are cancelled and counted as delivered, so no answer is ever carried to the
+   * worker; a blocked call still waiting on one is released as a withdrawn request is. No record is
+   * written and the brain is told nothing. Not for a quit or a crash: those keep the requests for
+   * the resumed worker. Nothing pending for the worker is a no-op.
+   */
+  cancelForWorker(workerId: string): void {
+    const rows = this.repo.listPending(this.host.sessionId).filter((r) => r.workerId === workerId)
+    let changed = false
+    for (const row of rows) {
+      this.clearTimer(row.id)
+      if (!this.repo.resolve(row.id, 'cancelled', null, this.host.now())) continue
+      this.repo.markDelivered(row.id)
+      changed = true
+      const waiter = this.waiters.get(row.id)
+      this.waiters.delete(row.id)
+      for (const listener of waiter?.listeners ?? []) {
+        listener.reject(
+          new BridgeToolError(
+            'cancelled',
+            'The call was cancelled before the request was answered.'
+          )
+        )
+      }
+    }
+    if (!changed) return
+    this.refreshWorker(workerId)
     this.host.onChanged()
   }
 

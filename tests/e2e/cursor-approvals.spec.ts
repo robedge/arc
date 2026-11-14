@@ -1,8 +1,16 @@
 // @spec: 010-cursor-as-a-third-provider
 // @regression
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
-import { NEEDS_ATTENTION, openSettings } from './codex-rig'
+import { openSettings } from './codex-rig'
+import {
+  approve,
+  deny,
+  dock,
+  expectNoneWaiting,
+  expectWaiting,
+  permissionAction,
+  request
+} from './attention-rig'
 import {
   cursorPermissionAnswers,
   cursorPrompts,
@@ -25,8 +33,6 @@ test.afterEach(async () => {
 
 const W1 = 'W1 · review'
 const PUSH = 'git push origin HEAD'
-const badge = (page: Page) => page.getByRole('button', { name: NEEDS_ATTENTION })
-const attentionDialog = (page: Page) => page.getByRole('dialog', { name: /Needs attention/ })
 
 async function setup(cursorScenario: string): Promise<CursorRig> {
   const r = await launchCursorRig({ cursorScenario, repos: [{ name: 'api' }] })
@@ -47,18 +53,17 @@ test('2.4: a Cursor worker asks to push; Needs attention shows the exact command
   const card = workerCard(page, W1)
   await expect(card.locator('[data-worker-model]')).toHaveText(/^Cursor · /)
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval', { timeout: 20_000 })
-  await expect(badge(page)).toHaveCount(1)
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog.locator('[data-action]')).toHaveText(PUSH)
+  await expectWaiting(page, 1)
+  const panel = request(page, 'permission')
+  await expect(permissionAction(panel)).toHaveText(PUSH)
 
   // Waiting: the fake Cursor has no answer and has not run the push.
   await page.waitForTimeout(1000)
   expect(pushAnswers(r)).toEqual([])
   expect(ranPush(r)).toBe(false)
 
-  await dialog.getByRole('button', { name: 'Approve', exact: true }).click()
-  await expect(badge(page)).toHaveCount(0)
+  await approve(panel)
+  await expectNoneWaiting(page)
   // Allowed once (never "allow always"), and only then the push ran.
   await expect
     .poll(() => pushAnswers(r))
@@ -73,11 +78,10 @@ test('2.4: a refused Cursor push answers reject-once and the next prompt starts 
 
   const card = workerCard(page, W1)
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval', { timeout: 20_000 })
-  await badge(page).click()
-  const dialog = attentionDialog(page)
-  await expect(dialog.locator('[data-action]')).toHaveText(PUSH)
-  await dialog.getByRole('button', { name: 'Deny', exact: true }).click()
-  await expect(badge(page)).toHaveCount(0)
+  const panel = request(page, 'permission')
+  await expect(permissionAction(panel)).toHaveText(PUSH)
+  await deny(panel)
+  await expectNoneWaiting(page)
 
   await expect
     .poll(() => pushAnswers(r))
@@ -99,13 +103,13 @@ test('2.4: an ordinary command in the Cursor worker’s working copy runs withou
   // Arc answered `git status` itself: allow-once, with no Needs attention item at any point.
   await expect
     .poll(async () => {
-      expect(await badge(page).count()).toBe(0)
+      expect(await dock(page).count()).toBe(0)
       return cursorPermissionAnswers(r)
     })
     .toEqual([{ toolCallId: 'status-1', outcome: 'selected', optionId: 'allow-once' }])
   await expect.poll(() => cursorShellRuns(r).some((s) => s.cmd === 'git status')).toBe(true)
   await expect(card).toHaveAttribute('data-worker-card', /done|merged/, { timeout: 30_000 })
-  await expect(badge(page)).toHaveCount(0)
+  await expectNoneWaiting(page)
 })
 
 test('2.4: a push Cursor never asks about is blocked, and the event log shows a Blocked note naming the worker', async () => {

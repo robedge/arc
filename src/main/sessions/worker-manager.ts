@@ -230,6 +230,8 @@ export interface WorkerHost {
   routeAttentionToTerminal: (workerId: string) => void
   /** Hand-back: they return to Needs attention and take the normal path again. */
   routeAttentionBack: (workerId: string) => void
+  /** The user's Stop ended the worker, or it was removed: its waiting requests are cancelled. */
+  cancelAttention: (workerId: string) => void
 }
 
 export interface WorkerManagerDeps {
@@ -3040,11 +3042,26 @@ export class WorkerManager {
       await this.stopPausedControlled(workerId, by)
       // A queued worker may have been the last one waiting on a question.
       await this.deps.cancelBranchOrphans?.()
+      this.cancelRequestsOfEndedWorker(workerId, by)
       return
     }
     run.stopRequestedBy = by
     await run.handle?.stop()
     await run.finished
+    this.cancelRequestsOfEndedWorker(workerId, by)
+  }
+
+  /**
+   * A worker the user's Stop really ended no longer waits on anything: its requests leave Needs
+   * attention. Only a stop by the user does this. A quit or a crash (`by` is `quit` or `crash`, and
+   * a process that only exited is never routed here) keeps the requests for the resumed worker, and
+   * a Stop that did not end the worker (it has no process and waits on a request) keeps them too:
+   * cancelling would put it back to work.
+   */
+  private cancelRequestsOfEndedWorker(workerId: string, by: WorkerStoppedBy): void {
+    if (by !== 'user') return
+    if (this.deps.workersRepo.get(workerId)?.status !== 'stopped') return
+    this.host.cancelAttention(workerId)
   }
 
   /**
@@ -3097,6 +3114,7 @@ export class WorkerManager {
     await this.doRecordHeads(workerId)
     const { unmerged } = await this.discardWorkingCopies(workerId)
     this.deps.workersRepo.markRemoved(workerId, this.deps.now())
+    this.host.cancelAttention(workerId)
     this.host.logEvent(
       'worker-removed',
       `Removed ${labelOf(row)}${discardNote(unmerged)}`,

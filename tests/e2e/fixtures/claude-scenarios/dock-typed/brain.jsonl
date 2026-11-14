@@ -1,0 +1,16 @@
+# Attention dock e2e: a worker asks the user a question first; a second worker asks for a permission only after the user sends GO-SECOND.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Typed answer\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"asks:"}
+{"mcp":{"tool":"escalate_to_user","args":{"requestId":"{{REQUEST_ID}}","reason":"The notes do not say how many retries."}}}
+{"say":"I passed the question to you."}
+{"result":true}
+{"waitForStdin":"GO-SECOND"}
+{"mcp":{"tool":"spawn_worker","args":{"name":"writer-one","task":"Write one","repos":["api"]}}}
+{"say":"Second worker running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

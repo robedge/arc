@@ -16,6 +16,7 @@ import {
   answerNote,
   type AttentionHost
 } from '../../../src/main/sessions/attention-coordinator'
+import { recordText } from '../../../src/shared/attention-record'
 import { createCodexApprovalHandler, McpCoverage } from '../../../src/main/sessions/codex-approvals'
 import type { McpServerTools } from '../../../src/main/agents/agent-adapter'
 import { McpToolCatalogue } from '../../../src/main/personal/mcp-tool-catalogue'
@@ -40,6 +41,7 @@ const notes: string[] = []
 const rules = vi.fn()
 const stored: SessionAllowRuleRow[] = []
 const events: string[] = []
+const recorded: string[] = []
 
 function makeCoordinator(): AttentionCoordinator {
   let n = 0
@@ -48,6 +50,7 @@ function makeCoordinator(): AttentionCoordinator {
     now: () => Date.now(),
     newId: () => `R${(n += 1)}`,
     logEvent: (_kind, text) => events.push(text),
+    recordAnswer: (prompt) => recorded.push(recordText(prompt)),
     notifyBrain: (text) => notes.push(text),
     workerOf: () => ({ id: 'w1', number: 1, slug: 'api-retry' }),
     workerLabel: () => 'W1 api-retry',
@@ -121,6 +124,7 @@ beforeEach(async () => {
   repo = new AttentionRepo(rig.opened.db)
   notes.length = 0
   events.length = 0
+  recorded.length = 0
   rules.mockClear()
   stored.length = 0
   coordinator = makeCoordinator()
@@ -375,6 +379,20 @@ describe('a Codex permissions approval', () => {
     coordinator.answer((await pendingRow()).id, { approve: false })
     expect((await pending).decision).toBe('decline')
   })
+
+  it('leaves one record whose subject is "more access" and the reason', async () => {
+    const pending = workerHandler.handle(permissions, never)
+    coordinator.answer((await pendingRow()).id, { approve: true })
+    await pending
+    expect(recorded).toEqual(['Approved: more access: write the build output (W1 api-retry)'])
+  })
+
+  it('records "always" on extra access as a plain approval, as no rule is stored', async () => {
+    const pending = workerHandler.handle(permissions, never)
+    coordinator.answer((await pendingRow()).id, { approve: true, always: true })
+    await pending
+    expect(recorded).toEqual(['Approved: more access: write the build output (W1 api-retry)'])
+  })
 })
 
 describe('a Codex MCP tool approval', () => {
@@ -609,6 +627,41 @@ describe('the handler never answers with more than one action', () => {
       requestAction: () => Promise.reject(new Error('boom'))
     })
     expect(await handler.handle(command('git push'), never)).toEqual({ decision: 'decline' })
+  })
+})
+
+describe('records of the answers the user gives', () => {
+  const mcpCall = request(
+    'mcp-elicitation',
+    { serverName: 'figma', message: 'Allow the figma MCP server to run tool "set_node"?' },
+    { type: 'mcpToolCall', id: 'm1', server: 'figma', tool: 'set_node', arguments: { id: '1:2' } }
+  )
+
+  it('names a tool of a connected server "<server> · <tool>" once the brain passed it on', async () => {
+    const pending = workerHandler.handle(mcpCall, never)
+    const row = await pendingRow()
+    coordinator.escalateToUser(brain, { requestId: row.id, reason: 'Your call.' })
+    coordinator.answer(row.id, { approve: true })
+    await pending
+    expect(recorded).toEqual(['Approved: figma · set_node (W1 api-retry · via brain)'])
+  })
+
+  it('writes none when the brain resolves the request', async () => {
+    const pending = workerHandler.handle(mcpCall, never)
+    const row = await pendingRow()
+    coordinator.resolveRequest(brain, { requestId: row.id, decision: 'approve' })
+    await pending
+    expect(recorded).toEqual([])
+  })
+
+  it('writes none for a request Codex withdrew, and a later answer is refused', async () => {
+    const controller = new AbortController()
+    const pending = workerHandler.handle(command('git push origin HEAD'), controller.signal)
+    const row = await pendingRow()
+    controller.abort(CODEX_APPROVAL_WITHDRAWN)
+    await pending
+    expect(() => coordinator.answer(row.id, { approve: true })).toThrow()
+    expect(recorded).toEqual([])
   })
 })
 

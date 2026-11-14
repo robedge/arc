@@ -42,12 +42,12 @@
   const attention = $derived(!control && status.tone === 'attention')
   const helpers = $derived(helpersLabel(worker.helpersRunning))
 
-  // In an attention state the card opens the dialog with its own request first.
+  // In an attention state the card brings its own request's panel into view.
   function open(): void {
     const request = attention
       ? activeSession.queueAttention.find((r) => r.workerId === worker.id)
       : null
-    if (request) activeSession.openAttention(request.id)
+    if (request) activeSession.focusRequest(request.id)
     else onopen(worker.id)
   }
 </script>

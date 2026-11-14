@@ -3,7 +3,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
 import {
   createGroupWithProjects,
   eventLog,
@@ -14,14 +13,13 @@ import {
   workerCard
 } from './sessions-rig'
 import type { Rig } from './sessions-rig'
+import { answerQuestion, expectNoneWaiting, expectWaiting, request } from './attention-rig'
 
 let rig: Rig | undefined
 test.afterEach(async () => {
   await rig?.dispose()
   rig = undefined
 })
-
-const badge = (page: Page) => page.getByRole('button', { name: /Needs attention, \d+ waiting/ })
 
 async function setup(scenario: string, names: string[] = ['api']) {
   const r = await launchRig({ scenario, repos: names.map((name) => ({ name })) })
@@ -108,15 +106,13 @@ test('2.8: a conflict the resolver is not sure about asks the user and names the
   const { page, repos } = r
   await startSession(page, { request: 'Two edits', mode: 'Autonomous' })
 
-  await expect(badge(page)).toHaveCount(1, { timeout: 45_000 })
-  await badge(page).click()
-  const question = page.getByRole('dialog', { name: /Needs attention/ }).getByRole('article')
+  await expectWaiting(page, 1, { timeout: 45_000 })
+  const question = request(page, 'question')
   await expect(question).toContainText('README.md')
   await expect(question).toContainText('retry on failure')
   await expect(question).toContainText('5 second timeout')
-  await question.getByLabel('Your answer').fill('Keep both lines')
-  await question.getByRole('button', { name: 'Send' }).click()
-  await expect(badge(page)).toHaveCount(0)
+  await answerQuestion(question, 'Keep both lines')
+  await expectNoneWaiting(page)
 
   await expect(workerCard(page, 'W2 · api-timeout')).toHaveAttribute('data-worker-card', 'merged', {
     timeout: 45_000

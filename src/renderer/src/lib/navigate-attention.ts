@@ -6,7 +6,7 @@ import { SECTION_SESSIONS } from './stores/ui.svelte'
 
 /**
  * A notification click (`session:open-attention`): select the session's group, the Sessions tab and the
- * session, then open the attention dialog with the clicked request first. When the leave guard
+ * session, then bring the dock's panel for the clicked request into view. When the leave guard
  * refuses (an unsaved draft elsewhere) nothing else happens beyond a toast.
  */
 export async function navigateToAttention(target: {
@@ -30,5 +30,5 @@ export async function navigateToAttention(target: {
     return
   }
   if (activeSession.sessionId !== target.sessionId) await activeSession.open(target.sessionId)
-  if (activeSession.sessionId === target.sessionId) activeSession.openAttention(target.requestId)
+  if (activeSession.sessionId === target.sessionId) activeSession.focusRequest(target.requestId)
 }

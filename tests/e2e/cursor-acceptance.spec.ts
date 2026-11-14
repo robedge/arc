@@ -16,13 +16,8 @@ import {
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { expect, test } from '@playwright/test'
-import {
-  chooseFromMenu,
-  closeSettings,
-  openSettings,
-  providerRow,
-  NEEDS_ATTENTION
-} from './codex-rig'
+import { chooseFromMenu, closeSettings, openSettings, providerRow } from './codex-rig'
+import { approve, request } from './attention-rig'
 import { commandOption, composer } from './commands-rig'
 import {
   cursorAgents,
@@ -487,11 +482,7 @@ test("2.7: after a whole Cursor session (Providers, Agent loading, an approved p
   await startSession(page, { request: 'Review the work', mode: 'Autonomous' })
   const card = workerCard(page, 'W1 · review')
   await expect(card).toHaveAttribute('data-worker-card', 'needs_approval', { timeout: 30_000 })
-  await page.getByRole('button', { name: NEEDS_ATTENTION }).click()
-  await page
-    .getByRole('dialog', { name: /Needs attention/ })
-    .getByRole('button', { name: 'Approve', exact: true })
-    .click()
+  await approve(request(page, 'permission'))
   await expect
     .poll(() => cursorShellRuns(r).some((s) => s.cmd === 'git push origin HEAD'))
     .toBe(true)

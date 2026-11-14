@@ -41,6 +41,14 @@ describe('buildHandoffPreamble', () => {
     expect(text).not.toContain('half a rep')
   })
 
+  it('leaves out the one-line record of an answered request', () => {
+    const record = 'Approved: git push origin arc/fix-order-sync (W2 api-retry)'
+    const text = buildHandoffPreamble([msg('user', 'keep me'), msg('system', record)])
+    expect(text).toContain('User: keep me')
+    expect(text).not.toContain('Approved:')
+    expect(buildHandoffPreamble([msg('system', record)])).toBeUndefined()
+  })
+
   it('is undefined when nothing can be handed over', () => {
     expect(buildHandoffPreamble([])).toBeUndefined()
     expect(buildHandoffPreamble([msg('system', 'x'), msg('brain', '')])).toBeUndefined()

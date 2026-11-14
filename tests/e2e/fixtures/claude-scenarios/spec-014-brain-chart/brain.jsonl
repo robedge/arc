@@ -1,0 +1,9 @@
+# Spec 014 acceptance: the brain draws a panel with a bar chart, a command in a code block and a button.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"show_surface","args":{"surfaceId":"deploys","express":"$/days = [{label: \"Mon\", value: 4}, {label: \"Tue\", value: 9}]\ngo = Button(Text(\"Rerun\"), Event(\"rerun\", {}), \"primary\")\nroot = Column([Text(\"Deploys\", \"h2\"), BarChart(\"Deploys per day\", data=$/days), Text(\"Command\"), CodeBlock(\"rm -rf build\"), go])"}}}
+{"say":"Title: Deploy chart\n\nThe panel is up."}
+{"result":true}
+{"waitForStdin":"[Surface action]"}
+{"say":"Got the click."}
+{"result":true}
