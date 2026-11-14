@@ -69,7 +69,7 @@
             One agent harness<br />across your <em>whole group</em> of repos.
           </h1>
           <p class="lede">
-            Arc points the Claude and Codex subscriptions you already pay for at every repository in a
+            Arc points the Claude, Codex and Cursor subscriptions you already pay for at every repository in a
             group, with lasting notes, docs and playbooks attached. Ask once. A brain plans the work,
             workers fan out across the repos, and the result lands on one session branch for you to review.
             Arc is open source.
@@ -80,7 +80,7 @@
           </div>
         </div>
         <dl class="readout" aria-label="At a glance">
-          <div><dt>Providers</dt><dd>Claude Code + Codex CLI</dd></div>
+          <div><dt>Providers</dt><dd>Claude Code + Codex + Cursor CLIs</dd></div>
           <div><dt>API keys</dt><dd>None needed</dd></div>
           <div><dt>Runs on</dt><dd>Your Mac, locally</dd></div>
           <div><dt>Telemetry</dt><dd>None</dd></div>
@@ -117,7 +117,7 @@
         </ul>
         <p class="note">
           Arc answers all three: a session sees every repo in a group plus its knowledge, sessions are saved and
-          resumable, and usage is always on screen. Everything runs through your existing Claude and Codex
+          resumable, and usage is always on screen. Everything runs through your existing Claude, Codex and Cursor
           subscriptions, with no separate API billing.
         </p>
       </section>
@@ -390,7 +390,7 @@
           <p class="lede">
             The brain picks a provider and model for each worker based on how complex the task is and how much
             subscription usage you have left: a lighter model for simple lookups, a stronger one for complex
-            changes, or Codex for a second opinion. Override it for the whole session or any single worker.
+            changes, or Codex or Cursor for a second opinion. Override it for the whole session or any single worker.
           </p>
         </header>
         <div class="grid grid--2">
@@ -407,7 +407,7 @@
             <figcaption id="usage-cap" class="muted">Sample values. Arc shows usage and rate-limit status per provider and per session, read from each CLI's own event stream.</figcaption>
           </figure>
           <ul class="bullets bullets--plain" role="list">
-            <li><strong>Mix providers in one session.</strong> Claude Code and Codex workers side by side.</li>
+            <li><strong>Mix providers in one session.</strong> Claude Code, Codex and Cursor workers side by side.</li>
             <li><strong>Usage-aware.</strong> When limits are close, the brain switches to lighter models.</li>
             <li><strong>You have the last word.</strong> Session-level and worker-level overrides always beat the brain's choice.</li>
           </ul>
@@ -483,7 +483,7 @@
 <span class="t-green">worker</span>  commit added migration and new response field
 <span class="t-amber">worker</span>  ask_brain "does web need the field today?"<span class="caret"></span></pre>
         </div>
-        <p class="note">Under the hood Arc drives the locally installed Claude Code and Codex CLIs, so it runs on their logged-in subscriptions.</p>
+        <p class="note">Under the hood Arc drives the locally installed Claude Code, Codex and Cursor CLIs, so it runs on their logged-in subscriptions.</p>
       </section>
 
       <!-- MCP -->
@@ -591,7 +591,7 @@ root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data
           <li class="panel">
             <p class="panel__tag">No API keys</p>
             <h3>Your subscriptions, your logins</h3>
-            <p>Arc never handles credentials. The Claude and Codex CLIs handle their own login; Arc only tells you which login command to run.</p>
+            <p>Arc never handles credentials. The Claude Code, Codex and Cursor CLIs handle their own login; Arc only tells you which login command to run.</p>
           </li>
           <li class="panel">
             <p class="panel__tag">No telemetry</p>
@@ -630,7 +630,7 @@ root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data
           <svg class="download__ring" aria-hidden="true"><use href="#ring" /></svg>
           <p class="kicker" data-scramble>// 13 Get Arc</p>
           <h2 id="download-title" class="display">Bring your whole system into one session.</h2>
-          <p class="lede">Arc for macOS, Apple Silicon first. Bring a Claude or Codex subscription and the matching CLI, installed and logged in.</p>
+          <p class="lede">Arc for macOS, Apple Silicon first. Bring a Claude, Codex or Cursor subscription and the matching CLI (claude, codex or Cursor's agent), installed and logged in.</p>
           <div class="actions actions--center">
             <a class="btn btn--primary btn--lg" id="download-link" href="%REPO_URL%/releases/latest/download/Arc-macos-arm64.dmg">Download for macOS</a>
             <a class="btn btn--ghost" href="#top">Back to top</a>
@@ -638,7 +638,7 @@ root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data
           <p class="download__oss mono">Open source // <a href="%REPO_URL%" target="_blank" rel="noopener">Read the code on GitHub</a></p>
           <ul class="reqs mono" role="list">
             <li>macOS, single user</li>
-            <li>Claude Code and/or Codex CLI on your PATH</li>
+            <li>At least one of the Claude Code, Codex or Cursor (agent) CLIs on your PATH</li>
             <li>Personal build: signed ad hoc, not yet notarized</li>
           </ul>
         </div>

@@ -1,7 +1,7 @@
 # Arc showcase site
 
 A scroll-driven marketing site for **Arc**, the local-first macOS agent harness that points
-your existing Claude and Codex subscriptions at a whole group of repositories.
+your existing Claude, Codex and Cursor subscriptions at a whole group of repositories.
 
 It lives in the `website/` folder of the Arc repository as a standalone pnpm project with its
 own `package.json` and lockfile: run every command below from this folder. The app's lint,

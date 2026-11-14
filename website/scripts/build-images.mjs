@@ -85,9 +85,9 @@ const ogHtml = `<!doctype html><html><head><style>${fontFaces}
   <div class="copy">
     <p class="kicker">// LOCAL-FIRST AGENT HARNESS FOR MACOS</p>
     <h1>${lead}<em>whole group</em>${tail}</h1>
-    <p>Your Claude Code and Codex subscriptions, pointed at every repo in a group. No API keys. No cloud.</p>
+    <p>Your Claude Code, Codex and Cursor subscriptions, pointed at every repo in a group. No API keys. No cloud.</p>
   </div>
-  <div class="readout"><b>PROVIDERS</b> Claude Code + Codex CLI &nbsp;//&nbsp; <b>RUNS ON</b> Your Mac &nbsp;//&nbsp; <b>TELEMETRY</b> None</div>
+  <div class="readout"><b>PROVIDERS</b> Claude Code + Codex + Cursor CLIs &nbsp;//&nbsp; <b>RUNS ON</b> Your Mac &nbsp;//&nbsp; <b>TELEMETRY</b> None</div>
 </body></html>`;
 
 /** App icon: the favicon artwork, or full-bleed for the maskable variant. */
