@@ -514,16 +514,15 @@
         </div>
       </section>
 
-      <!-- SURFACES (A2UI preview) -->
+      <!-- SURFACES (A2UI panels) -->
       <section class="section" id="surfaces" aria-labelledby="surfaces-title">
         <header class="section__head">
           <p class="kicker" data-scramble>// 11 Panels in the conversation</p>
           <h2 id="surfaces-title" class="display">When text is not enough, the brain shows a panel.</h2>
           <p class="lede">
-            <span class="chip chip--cyan chip--lead">Preview</span> The brain can now put an interactive panel
-            straight into the conversation: text, inputs, buttons, KPI tiles, tables, and bar and line charts. It
-            writes the panel in A2UI Express, a compact text form of the A2UI format, and Arc draws it in its own
-            HUD style from Arc's component catalog. This is an early spike, so expect it to change.
+            The brain can put an interactive panel straight into the conversation: text, inputs, buttons, KPI
+            tiles, tables, and bar and line charts. It writes the panel in A2UI Express, a compact text form of the
+            A2UI format, and Arc draws it in its own HUD style from Arc's component catalog.
           </p>
         </header>
         <div class="grid grid--2">
@@ -578,7 +577,6 @@ root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data
           <li><strong>It does not block.</strong> The tool returns at once. Each call adds a new panel at the end of the conversation, and earlier panels stay where they are.</li>
           <li><strong>Kept small.</strong> Up to 300 components per panel, tables up to 8 columns and 100 rows, charts up to 60 points. What you type stays in the panel and reaches the brain only with a button press.</li>
         </ul>
-        <p class="note">Preview: this is a spike on catalog <code>arc:catalog/spike-1</code>. The components, the text format and the event shape may change or be removed.</p>
       </section>
 
       <!-- SECURITY -->
