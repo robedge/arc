@@ -119,10 +119,10 @@ at `http://localhost:4173/arc/`.
 - `seo/content.ts` is the single source of truth: title, meta description, summary, Open
   Graph image alt text, FAQ (each answer cites its doc section), feature list and
   requirements. Facts come from the product docs. Items the docs mark as _(assumption)_ are
-  not stated as facts, and `llms-full.txt` keeps those labels. The A2UI panels preview is a
-  spike that is not in the product docs yet; its facts come from the app's source
-  (`src/main/surface/`, `src/main/bridge/tools/show-surface.ts` and the `Surface*.svelte`
-  components), and its FAQ entry names those files as its source.
+  not stated as facts, and `llms-full.txt` keeps those labels. The A2UI panels feature is not
+  in the product docs yet; its facts come from the app's source (`src/main/surface/`,
+  `src/main/bridge/tools/show-surface.ts` and the `Surface*.svelte` components), and its FAQ
+  entry names those files as its source.
 - `seo/docs/` holds vendored copies of `product-definition.md` and `architecture.md` from
   Arc's group knowledge folder. To refresh them, run
   `ARC_DOCS_DIR=".../knowledge/Docs" pnpm docs:sync`.

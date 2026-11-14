@@ -3,8 +3,8 @@
 // and the web manifest. Every fact here comes from the vendored product docs in
 // seo/docs/ (product-definition.md and architecture.md); `source` names the
 // section. Items the docs mark as an assumption are not used as facts.
-// One exception: the A2UI panel preview is a spike that is not in the product
-// docs yet, so its facts come from the app's source and `source` names the files.
+// One exception: the A2UI panels feature is not in the product docs yet, so its
+// facts come from the app's source and `source` names the files.
 
 export const PLACEHOLDER_SITE_URL = 'https://arc.example.com';
 
@@ -86,8 +86,8 @@ export const faqs: Faq[] = [
   },
   {
     q: 'Can the brain show charts, tables or forms in the conversation?',
-    a: 'Yes, as a preview. Through its show_surface tool the brain can show an interactive panel in the conversation: text, inputs, buttons, KPI tiles, tables, and bar and line charts. It writes the panel in A2UI Express, a compact text form of the A2UI format, and Arc compiles it with the official A2UI agent SDK and draws it in its own HUD style from Arc\'s component catalog. The tool does not wait: when you press a button, the brain gets a message that starts with "[Surface action]" carrying the event name and its context values as you left them. This is a spike, so the components, the format and the event shape may change or be removed.',
-    source: 'Arc source (A2UI spike, not yet in the product docs): src/main/surface/arc-catalog.ts, src/main/surface/express.ts, src/main/bridge/tools/show-surface.ts, src/renderer/src/lib/components/sessions/SurfaceView.svelte and SurfaceChart.svelte',
+    a: 'Yes. Through its show_surface tool the brain can show an interactive panel in the conversation: text, inputs, buttons, KPI tiles, tables, and bar and line charts. It writes the panel in A2UI Express, a compact text form of the A2UI format, and Arc compiles it with the official A2UI agent SDK and draws it in its own HUD style from Arc\'s component catalog. The tool does not wait: when you press a button, the brain gets a message that starts with "[Surface action]" carrying the event name and its context values as you left them.',
+    source: 'Arc source (A2UI panels, not yet in the product docs): src/main/surface/arc-catalog.ts, src/main/surface/express.ts, src/main/bridge/tools/show-surface.ts, src/renderer/src/lib/components/sessions/SurfaceView.svelte and SurfaceChart.svelte',
   },
 ];
 
@@ -105,8 +105,8 @@ export const features: string[] = [
   'A Suggestions chip in the session header and a Knowledge suggestions dialog that shows each new note or the lines a change adds and removes',
   'Chat first, with each worker\'s terminal available on demand',
   'Local MCP bridge on 127.0.0.1 with a per-session token',
-  'Preview (spike): interactive panels in the conversation, written by the brain in A2UI Express and drawn in Arc\'s HUD style from Arc\'s component catalog: text, inputs, buttons, KPI tiles, tables, bar and line charts',
-  'Preview (spike): a button press in a panel returns a "[Surface action]" event to the brain with the event name and its context values',
+  'Panels in the conversation: interactive panels in the conversation, written by the brain in A2UI Express and drawn in Arc\'s HUD style from Arc\'s component catalog: text, inputs, buttons, KPI tiles, tables, bar and line charts',
+  'Panel events: a button press in a panel returns a "[Surface action]" event to the brain with the event name and its context values',
 ];
 
 export const requirements =

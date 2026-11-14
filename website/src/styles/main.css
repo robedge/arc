@@ -1112,14 +1112,8 @@ main {
 .card--green .card__meta {
   color: var(--green) !important;
 }
-/* ---------- Surfaces (A2UI preview panel mock) ---------- */
+/* ---------- Surfaces (A2UI panel mock) ---------- */
 
-.chip--lead {
-  margin: 0 0.4rem 0 0;
-  vertical-align: 0.15em;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-}
 .surface {
   margin: 0;
 }
