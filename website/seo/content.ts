@@ -12,16 +12,16 @@ export const site = {
   name: 'Arc',
   /** Source repository; index.html uses it through the %REPO_URL% token. */
   repoUrl: 'https://github.com/robedge/arc',
-  title: 'Arc - local-first macOS agent harness for Claude Code, Codex and Cursor',
+  title: 'Arc: macOS agent orchestrator for Claude Code, Codex, Cursor',
   description:
-    'Arc is a local-first macOS agent harness that points your Claude Code, Codex and Cursor subscriptions at a whole group of repos. Lasting knowledge, no API keys. Open source.',
+    'Arc is a local-first macOS agent orchestrator that points your Claude, Codex and Cursor subscriptions at a group of repos. No API keys. Open source.',
   /** One-paragraph summary used for llms.txt, the noscript block and JSON-LD. */
   summary:
     'Arc is a personal, local-first macOS desktop app that points the Claude Code, Codex and Cursor subscriptions a developer already pays for at a whole group of related repositories, with lasting knowledge (notes, docs, schemas, playbooks, links) attached to the group. A brain agent plans the work, worker agents fan out across the repos in their own git worktrees, and the result lands on one session branch for the developer to review. Arc is open source, with its code on GitHub.',
   /** Headline drawn on the Open Graph image (scripts/build-images.mjs); same as the page h1. */
-  ogHeadline: 'One agent harness across your whole group of repos.',
+  ogHeadline: 'One agent orchestrator across your whole group of repos.',
   ogImageAlt:
-    'Arc: a cyan ring logo and a brain-and-workers branch diagram on a navy HUD grid, with the line "One agent harness across your whole group of repos."',
+    'Arc: a cyan ring logo and a brain-and-workers branch diagram on a navy HUD grid, with the line "One agent orchestrator across your whole group of repos."',
   themeColor: '#03080F',
   locale: 'en_US',
   language: 'en',
