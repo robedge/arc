@@ -1,0 +1,61 @@
+# Builds the macOS arm64 dmg and publishes it as a GitHub Release.
+# The asset keeps a stable name so
+# https://github.com/robedge/arc/releases/latest/download/Arc-macos-arm64.dmg
+# always resolves to the newest build.
+name: Release macOS build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'website/**'
+      - 'docs/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One build at a time; a newer run waits for the one in progress.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from the packageManager field in package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # electron-vite build + electron-builder --mac --arm64 (ad hoc signed, no keychain).
+      - run: pnpm package
+
+      - name: Stage the dmg under a stable name
+        run: |
+          set -euo pipefail
+          dmg="$(ls release/Arc-*-arm64.dmg | head -n 1)"
+          cp "$dmg" release/Arc-macos-arm64.dmg
+          echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${VERSION}-build.${GITHUB_RUN_NUMBER}"
+          gh release create "$tag" release/Arc-macos-arm64.dmg \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Arc ${VERSION} (build ${GITHUB_RUN_NUMBER})" \
+            --generate-notes \
+            --latest
