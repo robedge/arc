@@ -11,7 +11,7 @@
 
 ### 1.1. Project Vision & Purpose
 
-A personal macOS desktop agent harness that lets a developer point their existing Claude, Codex and Cursor subscriptions at a whole _group_ of related projects at once, with lasting knowledge (notes, docs, schemas, playbooks, links) attached to that group. The goal is to ask a question or fix an issue across a multi-repo system as easily as working in a single folder, without paying for separate API usage and without re-explaining context every session.
+A personal macOS desktop agent orchestrator that lets a developer point their existing Claude, Codex and Cursor subscriptions at a whole _group_ of related projects at once, with lasting knowledge (notes, docs, schemas, playbooks, links) attached to that group. Arc drives each provider's own terminal harness (the Claude Code, Codex and Cursor CLIs) instead of being a harness itself. The goal is to ask a question or fix an issue across a multi-repo system as easily as working in a single folder, without paying for separate API usage and without re-explaining context every session.
 
 ### 1.2. Target Audience
 

@@ -83,7 +83,7 @@ const ogHtml = `<!doctype html><html><head><style>${fontFaces}
     ${diagram}
   </svg>
   <div class="copy">
-    <p class="kicker">// LOCAL-FIRST AGENT HARNESS FOR MACOS</p>
+    <p class="kicker">// LOCAL-FIRST AGENT ORCHESTRATOR FOR MACOS</p>
     <h1>${lead}<em>whole group</em>${tail}</h1>
     <p>Your Claude Code, Codex and Cursor subscriptions, pointed at every repo in a group. No API keys. No cloud.</p>
   </div>

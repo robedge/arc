@@ -22,7 +22,7 @@
       <div class="loader__inner">
         <svg class="loader__ring"><use href="#ring" /></svg>
         <p class="loader__label">
-          <span>ARC</span><span class="loader__sep">//</span><span id="loader-status">INITIALIZING HARNESS</span>
+          <span>ARC</span><span class="loader__sep">//</span><span id="loader-status">INITIALIZING ORCHESTRATOR</span>
         </p>
         <div class="loader__bar"><span id="loader-bar"></span></div>
         <p class="loader__pct"><span id="loader-pct">000</span>%</p>
@@ -64,14 +64,15 @@
       <!-- HERO -->
       <section class="hero" id="top" data-stage="hero" aria-labelledby="hero-title">
         <div class="hero__copy">
-          <p class="kicker" data-scramble>// Local-first agent harness for macOS</p>
+          <p class="kicker" data-scramble>// Local-first agent orchestrator for macOS</p>
           <h1 id="hero-title" class="display">
-            One agent harness<br />across your <em>whole group</em> of repos.
+            One agent orchestrator<br />across your <em>whole group</em> of repos.
           </h1>
           <p class="lede">
             Arc points the Claude, Codex and Cursor subscriptions you already pay for at every repository in a
             group, with lasting notes, docs and playbooks attached. Ask once. A brain plans the work,
             workers fan out across the repos, and the result lands on one session branch for you to review.
+            Arc runs the Claude Code, Codex and Cursor CLIs you already have rather than replacing them.
             Arc is open source.
           </p>
           <div class="actions">
@@ -647,7 +648,7 @@ root = Column([Text("Release 2.4", "h2"), kpis, BarChart("Deploys per day", data
 
     <footer class="site-footer">
       <p class="wordmark wordmark--small"><svg class="wordmark__ring" aria-hidden="true"><use href="#ring" /></svg><span class="wordmark__text">ARC</span></p>
-      <p class="muted small">A local-first agent harness for macOS. Open source. Product definition v1.0, status: proposed.</p>
+      <p class="muted small">A local-first agent orchestrator for macOS. Open source. Product definition v1.0, status: proposed.</p>
       <a class="footer-link mono" href="%REPO_URL%" target="_blank" rel="noopener">GitHub</a>
     </footer>
 
