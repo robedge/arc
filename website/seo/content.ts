@@ -12,12 +12,12 @@ export const site = {
   name: 'Arc',
   /** Source repository; index.html uses it through the %REPO_URL% token. */
   repoUrl: 'https://github.com/robedge/arc',
-  title: 'Arc - local-first macOS agent harness for Claude Code and Codex',
+  title: 'Arc - local-first macOS agent harness for Claude Code, Codex and Cursor',
   description:
-    'Arc is a local-first macOS agent harness that points your Claude Code and Codex subscriptions at a whole group of repos. Lasting knowledge, no API keys. Open source.',
+    'Arc is a local-first macOS agent harness that points your Claude Code, Codex and Cursor subscriptions at a whole group of repos. Lasting knowledge, no API keys. Open source.',
   /** One-paragraph summary used for llms.txt, the noscript block and JSON-LD. */
   summary:
-    'Arc is a personal, local-first macOS desktop app that points the Claude Code and Codex subscriptions a developer already pays for at a whole group of related repositories, with lasting knowledge (notes, docs, schemas, playbooks, links) attached to the group. A brain agent plans the work, worker agents fan out across the repos in their own git worktrees, and the result lands on one session branch for the developer to review. Arc is open source, with its code on GitHub.',
+    'Arc is a personal, local-first macOS desktop app that points the Claude Code, Codex and Cursor subscriptions a developer already pays for at a whole group of related repositories, with lasting knowledge (notes, docs, schemas, playbooks, links) attached to the group. A brain agent plans the work, worker agents fan out across the repos in their own git worktrees, and the result lands on one session branch for the developer to review. Arc is open source, with its code on GitHub.',
   /** Headline drawn on the Open Graph image (scripts/build-images.mjs); same as the page h1. */
   ogHeadline: 'One agent harness across your whole group of repos.',
   ogImageAlt:
@@ -43,7 +43,7 @@ export const faqs: Faq[] = [
   },
   {
     q: 'Does Arc need API keys?',
-    a: 'No. Arc runs on the Claude and Codex subscriptions you already have by driving the locally installed Claude Code and Codex CLIs. It uses no direct API keys and makes no Anthropic or OpenAI SDK calls, so there is no separate API billing.',
+    a: 'No. Arc runs on the Claude, Codex and Cursor subscriptions you already have by driving the locally installed Claude Code, Codex and Cursor CLIs. It uses no direct API keys and makes no Anthropic or OpenAI SDK calls, so there is no separate API billing.',
     source: 'architecture.md 4. External Services & APIs; product-definition.md 1.4',
   },
   {
@@ -53,7 +53,7 @@ export const faqs: Faq[] = [
   },
   {
     q: 'Which AI providers does Arc support?',
-    a: 'Claude Code, using your Claude subscription, and the Codex CLI, using your ChatGPT/Codex subscription. You can mix both in one session. The brain picks a provider and model per worker, and you can override it for the whole session or for any single worker.',
+    a: 'Claude Code, using your Claude subscription, the Codex CLI, using your ChatGPT/Codex subscription, and the Cursor CLI (agent), using your Cursor subscription. You can mix all three in one session. The brain picks a provider and model per worker, and you can override it for the whole session or for any single worker.',
     source: 'architecture.md 1. Agent runtime adapters, 4. AI providers; product-definition.md 2.1',
   },
   {
@@ -63,7 +63,7 @@ export const faqs: Faq[] = [
   },
   {
     q: 'What do I need to run Arc?',
-    a: 'A Mac (Arc is a single-user macOS app, Apple Silicon first) and a Claude or Codex subscription with the matching CLI installed on your PATH and logged in. Arc checks both on first run and tells you which login command to run. Windows and Linux are out of scope.',
+    a: 'A Mac (Arc is a single-user macOS app, Apple Silicon first) and a Claude, Codex or Cursor subscription with the matching CLI installed on your PATH and logged in. Arc checks each on first run and tells you which login command to run. Windows and Linux are out of scope.',
     source: 'architecture.md 1. Agent runtime adapters, 3. Packaging; product-definition.md 3.1, 3.2',
   },
   {
@@ -106,7 +106,7 @@ export const features: string[] = [
   'Plan-first or autonomous spawn mode with a worker cap',
   'A session branch per repo and one git worktree per worker, merged back by the brain',
   'Worker questions and permission requests routed to the brain and escalated to you when needed',
-  'Mix Claude Code and Codex in one session, with per-session and per-worker model override',
+  'Mix Claude Code, Codex and Cursor in one session, with per-session and per-worker model override',
   'Subscription usage and rate-limit display that guides model choice',
   'Saved, resumable sessions',
   'Learning loop: the brain suggests new notes or changes to existing ones, up to 5 per request, and you accept, edit or discard each one',
@@ -118,7 +118,7 @@ export const features: string[] = [
 ];
 
 export const requirements =
-  'macOS (Apple Silicon first). Claude Code and/or Codex CLI installed on the PATH and logged in to a Claude or ChatGPT/Codex subscription.';
+  'macOS (Apple Silicon first). At least one of the Claude Code, Codex or Cursor (agent) CLIs installed on the PATH and logged in to a Claude, ChatGPT/Codex or Cursor subscription.';
 
 /**
  * Sections of the vendored docs copied into llms-full.txt, by heading. The
