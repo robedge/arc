@@ -9,14 +9,7 @@
     {
       "id": "col",
       "component": "Column",
-      "children": [
-        "title",
-        "caption",
-        "assignee",
-        "urgent",
-        "div",
-        "buttons"
-      ]
+      "children": ["title", "caption", "assignee", "urgent", "div", "buttons"]
     },
     {
       "id": "title",
@@ -53,10 +46,7 @@
     {
       "id": "buttons",
       "component": "Row",
-      "children": [
-        "create",
-        "skip"
-      ]
+      "children": ["create", "skip"]
     },
     {
       "id": "create",

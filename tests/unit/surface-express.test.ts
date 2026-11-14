@@ -21,7 +21,18 @@ describe('compileExpress', () => {
     const surface = compileExpress('eng', DASHBOARD)
     expect(surface.surfaceId).toBe('eng')
     const kinds = new Set(surface.components.map((c) => c.component))
-    for (const kind of ['Column', 'Grid', 'Stat', 'BarChart', 'LineChart', 'Callout', 'Badge', 'Table', 'TextField', 'Button']) {
+    for (const kind of [
+      'Column',
+      'Grid',
+      'Stat',
+      'BarChart',
+      'LineChart',
+      'Callout',
+      'Badge',
+      'Table',
+      'TextField',
+      'Button'
+    ]) {
       expect(kinds.has(kind), kind).toBe(true)
     }
     const chart = surface.components.find((c) => c.component === 'BarChart')
@@ -29,11 +40,15 @@ describe('compileExpress', () => {
     expect(chart?.['unit']).toBe('reviews')
     expect((surface.dataModel?.['reviews'] as unknown[]).length).toBe(3)
     const button = surface.components.find((c) => c.component === 'Button')
-    expect(button?.['action']).toEqual({ event: { name: 'ping', context: { note: { '@path': '/note' } } } })
+    expect(button?.['action']).toEqual({
+      event: { name: 'ping', context: { note: { '@path': '/note' } } }
+    })
   })
 
   it('accepts text the model wrapped in tags or a code fence', () => {
-    expect(compileExpress('a', '```\n<a2ui>\nroot = Text("hi")\n</a2ui>\n```').components).toHaveLength(1)
+    expect(
+      compileExpress('a', '```\n<a2ui>\nroot = Text("hi")\n</a2ui>\n```').components
+    ).toHaveLength(1)
   })
 
   it.each([

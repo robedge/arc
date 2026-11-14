@@ -71,7 +71,8 @@ export function compileExpress(surfaceId: string, express: string): Surface {
         components: created['components'],
         ...(created['dataModel'] ? { dataModel: created['dataModel'] } : {})
       })
-      if (!surface.success) throw new ExpressError('The compiled surface is too large or malformed.')
+      if (!surface.success)
+        throw new ExpressError('The compiled surface is too large or malformed.')
       const problem = surfaceProblem(surface.data)
       if (problem !== null) throw new ExpressError(problem)
       return surface.data

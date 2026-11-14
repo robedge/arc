@@ -17,11 +17,16 @@ const PROMPT =
   'If the tool refuses the call, fix it and try again, at most 3 times. Then reply with one short sentence. Do not do anything else.'
 
 const [outDir, ...providers] = process.argv.slice(2)
-if (!outDir || providers.length === 0) throw new Error('usage: spike-a2ui.ts <outDir> <provider>...')
+if (!outDir || providers.length === 0)
+  throw new Error('usage: spike-a2ui.ts <outDir> <provider>...')
 
 function run(cmd: string, args: string[], cwd: string, env: Record<string, string>, out: string) {
   return new Promise<number>((resolve) => {
-    const child = spawn(cmd, args, { cwd, env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(cmd, args, {
+      cwd,
+      env: { ...process.env, ...env },
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
     let text = ''
     child.stdout.on('data', (d: Buffer) => (text += d.toString()))
     child.stderr.on('data', (d: Buffer) => (text += d.toString()))
@@ -68,29 +73,74 @@ for (const provider of providers) {
   if (provider === 'claude') {
     code = await run(
       'claude',
-      ['-p', PROMPT, '--mcp-config', reg.configPath, '--strict-mcp-config', '--allowedTools', 'mcp__arc__show_surface',
-       '--output-format', 'stream-json', '--verbose', '--model', 'sonnet'],
-      cwd, {}, log
+      [
+        '-p',
+        PROMPT,
+        '--mcp-config',
+        reg.configPath,
+        '--strict-mcp-config',
+        '--allowedTools',
+        'mcp__arc__show_surface',
+        '--output-format',
+        'stream-json',
+        '--verbose',
+        '--model',
+        'sonnet'
+      ],
+      cwd,
+      {},
+      log
     )
   } else if (provider === 'codex') {
     code = await run(
       'codex',
-      ['exec', '--json', '--skip-git-repo-check', '-s', 'read-only',
-       '-c', `mcp_servers.arc.url="${url}"`, '-c', 'mcp_servers.arc.bearer_token_env_var="ARC_BRIDGE_TOKEN"',
-       '-c', 'mcp_servers.arc.default_tools_approval_mode="approve"', PROMPT],
-      cwd, { ARC_BRIDGE_TOKEN: token }, log
+      [
+        'exec',
+        '--json',
+        '--skip-git-repo-check',
+        '-s',
+        'read-only',
+        '-c',
+        `mcp_servers.arc.url="${url}"`,
+        '-c',
+        'mcp_servers.arc.bearer_token_env_var="ARC_BRIDGE_TOKEN"',
+        '-c',
+        'mcp_servers.arc.default_tools_approval_mode="approve"',
+        PROMPT
+      ],
+      cwd,
+      { ARC_BRIDGE_TOKEN: token },
+      log
     )
   } else if (provider === 'cursor') {
     mkdirSync(join(cwd, '.cursor'), { recursive: true })
-    writeFileSync(join(cwd, '.cursor', 'mcp.json'), JSON.stringify({ mcpServers: { arc: { url, headers } } }))
+    writeFileSync(
+      join(cwd, '.cursor', 'mcp.json'),
+      JSON.stringify({ mcpServers: { arc: { url, headers } } })
+    )
     code = await run(
       'cursor-agent',
-      ['-p', '--output-format', 'stream-json', '--approve-mcps', '--trust', '--workspace', cwd, '--model', 'auto', PROMPT],
-      cwd, {}, log
+      [
+        '-p',
+        '--output-format',
+        'stream-json',
+        '--approve-mcps',
+        '--trust',
+        '--workspace',
+        cwd,
+        '--model',
+        'auto',
+        PROMPT
+      ],
+      cwd,
+      {},
+      log
     )
   }
   writeFileSync(join(outDir, `${provider}.accepted.json`), JSON.stringify(accepted, null, 2))
-  console.log(`${provider}: exit ${code}, ${Math.round((Date.now() - started) / 1000)} s, accepted ${accepted.length} surface(s)`)
+  console.log(
+    `${provider}: exit ${code}, ${Math.round((Date.now() - started) / 1000)} s, accepted ${accepted.length} surface(s)`
+  )
   bridge.revokeAgent(agent.agentId)
 }
 await bridge.close()

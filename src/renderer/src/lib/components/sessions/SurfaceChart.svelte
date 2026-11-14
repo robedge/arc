@@ -45,7 +45,9 @@
     const fit = Math.max(3, Math.floor(room / 7))
     return label.length > fit ? `${label.slice(0, fit - 1)}…` : label
   }
-  const line = $derived(points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(p.value)}`).join(' '))
+  const line = $derived(
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(p.value)}`).join(' ')
+  )
   const summary = $derived(
     points.map((p) => `${p.label}: ${fmt(p.value)}${unit ? ` ${unit}` : ''}`).join(', ')
   )
@@ -113,7 +115,10 @@
       {#each points as p, i (i)}
         {#if points.length <= 12 || i % Math.ceil(points.length / 12) === 0}
           <text x={x(i)} y={H - 10} text-anchor="middle" class="fill-text-muted text-[11px]"
-            >{short(p.label, points.length <= 12 ? slot : slot * Math.ceil(points.length / 12))}</text
+            >{short(
+              p.label,
+              points.length <= 12 ? slot : slot * Math.ceil(points.length / 12)
+            )}</text
           >
         {/if}
       {/each}

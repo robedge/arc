@@ -37,7 +37,7 @@ describe('brain prompt version 7', () => {
 
   it('lists the tool in the brain tool intro (the ToolSearch select line)', () => {
     expect(buildBrainPrompt(base)).toContain(
-      'mcp__arc__ask_user,mcp__arc__suggest_knowledge_update"'
+      'mcp__arc__ask_user,mcp__arc__suggest_knowledge_update,mcp__arc__show_surface"'
     )
   })
 

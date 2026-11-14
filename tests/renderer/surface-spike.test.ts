@@ -53,22 +53,51 @@ it('draws a bar chart from the data model', () => {
   mockArc(() => ({ ok: true, data: {} }))
   const surface = surfaceSchema.parse({
     surfaceId: 'c',
-    dataModel: { days: [{ label: '11-11', value: 27 }, { label: '11-12', value: 13 }] },
-    components: [{ id: 'root', component: 'BarChart', data: { '@path': '/days' }, orientation: 'horizontal', unit: 'commits' }]
+    dataModel: {
+      days: [
+        { label: '11-11', value: 27 },
+        { label: '11-12', value: 13 }
+      ]
+    },
+    components: [
+      {
+        id: 'root',
+        component: 'BarChart',
+        data: { '@path': '/days' },
+        orientation: 'horizontal',
+        unit: 'commits'
+      }
+    ]
   })
   const message: SessionMessage = {
-    id: 3, sessionId: 's1', role: 'system', content: 'Panel: c', state: 'complete', planId: null,
-    prompt: { kind: 'surface', surface }, createdAt: 1, updatedAt: 1
+    id: 3,
+    sessionId: 's1',
+    role: 'system',
+    content: 'Panel: c',
+    state: 'complete',
+    planId: null,
+    prompt: { kind: 'surface', surface },
+    createdAt: 1,
+    updatedAt: 1
   }
   render(MessageBubble, { message })
-  expect(screen.getByRole('img').getAttribute('aria-label')).toBe('11-11: 27 commits, 11-12: 13 commits')
+  expect(screen.getByRole('img').getAttribute('aria-label')).toBe(
+    '11-11: 27 commits, 11-12: 13 commits'
+  )
   expect(screen.getByText('13 commits')).toBeTruthy()
 })
 
 it('shows a panel click as what was clicked, not as JSON', () => {
   const message: SessionMessage = {
-    id: 5, sessionId: 's1', role: 'user', state: 'complete', planId: null, createdAt: 1, updatedAt: 1,
-    content: '[Surface action] {"surfaceId":"c","name":"commit_details","label":"Show details","sourceComponentId":"b","context":{"query":"a6f1ce2","empty":""}}'
+    id: 5,
+    sessionId: 's1',
+    role: 'user',
+    state: 'complete',
+    planId: null,
+    createdAt: 1,
+    updatedAt: 1,
+    content:
+      '[Surface action] {"surfaceId":"c","name":"commit_details","label":"Show details","sourceComponentId":"b","context":{"query":"a6f1ce2","empty":""}}'
   }
   render(MessageBubble, { message })
   expect(screen.getByText('Show details')).toBeTruthy()

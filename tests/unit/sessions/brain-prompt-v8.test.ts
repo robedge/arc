@@ -67,7 +67,7 @@ describe('brain prompt version 8', () => {
 
   it('keeps the tool intro as it was: no new tool', () => {
     expect(buildBrainPrompt(base)).toContain(
-      'mcp__arc__ask_user,mcp__arc__suggest_knowledge_update"'
+      'mcp__arc__ask_user,mcp__arc__suggest_knowledge_update,mcp__arc__show_surface"'
     )
   })
 })

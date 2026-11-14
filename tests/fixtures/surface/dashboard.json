@@ -24,10 +24,7 @@
     {
       "id": "kpis",
       "component": "Grid",
-      "children": [
-        "kpi_commits",
-        "kpi_prs"
-      ],
+      "children": ["kpi_commits", "kpi_prs"],
       "columns": 2
     },
     {
@@ -67,19 +64,10 @@
     {
       "id": "table",
       "component": "Table",
-      "columns": [
-        "PR",
-        "Age"
-      ],
+      "columns": ["PR", "Age"],
       "rows": [
-        [
-          "#412 retry",
-          "31h"
-        ],
-        [
-          "#409 cache",
-          "26h"
-        ]
+        ["#412 retry", "31h"],
+        ["#409 cache", "26h"]
       ]
     },
     {
@@ -118,9 +106,7 @@
     {
       "id": "root_children_5",
       "component": "Row",
-      "children": [
-        "root_children_5_children_0"
-      ]
+      "children": ["root_children_5_children_0"]
     },
     {
       "id": "root_children_5_children_0",
