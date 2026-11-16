@@ -1,7 +1,7 @@
 # Technical Specification: Skip All Approvals
 
 - **Functional Specification:** [functional-spec.md](./functional-spec.md)
-- **Status:** Draft
+- **Status:** Completed
 - **Author(s):** redgell
 
 ---
