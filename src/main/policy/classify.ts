@@ -50,6 +50,8 @@ export interface ClassifyContext {
    * path too, `/private/var/folders/...` on macOS) and `/tmp`.
    */
   tempDirs?: readonly string[] | undefined
+  /** The session's attachments folder, when it has one: Skip all approvals never covers a change to it. */
+  attachmentsDir?: string | undefined
 }
 
 interface Finding {
@@ -980,26 +982,79 @@ function classifySegment(segment: ShellSegment, scope: Scope, findings: Finding[
   classifyWords(segment.words, segment, scope, findings, 0)
 }
 
-export function classifyBashCommand(command: string, ctx: ClassifyContext): Classification {
+function bashFindings(command: string, ctx: ClassifyContext): Finding[] {
   const scope = makeScope(ctx)
   const parsed = parseShell(command, { home: scope.home })
   const findings: Finding[] = []
   for (const problem of parsed.problems) findings.push(cannotRead(problem))
   for (const segment of parsed.segments) classifySegment(segment, scope, findings)
-  return mostSevere(findings)
+  return findings
 }
 
-function classifyFiles(
+export function classifyBashCommand(command: string, ctx: ClassifyContext): Classification {
+  return mostSevere(bashFindings(command, ctx))
+}
+
+function fileFindings(
   action: Extract<NormalizedAction, { kind: 'edit' }>,
   ctx: ClassifyContext
-): Classification {
+): Finding[] {
   const scope = makeScope(ctx)
   const findings: Finding[] = []
   if (action.unknownPaths === true) {
     findings.push(outside(`Arc can't tell which file ${action.tool} changes, so this needs you.`))
   }
   for (const path of action.paths) checkWrite(path, scope, action.tool, findings)
-  return mostSevere(findings)
+  return findings
+}
+
+function classifyFiles(
+  action: Extract<NormalizedAction, { kind: 'edit' }>,
+  ctx: ClassifyContext
+): Classification {
+  return mostSevere(fileFindings(action, ctx))
+}
+
+/**
+ * Every real path a command names, whether it writes there or not: a command that destroys with
+ * `rm -rf` is judged by its kind, not by the paths it touches, so the paths are read from its words.
+ */
+function bashPaths(command: string, cwd: string | undefined, ctx: ClassifyContext): string[] {
+  const scope = makeScope(cwd === undefined ? ctx : { ...ctx, cwd })
+  const parsed = parseShell(command, { home: scope.home })
+  const words = parsed.segments.flatMap((segment) => [
+    ...segment.words,
+    ...segment.redirects.flatMap((r) => (r.target ? [r.target] : []))
+  ])
+  return words
+    .filter((word) => !word.dynamic && word.text !== '')
+    .map((word) => realpathLoose(resolve(scope.cwd, word.text)))
+}
+
+/**
+ * Whether an action changes something inside the session's attachments folder (`ctx.attachmentsDir`).
+ * A command counts when any of its words names a path in it, so a destructive `rm -rf` of an
+ * attachment is found too and a command that only mentions one errs toward asking. A file change
+ * counts by the files it names; a Codex permission request when it asks to write there.
+ */
+export function writesToAttachments(action: NormalizedAction, ctx: ClassifyContext): boolean {
+  if (ctx.attachmentsDir === undefined) return false
+  const dir = realpathLoose(ctx.attachmentsDir)
+  let paths: string[]
+  switch (action.kind) {
+    case 'bash':
+      paths = action.command === null ? [] : bashPaths(action.command, action.cwd, ctx)
+      break
+    case 'edit':
+      paths = fileFindings(action, ctx).flatMap((f) => (f.path === undefined ? [] : [f.path]))
+      break
+    case 'permission':
+      paths = (action.fileSystem?.write ?? []).map(realpathLoose)
+      break
+    default:
+      return false
+  }
+  return paths.some((path) => isInside(path, dir))
 }
 
 /**
@@ -1170,4 +1225,36 @@ export function isPublishAction(toolName: string, input: Record<string, unknown>
   if (/\bgit\b[^\n;|&]*\bpush\b|\b(gh\s+pr|glab\s+mr)\b/.test(command)) return true
   const parsed = parseShell(command, { home: homedir() })
   return parsed.segments.some((segment) => isPublishWords(commandWords(segment.words)))
+}
+
+/** Tools that commit to a remote whatever their name says. */
+const PUBLISH_MCP_TOOLS = new Set([
+  'push_files',
+  'create_or_update_file',
+  'delete_file',
+  'create_branch'
+])
+const PUBLISH_MCP_VERB_OBJECT =
+  /^(?:create|merge|approve|submit|push)_(?:[a-z0-9]+_)*?(?:pull_request|merge_request|review)(?:_|$)/
+const PUBLISH_MCP_UPDATE_BRANCH = /^update_(?:pull_request|merge_request)_branch$/
+const PUBLISH_MCP_REVIEW_WRITE = /^(?:pull_request|merge_request)_review_(?:write|submit|create)/
+
+/**
+ * Whether an MCP tool, by its stored name `mcp__<server>__<tool>`, publishes work: it opens, merges,
+ * approves or submits a pull or merge request or a review, or pushes or changes files or branches in a
+ * remote repository. Editing a pull request, creating or forking a repository do not count. Errs
+ * toward asking.
+ */
+export function isPublishMcpTool(storedName: string): boolean {
+  if (!storedName.startsWith('mcp__')) return false
+  const rest = storedName.slice('mcp__'.length)
+  const split = rest.indexOf('__')
+  if (split < 0) return false
+  const tool = rest.slice(split + 2).toLowerCase()
+  return (
+    PUBLISH_MCP_TOOLS.has(tool) ||
+    PUBLISH_MCP_VERB_OBJECT.test(tool) ||
+    PUBLISH_MCP_UPDATE_BRANCH.test(tool) ||
+    PUBLISH_MCP_REVIEW_WRITE.test(tool)
+  )
 }

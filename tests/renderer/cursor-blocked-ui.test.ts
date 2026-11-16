@@ -31,6 +31,11 @@ it.each([
     "W3 couldn't run `git push`: Arc blocked it because Cursor can't ask. Rerun this step on a Claude or Codex worker."
   ],
   [
+    'push-blocked',
+    'git push origin HEAD',
+    'W3 was blocked from pushing. Your Cursor settings allow pushes without asking, so Arc keeps them blocked; run the push from Review changes.'
+  ],
+  [
     'ran-unasked',
     'npm test',
     'W3 ran `npm test` without asking (allowed by your Cursor settings).'

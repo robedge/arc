@@ -7,6 +7,8 @@ import {
   CURSOR_EXCLUDE_ENTRY,
   cursorBrainDenyText,
   cursorDenyText,
+  keepsPublishBlocked,
+  PUBLISH_DENY_ENTRIES,
   shellDenyEntries,
   writeCursorBrainDeny,
   writeCursorDeny,
@@ -227,5 +229,113 @@ describe('the Cursor brain deny file', () => {
     } finally {
       rmSync(folder, { recursive: true, force: true })
     }
+  })
+})
+
+describe('cursorDenyText while Skip all approvals is on (spec 015)', () => {
+  const attachments = '/data/sessions/s1/attachments'
+  const base = {
+    worktree: '/wt/w1',
+    denyDirs: ['/p/api', '/k', attachments, '/wt/w2'],
+    offMcp: ['github']
+  }
+  const writes = (deny: string[]): string[] => deny.filter((d) => d.startsWith('Write('))
+  const shells = (deny: string[]): string[] => deny.filter((d) => d.startsWith('Shell('))
+
+  it('has every Write and Shell entry with skip off', () => {
+    const deny = denyOf(cursorDenyText({ ...base, skip: undefined }))
+    expect(writes(deny)).toEqual([
+      'Write(/p/api/**)',
+      'Write(/k/**)',
+      `Write(${attachments}/**)`,
+      'Write(/wt/w2/**)'
+    ])
+    expect(shells(deny)).toEqual(shellDenyEntries())
+  })
+
+  it('drops the project, knowledge and other-copy Writes but keeps the attachments one', () => {
+    const deny = denyOf(
+      cursorDenyText({ ...base, skip: { attachmentsDir: attachments, keepPublish: false } })
+    )
+    expect(writes(deny)).toEqual([`Write(${attachments}/**)`])
+  })
+
+  it('has no Write entry when there is no attachments folder', () => {
+    const deny = denyOf(cursorDenyText({ ...base, skip: { keepPublish: false } }))
+    expect(writes(deny)).toEqual([])
+  })
+
+  it('drops the network, destructive, install and publish Shell entries when nothing lets a push through', () => {
+    const deny = denyOf(
+      cursorDenyText({ ...base, skip: { attachmentsDir: attachments, keepPublish: false } })
+    )
+    expect(shells(deny)).toEqual([])
+  })
+
+  it("keeps only the publish entries when the user's Cursor setup would let a push through", () => {
+    const deny = denyOf(
+      cursorDenyText({ ...base, skip: { attachmentsDir: attachments, keepPublish: true } })
+    )
+    expect(shells(deny)).toEqual([...PUBLISH_DENY_ENTRIES])
+    expect(PUBLISH_DENY_ENTRIES).toEqual(['Shell(git push)', 'Shell(gh)', 'Shell(glab)'])
+    for (const entry of PUBLISH_DENY_ENTRIES) expect(shellDenyEntries()).toContain(entry)
+    expect(deny).not.toContain('Shell(curl)')
+    expect(deny).not.toContain('Shell(sudo)')
+  })
+
+  it('keeps the Mcp entries, and holds only `permissions`', () => {
+    const text = cursorDenyText({
+      ...base,
+      skip: { attachmentsDir: attachments, keepPublish: false }
+    })
+    expect(denyOf(text)).toContain('Mcp(github:*)')
+    expect(Object.keys(JSON.parse(text) as object)).toEqual(['permissions'])
+  })
+
+  it('leaves the brain deny file unchanged', () => {
+    expect(denyOf(cursorBrainDenyText(['github']))).toEqual(['Write(**)', 'Mcp(github:*)'])
+  })
+})
+
+describe('keepsPublishBlocked', () => {
+  it('is false for no report or an empty one', () => {
+    expect(keepsPublishBlocked(undefined)).toBe(false)
+    expect(keepsPublishBlocked({ allowEntries: [], hookEvents: [] })).toBe(false)
+  })
+
+  it('is true for an allow entry that covers git push, gh or glab', () => {
+    for (const entry of [
+      'Shell(git push)',
+      'Shell(git)',
+      'Shell(git push origin main)',
+      'Shell(git:*)',
+      'Shell(gh)',
+      'Shell(gh pr create)',
+      'Shell(glab)',
+      'Shell(*)'
+    ]) {
+      expect(keepsPublishBlocked({ allowEntries: [entry], hookEvents: [] }), entry).toBe(true)
+    }
+  })
+
+  it('is false for allow entries that cannot let a push through', () => {
+    for (const entries of [
+      ['Shell(ls)'],
+      ['Shell(git status)', 'Shell(npm test)'],
+      ['Write(/x/**)', 'Mcp(a:*)']
+    ]) {
+      expect(keepsPublishBlocked({ allowEntries: entries, hookEvents: [] }), entries.join()).toBe(
+        false
+      )
+    }
+  })
+
+  it('is true for an allow-capable hook or an approval mode other than allowlist', () => {
+    expect(keepsPublishBlocked({ allowEntries: [], hookEvents: ['beforeShellExecution'] })).toBe(
+      true
+    )
+    expect(
+      keepsPublishBlocked({ allowEntries: [], approvalMode: 'unrestricted', hookEvents: [] })
+    ).toBe(true)
   })
 })

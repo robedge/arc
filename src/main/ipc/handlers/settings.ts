@@ -27,6 +27,9 @@ export function registerSettingsHandlers(services: SettingsServices): void {
         ...(patch['knowledge.suggestOnFinish'] !== undefined
           ? { 'knowledge.suggestOnFinish': patch['knowledge.suggestOnFinish'] }
           : {}),
+        ...(patch['approvals.skipAllByDefault'] !== undefined
+          ? { 'approvals.skipAllByDefault': patch['approvals.skipAllByDefault'] }
+          : {}),
         ...(patch['agents.loadOff'] ? { 'agents.loadOff': patch['agents.loadOff'] } : {})
       },
       Date.now()

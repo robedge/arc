@@ -189,6 +189,22 @@ describe('declared contrast pairs', () => {
   })
 })
 
+describe('Skipping approvals marker (spec 015)', () => {
+  const marker = readFileSync(
+    join(__dirname, '../../src/renderer/src/lib/components/sessions/SkipApprovalsMarker.svelte'),
+    'utf8'
+  )
+  it('takes its colours from the error kind: danger text on danger/10', () => {
+    expect(marker).toContain('messageKinds.error')
+  })
+  it('danger text on its danger/10 tint over panel and over the header bar is at least 4.5:1', () => {
+    for (const base of [surfaces.panel as Rgba, surfaces.bar as Rgba]) {
+      const tint = over(tok('danger'), base, 0.1)
+      expect(ratio(tok('danger'), tint)).toBeGreaterThanOrEqual(NORMAL)
+    }
+  })
+})
+
 /** Every text color the editor's HighlightStyle paints with, as token names. */
 function highlightTokens(): string[] {
   const highlight = themeSource.slice(themeSource.indexOf('HighlightStyle.define'))

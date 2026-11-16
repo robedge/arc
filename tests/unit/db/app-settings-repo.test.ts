@@ -31,6 +31,7 @@ describe('AppSettingsRepo', () => {
       'providers.workers',
       'usage.checkClaudePlanOnLaunch',
       'knowledge.suggestOnFinish',
+      'approvals.skipAllByDefault',
       'agents.loadOff'
     ])
   })
@@ -76,6 +77,18 @@ describe('AppSettingsRepo', () => {
     expect(settings.getAll()['knowledge.suggestOnFinish']).toBe(false)
     expect(() => settings.setMany({ 'knowledge.suggestOnFinish': 'no' as never }, 2)).toThrow()
     expect(settings.get('knowledge.suggestOnFinish')).toBe(false)
+  })
+
+  it('keeps Skip all approvals off by default and keeps the choice', () => {
+    expect(settings.get('approvals.skipAllByDefault')).toBe(false)
+    expect(settings.getAll()['approvals.skipAllByDefault']).toBe(false)
+    settings.setMany({ 'approvals.skipAllByDefault': true }, 1)
+    expect(settings.get('approvals.skipAllByDefault')).toBe(true)
+    expect(settings.getAll()['approvals.skipAllByDefault']).toBe(true)
+    expect(() => settings.setMany({ 'approvals.skipAllByDefault': 'yes' as never }, 2)).toThrow()
+    expect(settings.get('approvals.skipAllByDefault')).toBe(true)
+    settings.setMany({ 'approvals.skipAllByDefault': false }, 3)
+    expect(settings.get('approvals.skipAllByDefault')).toBe(false)
   })
 
   it('falls back to true when the stored knowledge.suggestOnFinish is not a boolean', () => {
@@ -125,6 +138,7 @@ describe('AppSettingsRepo', () => {
       'providers.workers': { mode: 'auto' },
       'usage.checkClaudePlanOnLaunch': true,
       'knowledge.suggestOnFinish': true,
+      'approvals.skipAllByDefault': false,
       'agents.loadOff': { brain: [], workers: [] }
     })
     settings.set('providers.workers', { mode: 'provider', provider: 'codex' }, 1)

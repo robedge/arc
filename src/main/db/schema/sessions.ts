@@ -51,6 +51,8 @@ export const sessions = sqliteTable(
     brainPromptVersion: integer('brain_prompt_version').notNull().default(0),
     /** Approve every protected request without asking, except pushes and merge/pull requests. */
     autoApprove: integer('auto_approve', { mode: 'boolean' }).notNull().default(false),
+    /** Skip every approval except pushes, merge/pull requests and questions; wider than `autoApprove`. */
+    skipApprovals: integer('skip_approvals', { mode: 'boolean' }).notNull().default(false),
     status: text('status', { enum: ['active', 'stopped'] }).notNull(),
     /** Legacy: no longer written (thread ids live in `brain_threads`); kept so a downgrade stays safe. */
     brainClaudeSessionId: text('brain_claude_session_id'),

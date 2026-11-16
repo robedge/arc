@@ -11,7 +11,13 @@ import type { AttentionRepo, AttentionRequestRow } from '../db/repositories/atte
 import { allowRuleMatches, allowRuleText, deriveAllowRule } from '../policy/allow-rules'
 import type { AllowRuleSpec } from '../policy/allow-rules'
 import { classifyBrainAction } from '../policy/brain-policy'
-import { classifyAction, isPublishAction, unclassified } from '../policy/classify'
+import {
+  classifyAction,
+  isPublishAction,
+  isPublishMcpTool,
+  unclassified,
+  writesToAttachments
+} from '../policy/classify'
 import type { Classification, ClassifyContext } from '../policy/classify'
 import {
   CODEX_PERMISSIONS_TOOL,
@@ -113,6 +119,8 @@ export interface AttentionHost {
   isControlled: (workerId: string) => boolean
   /** The session's Auto-approve toggle. */
   autoApprove: () => boolean
+  /** The session's Skip all approvals toggle, read from the session row on every call. */
+  skipApprovals: () => boolean
   /**
    * Turns a Claude `mcp__<server>__<tool>` call into an `mcp` action with its read-only verdict (the
    * running agent's own list of servers decides). Null when the tool is not an MCP tool Arc decides on.
@@ -131,7 +139,7 @@ export interface AttentionHost {
 }
 
 /** Why a protected request needs no one: a rule of the user's, or the Auto-approve toggle. */
-type Coverage = { by: 'rule'; text: string } | { by: 'auto' }
+type Coverage = { by: 'rule'; text: string } | { by: 'auto' } | { by: 'skip' }
 
 /** One blocked call waiting on a request. */
 interface Listener {
@@ -279,23 +287,27 @@ export class AttentionCoordinator {
   ): Promise<ActionDecision> {
     const worker = this.host.workerOf(agent)
     const stored = meta.stored ?? toStoredCall(action)
-    const verdict = classifyAction(action, this.host.policyContext(worker.id))
+    const classified = classifyAction(action, this.host.policyContext(worker.id))
     // Functional spec 2.5: after approval workers run commands freely. Only the policy
     // categories need anyone; everything else is allowed at once, with no row and no brain turn.
-    if (verdict.category === null) return Promise.resolve({ allow: true })
+    if (classified.category === null) return Promise.resolve({ allow: true })
+    const verdict = this.escalatePublishMcp(classified, stored.toolName)
     const fromHelper =
       meta.toolUseId !== undefined &&
       (this.host.isHelperToolUse?.(worker.id, meta.toolUseId) ?? false)
     const text = (fromHelper ? '(helper) ' : '') + describeAction(stored.toolName, stored.input)
     // Functional spec 2.7: a rule of the user's, or Auto-approve, settles it without a row.
-    const covered = this.coverage(stored.toolName, stored.input, verdict)
+    const inTerminal = this.host.isControlled(worker.id)
+    const covered = this.coverage(stored.toolName, stored.input, verdict, {
+      controlled: inTerminal,
+      workerId: worker.id
+    })
     if (covered) {
       this.logCovered(covered, text, worker.id)
       return Promise.resolve({ allow: true })
     }
     // While the user is in control the request goes to the worker's terminal: passed to the user at
     // once, with no brain turn and no brain timer.
-    const inTerminal = this.host.isControlled(worker.id)
     const row = this.repo.create({
       id: this.host.newId(),
       sessionId: this.host.sessionId,
@@ -506,7 +518,10 @@ export class AttentionCoordinator {
     if (verdict.category === null) return Promise.resolve({ allow: true })
     const stored = meta.stored ?? toStoredCall(action)
     const text = describeAction(stored.toolName, stored.input)
-    const covered = this.coverage(stored.toolName, stored.input, verdict)
+    const covered = this.coverage(stored.toolName, stored.input, verdict, {
+      controlled: false,
+      workerId: null
+    })
     if (covered) {
       this.logCovered(covered, text, null)
       return Promise.resolve({ allow: true })
@@ -806,8 +821,8 @@ export class AttentionCoordinator {
   }
 
   /**
-   * The Auto-approve toggle or the rules changed: approve every pending permission request they now
-   * cover. Called after the user turns Auto-approve on or adds a rule.
+   * The Auto-approve or Skip all approvals toggle or the rules changed: approve every pending
+   * permission request they now cover. Under skip a push or a pull or merge request is never covered.
    */
   resolveCovered(): void {
     for (const row of this.repo.listPending(this.host.sessionId)) {
@@ -821,7 +836,11 @@ export class AttentionCoordinator {
         continue
       }
       if (verdict.category === null) continue
-      const covered = this.coverage(row.toolName, input, verdict)
+      // A request waiting in the worker's terminal stays there while Skip all approvals is on.
+      const covered = this.coverage(row.toolName, input, verdict, {
+        controlled: row.route === 'terminal',
+        workerId: row.workerId
+      })
       if (!covered) continue
       this.settle(row, 'approved', null)
       this.logCovered(covered, row.action ?? row.toolName, row.workerId)
@@ -844,8 +863,14 @@ export class AttentionCoordinator {
    * path again: the brain first for the ones it may decide, the user for the ones it may not.
    */
   routeBack(workerId: string): void {
-    const moved = this.repo.routeBack(workerId)
-    if (moved.length === 0) return
+    const movedAll = this.repo.routeBack(workerId)
+    if (movedAll.length === 0) return
+    // Under Skip all approvals the requests that waited in the terminal are approved now, and the
+    // brain is told only of the ones that stay.
+    if (this.host.skipApprovals()) this.resolveCovered()
+    const moved = this.host.skipApprovals()
+      ? movedAll.filter((row) => this.repo.get(row.id)?.status === 'pending')
+      : movedAll
     const label = this.host.workerLabel(workerId)
     for (const row of moved) {
       if (row.kind === 'permission') {
@@ -910,7 +935,8 @@ export class AttentionCoordinator {
   private coverage(
     tool: string,
     input: Record<string, unknown>,
-    verdict: Classification
+    verdict: Classification,
+    ctx: { controlled: boolean; workerId: string | null }
   ): Coverage | null {
     const rule = this.host
       .allowRules()
@@ -923,20 +949,52 @@ export class AttentionCoordinator {
         )
       )
     if (rule) return { by: 'rule', text: rule.text }
+    // Skip all approvals replaces Auto-approve while on: every permission is approved except a push
+    // or a pull or merge request, which keep going to the user.
+    if (this.host.skipApprovals()) return this.skipCoverage(tool, input, ctx)
     if (this.host.autoApprove() && !isPublishAction(tool, input)) return { by: 'auto' }
     return null
   }
 
+  /**
+   * What Skip all approvals covers: everything but a worker the user is in control of (it asks in its
+   * terminal), a push or a pull or merge request (a command or an MCP tool) and a change to the
+   * session's attachments, which stay read-only.
+   */
+  private skipCoverage(
+    tool: string,
+    input: Record<string, unknown>,
+    ctx: { controlled: boolean; workerId: string | null }
+  ): Coverage | null {
+    if (ctx.controlled) return null
+    if (isPublishAction(tool, input) || isPublishMcpTool(tool)) return null
+    if (
+      writesToAttachments(normalizeClaudeCall(tool, input), this.host.policyContext(ctx.workerId))
+    ) {
+      return null
+    }
+    return { by: 'skip' }
+  }
+
+  /** While Skip all approvals is on, a publishing MCP tool goes straight to the user, not to the brain. */
+  private escalatePublishMcp(verdict: Classification, toolName: string): Classification {
+    return this.host.skipApprovals() &&
+      verdict.category === 'mcp_write' &&
+      isPublishMcpTool(toolName)
+      ? { ...verdict, mustEscalate: true }
+      : verdict
+  }
+
   private logCovered(covered: Coverage, action: string, workerId: string | null): void {
     const label = workerId === null ? null : this.host.workerLabel(workerId)
-    this.host.logEvent(
-      covered.by === 'rule' ? 'allow-rule' : 'auto-approved',
+    const shown = clip(action, NOTE_COMMAND_MAX)
+    const [kind, text] =
       covered.by === 'rule'
-        ? `Allowed by your rule: ${covered.text}`
-        : `Auto-approved: ${clip(action, NOTE_COMMAND_MAX)}`,
-      label === null ? undefined : { worker: label },
-      workerId
-    )
+        ? (['allow-rule', `Allowed by your rule: ${covered.text}`] as const)
+        : covered.by === 'skip'
+          ? (['skip-approved', `Approved (skipping approvals): ${shown}`] as const)
+          : (['auto-approved', `Auto-approved: ${shown}`] as const)
+    this.host.logEvent(kind, text, label === null ? undefined : { worker: label }, workerId)
   }
 
   /** The rule "always allow" would store for a stored request, or null when none can be derived. */

@@ -36,6 +36,8 @@
   import CommandMenu from '../components/sessions/CommandMenu.svelte'
   import type { CommandInfo } from '@shared/types/commands'
   import DeleteSessionDialog from '../components/sessions/DeleteSessionDialog.svelte'
+  import SkipApprovalsDialog from '../components/sessions/SkipApprovalsDialog.svelte'
+  import SkipApprovalsMarker from '../components/sessions/SkipApprovalsMarker.svelte'
   import DirtyTreeDialog from '../components/sessions/DirtyTreeDialog.svelte'
   import ReviewFileList from '../components/review/ReviewFileList.svelte'
   import SessionHeader from '../components/sessions/SessionHeader.svelte'
@@ -80,6 +82,7 @@
   import KnowledgeSuggestionCard from '../components/knowledge-suggestions/KnowledgeSuggestionCard.svelte'
   import KnowledgeSuggestionEditor from '../components/knowledge-suggestions/KnowledgeSuggestionEditor.svelte'
   import KnowledgeSettings from '../components/settings/KnowledgeSettings.svelte'
+  import ApprovalsSettings from '../components/settings/ApprovalsSettings.svelte'
   import type { KnowledgeSuggestionView } from '@shared/types/knowledge-suggestion'
   import type { KnowledgeSuggestionProblem } from '../knowledge-suggestions/problem'
   import type { DiffHunk } from '@shared/types/review'
@@ -381,6 +384,7 @@
       'providers.workers': { mode: 'provider', provider: 'codex' },
       'usage.checkClaudePlanOnLaunch': true,
       'knowledge.suggestOnFinish': true,
+      'approvals.skipAllByDefault': false,
       'agents.loadOff': { brain: [], workers: [] }
     },
     models: sampleModels
@@ -443,6 +447,7 @@
     workers: { mode: 'auto' } as WorkersPref,
     brainModel: 'sonnet',
     autoApprove: false,
+    skipApprovals: false,
     allowRules: [],
     status: 'active' as const,
     createdAt: 1,
@@ -466,6 +471,7 @@
     ]
   }
   let deleteSessionOpen = $state(false)
+  let skipDialogOpen = $state(false)
   let workerDetailsOpen = $state(false)
   let stoppedDetailsOpen = $state(false)
   const planStatuses: PlanStatus[] = ['proposed', 'approved', 'replaced', 'rejected']
@@ -1147,7 +1153,8 @@
             lastActiveAt: Date.now() - 300_000,
             status: 'active',
             listStatus: 'working',
-            attentionCount: 0
+            attentionCount: 0,
+            skipApprovals: false
           }}
           onopen={() => {}}
           onrename={() => {}}
@@ -1163,7 +1170,8 @@
               lastActiveAt: Date.now() - 300_000,
               status: 'active',
               listStatus: 'needs-attention',
-              attentionCount: 1
+              attentionCount: 1,
+              skipApprovals: false
             }}
             onopen={() => {}}
             onrename={() => {}}
@@ -1178,7 +1186,8 @@
             lastActiveAt: Date.now() - 300_000,
             status: 'active',
             listStatus: 'idle',
-            attentionCount: 0
+            attentionCount: 0,
+            skipApprovals: false
           }}
           onopen={() => {}}
           onrename={() => {}}
@@ -1192,12 +1201,30 @@
             lastActiveAt: Date.now() - 300_000,
             status: 'stopped',
             listStatus: 'stopped',
-            attentionCount: 0
+            attentionCount: 0,
+            skipApprovals: false
           }}
           onopen={() => {}}
           onrename={() => {}}
           ondelete={() => {}}
         />
+        <div data-preview-skip-row>
+          <SessionRow
+            session={{
+              id: 's-skipping',
+              groupId: 'g',
+              name: 'Sample session (skipping approvals)',
+              lastActiveAt: Date.now() - 300_000,
+              status: 'active',
+              listStatus: 'idle',
+              attentionCount: 0,
+              skipApprovals: true
+            }}
+            onopen={() => {}}
+            onrename={() => {}}
+            ondelete={() => {}}
+          />
+        </div>
         <div class="grid grid-cols-2 gap-3">
           <BrainCard state="idle" runningOn={{ provider: 'claude', model: 'sonnet' }} />
           <BrainCard state="thinking" runningOn={{ provider: 'codex', model: 'gpt-5.5' }} />
@@ -1508,6 +1535,7 @@
             ...previewHeader,
             id: 'preview-auto',
             autoApprove: true,
+            skipApprovals: false,
             allowRules: [
               { id: 'r1', text: 'mkdir in /opt/app', category: 'outside_worktree', createdAt: 1 },
               {
@@ -1624,6 +1652,17 @@
           <DeleteSessionDialog
             session={{ id: 'preview', name: 'Sample session' }}
             onclose={() => (deleteSessionOpen = false)}
+          />
+        {/if}
+        <div class="flex flex-wrap items-center gap-3" data-preview-skip-approvals>
+          <Button onclick={() => (skipDialogOpen = true)}>Open Skip all approvals dialog</Button>
+          <SkipApprovalsMarker onturnoff={() => {}} />
+        </div>
+        {#if skipDialogOpen}
+          <SkipApprovalsDialog
+            scope="session"
+            onconfirm={() => (skipDialogOpen = false)}
+            oncancel={() => (skipDialogOpen = false)}
           />
         {/if}
         {#if newSessionOpen}
@@ -1800,6 +1839,7 @@
           </KnowledgeSuggestionCard>
         </div>
         <KnowledgeSettings preview />
+        <ApprovalsSettings preview />
       </div>
     {/snippet}
     {@render block('Knowledge suggestions', knowledgeSuggestions)}

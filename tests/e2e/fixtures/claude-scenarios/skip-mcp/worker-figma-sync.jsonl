@@ -1,0 +1,10 @@
+# A destructive command that waits for the user (the test turns skip on over it), then a changing tool of the
+# user's Figma server that is not a publish, then the tool that opens a pull request.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool":{"name":"Bash","input":{"command":"rm -rf build","description":"Delete the build folder"}}}
+{"personalTool":{"server":"figma","tool":"figma_write","input":{"id":"frame-1"}}}
+{"personalTool":{"server":"figma","tool":"create_pull_request","input":{"id":"pr-1"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Updated Figma and opened the pull request"}}}
+{"say":"Done."}
+{"result":true}

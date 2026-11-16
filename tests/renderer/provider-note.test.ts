@@ -18,6 +18,7 @@ const base: SessionHeader = {
   brainModel: 'sonnet',
   brainRunningOn: { provider: 'claude', model: 'sonnet' },
   autoApprove: false,
+  skipApprovals: false,
   allowRules: [],
   status: 'active',
   createdAt: 1,

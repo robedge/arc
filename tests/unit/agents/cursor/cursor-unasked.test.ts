@@ -259,3 +259,75 @@ describe('cursorBlockedText', () => {
     )
   })
 })
+
+describe('while Skip all approvals is on (spec 015)', () => {
+  const skip = { publishBlocked: false }
+  const refused = (command: string): CursorToolCall =>
+    call({ rawInput: { command }, inProgressAt: 1010, completedAt: 1072 })
+  const ranUnasked = (command: string): CursorToolCall =>
+    call({
+      rawInput: { command },
+      rawOutput: { exitCode: 0, stdout: '', stderr: '' },
+      completedAt: 9000
+    })
+
+  it('says nothing about an edit outside the working copy, ran or blocked', () => {
+    const edit = call({
+      kind: 'edit',
+      locations: ['/Users/user/other/file.ts'],
+      content: [{ type: 'diff', path: '/Users/user/other/file.ts' }]
+    })
+    expect(classifyUnaskedCall(edit, ctx)).toMatchObject({ outcome: 'outside-edit' })
+    expect(classifyUnaskedCall(edit, ctx, skip)).toBeUndefined()
+    const blocked = call({ kind: 'edit', locations: ['/tmp/arc-record/knowledge/notes.md'] })
+    expect(classifyUnaskedCall(blocked, ctx)).toMatchObject({ outcome: 'blocked' })
+    expect(classifyUnaskedCall(blocked, ctx, skip)).toBeUndefined()
+  })
+
+  it('says nothing about a non-publish command that ran unasked or was blocked', () => {
+    expect(classifyUnaskedCall(ranUnasked('scp x host:'), ctx)).toMatchObject({
+      outcome: 'ran-unasked'
+    })
+    expect(classifyUnaskedCall(ranUnasked('scp x host:'), ctx, skip)).toBeUndefined()
+    expect(classifyUnaskedCall(refused('sudo ls'), ctx)).toMatchObject({ outcome: 'blocked' })
+    expect(classifyUnaskedCall(refused('sudo ls'), ctx, skip)).toBeUndefined()
+  })
+
+  it('keeps the notes for a publish command that ran unasked', () => {
+    expect(classifyUnaskedCall(ranUnasked('git push origin HEAD'), ctx, skip)).toEqual({
+      outcome: 'ran-unasked',
+      action: 'git push origin HEAD',
+      kind: 'execute'
+    })
+    expect(classifyUnaskedCall(ranUnasked('gh pr create --fill'), ctx, skip)).toMatchObject({
+      outcome: 'ran-unasked'
+    })
+  })
+
+  it('says a push was blocked by the kept deny, when the publish entries stayed', () => {
+    const note = classifyUnaskedCall(refused('git push origin HEAD'), ctx, {
+      publishBlocked: true
+    })
+    expect(note).toEqual({
+      outcome: 'push-blocked',
+      action: 'git push origin HEAD',
+      kind: 'execute'
+    })
+    // Without the kept denies a refused push is an ordinary block.
+    expect(classifyUnaskedCall(refused('git push origin HEAD'), ctx, skip)).toMatchObject({
+      outcome: 'blocked'
+    })
+  })
+
+  it('writes the push note in the words of the spec', () => {
+    expect(
+      cursorBlockedText('W3 (Cursor)', {
+        outcome: 'push-blocked',
+        action: 'git push origin HEAD',
+        kind: 'execute'
+      })
+    ).toBe(
+      'W3 (Cursor) was blocked from pushing. Your Cursor settings allow pushes without asking, so Arc keeps them blocked; run the push from Review changes.'
+    )
+  })
+})

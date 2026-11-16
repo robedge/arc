@@ -10,14 +10,15 @@ export function registerSessionHandlers(services: SessionHandlerServices): void 
   handle('sessions:list', ({ groupId }) => sessions.list(groupId))
   handle(
     'sessions:create',
-    ({ groupId, request, mode, workerLimit, brainModel, draftId, attachmentIds }) =>
+    ({ groupId, request, mode, workerLimit, brainModel, skipApprovals, draftId, attachmentIds }) =>
       sessions.create(
         groupId,
         request,
         mode,
         workerLimit,
         brainModel,
-        draftId !== undefined && attachmentIds ? { draftId, attachmentIds } : undefined
+        draftId !== undefined && attachmentIds ? { draftId, attachmentIds } : undefined,
+        skipApprovals
       )
   )
   handle('sessions:open', ({ sessionId }) => sessions.open(sessionId))

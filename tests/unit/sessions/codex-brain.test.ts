@@ -339,6 +339,23 @@ describe('switching the brain between providers', () => {
     expect(handle.models).toEqual(['gpt-luna'])
   })
 
+  it('lifts the Codex brain sandbox from the live Skip all approvals flag, without a restart', async () => {
+    const s = await setup()
+    useCodexBrain()
+    const sessionId = await create()
+    await until(() => s.codex.starts.length === 1)
+    const handle = s.codex.handles[0] as FakeHandle
+    expect(s.codex.starts[0]?.codex.skipApprovals).toBe(false)
+    await reply(sessionId, handle, 'codex-thread', 'Title: Billing\nReady.')
+
+    r().service.setConfig(sessionId, { skipApprovals: true })
+    expect(handle.skipCalls).toEqual([true])
+    r().service.setConfig(sessionId, { skipApprovals: false })
+    expect(handle.skipCalls).toEqual([true, false])
+    expect(handle.stopped).toBe(false)
+    expect(s.codex.starts).toHaveLength(1)
+  })
+
   it('refuses a Codex model the provider does not list', async () => {
     await setup()
     const sessionId = await create()

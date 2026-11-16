@@ -53,6 +53,7 @@ function makeCoordinator(): AttentionCoordinator {
     onBrainWaiting: () => undefined,
     onChanged: () => undefined,
     autoApprove: () => false,
+    skipApprovals: () => false,
     allowRules: () => stored,
     addAllowRule: (rule) => {
       rules(rule)

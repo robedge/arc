@@ -203,6 +203,11 @@ describe('sessions:create schema', () => {
       schema.safeParse({ ...base, request: '', draftId: D, attachmentIds: [id(1)] }).success
     ).toBe(true)
   })
+  it('accepts an optional boolean skipApprovals and rejects anything else', () => {
+    expect(schema.safeParse({ ...base, request: 'hi', skipApprovals: true }).success).toBe(true)
+    expect(schema.safeParse({ ...base, request: 'hi', skipApprovals: false }).success).toBe(true)
+    expect(schema.safeParse({ ...base, request: 'hi', skipApprovals: 'yes' }).success).toBe(false)
+  })
   it('rejects an empty request without attachments, ids without a draft, duplicates and 11 ids', () => {
     expect(schema.safeParse({ ...base, request: ' ' }).success).toBe(false)
     expect(schema.safeParse({ ...base, request: 'x', attachmentIds: [id(1)] }).success).toBe(false)

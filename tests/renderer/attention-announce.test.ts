@@ -18,6 +18,7 @@ function load(sessionId: string, attention: AttentionView[]): void {
       workers: { mode: 'auto' },
       brainModel: 'sonnet',
       autoApprove: false,
+      skipApprovals: false,
       allowRules: [],
       status: 'active',
       createdAt: 1,

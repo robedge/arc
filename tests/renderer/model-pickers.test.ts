@@ -47,6 +47,7 @@ const header: Header = {
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
+  skipApprovals: false,
   allowRules: [],
   status: 'active',
   createdAt: 1,
@@ -68,6 +69,7 @@ beforeEach(() => {
     'providers.workers': { mode: 'auto' },
     'usage.checkClaudePlanOnLaunch': true,
     'knowledge.suggestOnFinish': true,
+    'approvals.skipAllByDefault': false,
     'agents.loadOff': { brain: [], workers: [] }
   }
   invoke = mockArc((channel, request) => {
@@ -242,6 +244,7 @@ it('Settings Providers: a saved Codex default stays, flagged unavailable, when C
     'providers.workers': { mode: 'provider', provider: 'codex' },
     'usage.checkClaudePlanOnLaunch': true,
     'knowledge.suggestOnFinish': true,
+    'approvals.skipAllByDefault': false,
     'agents.loadOff': { brain: [], workers: [] }
   }
   modelsReply = noCodex

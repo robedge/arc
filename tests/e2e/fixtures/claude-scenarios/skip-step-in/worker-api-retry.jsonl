@@ -1,0 +1,12 @@
+# Works until the user steps in and asks for a cleanup (a destructive command), then after hand-back runs a second one.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"Adding retry"}}}
+{"waitForStdin":"run the cleanup"}
+{"tool":{"name":"Bash","input":{"command":"rm -rf build","description":"Delete the build folder"}}}
+{"say":"Cleaned build."}
+{"waitForStdin":"handed control back to you"}
+{"tool":{"name":"Bash","input":{"command":"rm -rf dist","description":"Delete the dist folder"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Cleaned up"}}}
+{"say":"Done."}
+{"result":true}

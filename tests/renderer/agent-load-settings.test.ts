@@ -89,6 +89,7 @@ function appSettings(): AppSettings {
     'providers.workers': { mode: 'auto' },
     'usage.checkClaudePlanOnLaunch': true,
     'knowledge.suggestOnFinish': true,
+    'approvals.skipAllByDefault': false,
     'agents.loadOff': stored
   }
 }

@@ -142,3 +142,23 @@ it('shows a short and a very long answered-request record', () => {
   expect((records[1]?.getAttribute('title') ?? '').length).toBeGreaterThan(300)
   expect(records[1]?.classList.contains('truncate')).toBe(true)
 })
+
+it('shows an inert Skipping approvals marker and a Skip all approvals dialog sample', async () => {
+  render(DesignPreview)
+  const row = document.querySelector('[data-preview-skip-approvals]') as HTMLElement
+  expect(within(row).getByRole('button', { name: 'Skipping approvals' })).toBeTruthy()
+  await fireEvent.click(within(row).getByRole('button', { name: 'Open Skip all approvals dialog' }))
+  expect(screen.getByRole('heading', { name: 'Skip all approvals?' })).toBeTruthy()
+  await fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('heading', { name: 'Skip all approvals?' })).toBeNull()
+})
+
+it('shows a session list row with the skipping marker, and the Approvals settings sample', () => {
+  render(DesignPreview)
+  const row = document.querySelector('[data-preview-skip-row]') as HTMLElement
+  expect(within(row).getByRole('img', { name: 'Skipping approvals' })).toBeTruthy()
+  const section = document.querySelector('[data-approvals-settings]') as HTMLElement
+  expect(
+    within(section).getByRole('switch', { name: 'Skip all approvals by default' })
+  ).toBeTruthy()
+})

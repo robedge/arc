@@ -587,6 +587,81 @@ describe('CodexAdapter turns', () => {
     expect(starts.map((m) => m.params?.model)).toEqual([undefined, 'gpt-next', 'gpt-next'])
   })
 
+  it('sends no sandboxPolicy while Skip all approvals was never toggled', async () => {
+    const script = scenario([
+      { expect: 'turn/start', text: 'one' },
+      { turnStarted: true },
+      { turnCompleted: 'completed' }
+    ])
+    const { handle, log } = await begin(script)
+    const w = watch(handle)
+    await handle.send('one')
+    await nthTurnResult(w, 1)
+    const starts = received(readLog(log)).filter((m) => m.method === 'turn/start')
+    expect(starts[0]?.params).not.toHaveProperty('sandboxPolicy')
+  })
+
+  it('sends the sandbox override on the next turn and every later one, and restores it explicitly', async () => {
+    const script = scenario([
+      { expect: 'turn/start', text: 'one' },
+      { turnStarted: true },
+      { turnCompleted: 'completed' },
+      { expect: 'turn/start', text: 'two' },
+      { turnStarted: true },
+      { turnCompleted: 'completed' },
+      { expect: 'turn/start', text: 'three' },
+      { turnStarted: true },
+      { turnCompleted: 'completed' },
+      { expect: 'turn/start', text: 'four' },
+      { turnStarted: true },
+      { turnCompleted: 'completed' }
+    ])
+    const { handle, log } = await begin(script, { addDirs: [] })
+    const w = watch(handle)
+    await handle.send('one')
+    await nthTurnResult(w, 1)
+    handle.setSkipApprovals?.(true)
+    await handle.send('two')
+    await nthTurnResult(w, 2)
+    await handle.send('three')
+    await nthTurnResult(w, 3)
+    handle.setSkipApprovals?.(false)
+    await handle.send('four')
+    await nthTurnResult(w, 4)
+    const starts = received(readLog(log)).filter((m) => m.method === 'turn/start')
+    expect(starts.map((m) => m.params?.sandboxPolicy)).toEqual([
+      undefined,
+      { type: 'dangerFullAccess' },
+      { type: 'dangerFullAccess' },
+      {
+        type: 'workspaceWrite',
+        writableRoots: [dir],
+        networkAccess: false,
+        excludeSlashTmp: true,
+        excludeTmpdirEnvVar: true
+      }
+    ])
+  })
+
+  it('restores a brain to readOnly', async () => {
+    const script = scenario([
+      { expect: 'turn/start', text: 'one' },
+      { turnStarted: true },
+      { turnCompleted: 'completed' }
+    ])
+    const { handle, log } = await begin(script, {
+      role: 'brain',
+      access: 'brain-readonly',
+      codex: { skipApprovals: true }
+    })
+    const w = watch(handle)
+    handle.setSkipApprovals?.(false)
+    await handle.send('one')
+    await nthTurnResult(w, 1)
+    const starts = received(readLog(log)).filter((m) => m.method === 'turn/start')
+    expect(starts[0]?.params?.sandboxPolicy).toEqual({ type: 'readOnly' })
+  })
+
   it('queues sends while a turn runs and starts them one at a time, each with its own result', async () => {
     const script = scenario([
       { expect: 'turn/start', text: 'one' },

@@ -31,6 +31,7 @@
   import Panel from '../ui/Panel.svelte'
   import PopoverList from '../ui/PopoverList.svelte'
   import UsageChip from './UsageChip.svelte'
+  import SkipApprovalsMarker from './SkipApprovalsMarker.svelte'
 
   interface Props {
     header: SessionHeader
@@ -103,6 +104,7 @@
     mode?: 'plan_first' | 'autonomous'
     workerLimit?: number
     autoApprove?: boolean
+    skipApprovals?: boolean
   }): Promise<void> {
     configError = null
     const res = await window.arc.invoke('sessions:set-config', {
@@ -291,14 +293,18 @@
     <ApprovalsMenu
       id={header.id}
       autoApprove={header.autoApprove}
+      skipApprovals={header.skipApprovals}
       rules={header.allowRules}
       onautoapprove={(value) => void setConfig({ autoApprove: value })}
+      onskipapprovals={(value) => void setConfig({ skipApprovals: value })}
       onremove={(id) => void removeRule(id)}
     />
-    {#if header.autoApprove}
+    {#if header.skipApprovals}
+      <SkipApprovalsMarker onturnoff={() => void setConfig({ skipApprovals: false })} />
+    {:else if header.autoApprove}
       <span
-        class="rounded-control border border-attention/55 bg-attention/10 px-2 py-0.5 text-xs font-semibold tracking-label text-attention-text uppercase"
-        data-auto-approve-on>Auto-approve on</span
+        class="inline-flex min-h-[var(--size-hit)] items-center gap-1.5 rounded-pill border border-attention/55 bg-attention/10 px-3 text-xs font-semibold tracking-label text-attention-text uppercase"
+        data-auto-approve-on><Icon name="check" size={14} />Auto-approve on</span
       >
     {/if}
     <UsageChip sessionId={header.id} />

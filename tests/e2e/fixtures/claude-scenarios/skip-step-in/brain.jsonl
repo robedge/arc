@@ -1,0 +1,17 @@
+# Autonomous brain for Skip all approvals with a stepped-in worker: starts one worker, then only reads notes.
+# The note that skip is on rides in front of the step-in message.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Skip step in\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"api-retry","task":"Add retry to the API client","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"Skip all approvals is on"}
+{"say":"Skip all approvals is on; I will not wait on approvals."}
+{"result":true}
+{"waitForStdin":"handed"}
+{"say":"The user handed the worker back."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

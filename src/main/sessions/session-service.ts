@@ -215,7 +215,7 @@ export interface SessionServiceDeps {
   /** The provider statuses; with it, a Codex worker is checked again just before it spawns. */
   providers?: WorkerManagerDeps['providers']
   /** The Settings defaults that new sessions copy; left out, Auto workers and a Claude · Sonnet brain. */
-  appSettings?: Pick<AppSettingsRepo, 'getProviderDefaults' | 'set'> | undefined
+  appSettings?: Pick<AppSettingsRepo, 'getProviderDefaults' | 'set' | 'get'> | undefined
   /** Called after the service saved a Settings default (the New session brain pick); pushes `settings:changed`. */
   onSettingsSaved?: (() => void) | undefined
   /** The sanitized plugin view for agents of these repositories; undefined when it could not be built. */
@@ -290,6 +290,7 @@ function headerDto(
     brainModel: row.brainModel,
     brainRunningOn: brainRunningOn(row, status, chain),
     autoApprove: row.autoApprove,
+    skipApprovals: row.skipApprovals,
     allowRules: rules.map((r) => ({
       id: r.id,
       text: r.text,
@@ -319,6 +320,7 @@ export interface SessionConfigPatch {
   workers?: WorkersPref | undefined
   brainModel?: ModelRef | undefined
   autoApprove?: boolean | undefined
+  skipApprovals?: boolean | undefined
 }
 
 interface CreateParams {
@@ -328,6 +330,8 @@ interface CreateParams {
   workerLimit: number
   /** The brain picked in the New session dialog; left out, the Settings default applies. */
   brainModel?: ModelRef | undefined
+  /** Start with Skip all approvals on; left out, the Settings default applies. */
+  skipApprovals?: boolean | undefined
   /** Staged attachments of the first message; they stay staged until the session is written. */
   files?: { draftId: string; attachmentIds: readonly string[] } | undefined
 }
@@ -356,12 +360,13 @@ function summaryDto(
     lastActiveAt: row.lastActiveAt,
     status: row.status,
     listStatus: deriveListStatus({ sessionStatus: row.status, brainState, pendingAttention }),
-    attentionCount: pendingAttention
+    attentionCount: pendingAttention,
+    skipApprovals: row.skipApprovals
   }
 }
 
 function summaryKey(s: SessionSummary): string {
-  return `${s.listStatus}|${s.name}|${s.lastActiveAt}|${s.attentionCount}`
+  return `${s.listStatus}|${s.name}|${s.lastActiveAt}|${s.attentionCount}|${s.skipApprovals}`
 }
 
 /** The IPC-facing sessions service: persistence plus one orchestrator per session that has a brain. */
@@ -522,7 +527,8 @@ export class SessionService {
     mode: SessionMode,
     workerLimit: number,
     brainModel?: ModelRef,
-    files?: { draftId: string; attachmentIds: readonly string[] }
+    files?: { draftId: string; attachmentIds: readonly string[] },
+    skipApprovals?: boolean
   ): Promise<CreateSessionResult> {
     const text = request.trim()
     const hasFiles = files !== undefined && files.attachmentIds.length > 0
@@ -544,6 +550,7 @@ export class SessionService {
       mode,
       workerLimit,
       ...(brainModel ? { brainModel } : {}),
+      ...(skipApprovals !== undefined ? { skipApprovals } : {}),
       ...(hasFiles ? { files } : {})
     }
     return { sessionId: await this.startSession(params, this.gitProjects(groupId)) }
@@ -609,6 +616,8 @@ export class SessionService {
       ? { provider: params.brainModel.provider, model: normalizeModel(params.brainModel.model) }
       : undefined
     const defaults = { ...stored, brain: picked ?? stored.brain }
+    const skipApprovals =
+      params.skipApprovals ?? this.deps.appSettings?.get('approvals.skipAllByDefault') ?? false
     const sessionRow = {
       id: sessionId,
       groupId: params.groupId,
@@ -622,6 +631,7 @@ export class SessionService {
       brainModel: defaults.brain.model,
       status: 'active',
       brainPromptVersion: BRAIN_PROMPT_VERSION,
+      skipApprovals,
       createdAt: now,
       lastActiveAt: now
     } as const
@@ -674,6 +684,11 @@ export class SessionService {
     }
     if (!params.files) this.deps.messagesRepo.append(firstMessage)
     const orchestrator = this.orchestratorFor(sessionId, params.request)
+    if (skipApprovals) {
+      orchestrator.logEvent('skip-approvals', 'Session started with Skip all approvals on', {
+        skipApprovals: true
+      })
+    }
     this.deliver(sessionId, orchestrator, params.request, sentFiles)
     this.scheduleSummary(sessionId)
     return sessionId
@@ -1372,6 +1387,18 @@ export class SessionService {
         { autoApprove: patch.autoApprove }
       )
       if (patch.autoApprove) orchestrator.resolveCoveredRequests()
+    }
+    if (patch.skipApprovals !== undefined && patch.skipApprovals !== before.skipApprovals) {
+      repo.setSkipApprovals(sessionId, patch.skipApprovals)
+      orchestrator.logEvent(
+        'skip-approvals',
+        patch.skipApprovals
+          ? "Skip all approvals turned on: every permission is approved except pushes and pull or merge requests; limits lift from each agent's next turn"
+          : "Skip all approvals turned off; limits return from each agent's next turn",
+        { skipApprovals: patch.skipApprovals }
+      )
+      orchestrator.setSkipApprovals(patch.skipApprovals)
+      if (patch.skipApprovals) orchestrator.resolveCoveredRequests()
     }
     orchestrator.configChanged({
       mode: before.mode,

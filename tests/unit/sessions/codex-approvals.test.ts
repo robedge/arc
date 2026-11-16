@@ -42,6 +42,7 @@ const rules = vi.fn()
 const stored: SessionAllowRuleRow[] = []
 const events: string[] = []
 const recorded: string[] = []
+let skipOn = false
 
 function makeCoordinator(): AttentionCoordinator {
   let n = 0
@@ -63,6 +64,7 @@ function makeCoordinator(): AttentionCoordinator {
     onBrainWaiting: () => undefined,
     onChanged: () => undefined,
     autoApprove: () => false,
+    skipApprovals: () => skipOn,
     allowRules: () => stored,
     addAllowRule: (rule) => {
       rules(rule)
@@ -125,6 +127,7 @@ beforeEach(async () => {
   notes.length = 0
   events.length = 0
   recorded.length = 0
+  skipOn = false
   rules.mockClear()
   stored.length = 0
   coordinator = makeCoordinator()
@@ -745,5 +748,34 @@ describe('Claude requests through the same entry point', () => {
       behavior: 'allow',
       updatedInput: { command: 'git push', description: 'd' }
     })
+  })
+})
+
+describe('Skip all approvals on Codex requests', () => {
+  it('approves an extra-permissions request and a changing tool call without a row', async () => {
+    skipOn = true
+    const extra = request('permissions', {
+      reason: 'write the build output',
+      cwd: wt,
+      permissions: { fileSystem: { read: null, write: ['/opt/out'] }, network: { enabled: true } }
+    })
+    expect(await workerHandler.handle(extra, never)).toMatchObject({ decision: 'accept' })
+    const tool = request(
+      'mcp-elicitation',
+      { serverName: 'figma', message: 'Allow the figma MCP server to run tool "set_node"?' },
+      {
+        type: 'mcpToolCall',
+        id: 'm1',
+        server: 'figma',
+        tool: 'set_node',
+        arguments: { id: '1:2' }
+      }
+    )
+    expect(await workerHandler.handle(tool, never)).toEqual({ decision: 'accept' })
+    expect(repo.listPending(sessionId)).toEqual([])
+    expect(events).toContain('Approved (skipping approvals): Extra access: write the build output')
+    expect(
+      events.some((t) => t.startsWith('Approved (skipping approvals): mcp__figma__set_node'))
+    ).toBe(true)
   })
 })

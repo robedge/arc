@@ -63,6 +63,7 @@ beforeEach(async () => {
     onBrainWaiting: () => undefined,
     onChanged: () => undefined,
     autoApprove: () => false,
+    skipApprovals: () => false,
     allowRules: () => [],
     addAllowRule: () => {
       throw new Error('no rule expected')

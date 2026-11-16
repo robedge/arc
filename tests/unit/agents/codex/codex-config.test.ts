@@ -9,6 +9,7 @@ import {
   buildThreadStartParams,
   finishCodexEnv,
   gitRootsFor,
+  sandboxPolicyFor,
   writableRootsFor
 } from '../../../../src/main/agents/codex/codex-config'
 import { modelToolsForRole } from '../../../../src/main/bridge/tools/registry'
@@ -265,6 +266,54 @@ describe('thread params', () => {
     )
     expect(params['sandbox']).toBe('read-only')
     expect(params['config']).not.toHaveProperty('sandbox_workspace_write')
+  })
+
+  describe('Skip all approvals (spec 015)', () => {
+    const skip = { skipApprovals: true }
+
+    it('lifts a worker to danger-full-access and keeps approvals with the user', () => {
+      const params = buildThreadStartParams(request({ codex: skip, bridge }))
+      expect(params).toMatchObject({
+        sandbox: 'danger-full-access',
+        approvalPolicy: 'untrusted',
+        approvalsReviewer: 'user'
+      })
+    })
+
+    it('lifts the brain too, on start and on resume', () => {
+      const brain = request({ role: 'brain', access: 'brain-readonly', cwd: dir, codex: skip })
+      expect(buildThreadStartParams(brain)['sandbox']).toBe('danger-full-access')
+      expect(buildThreadResumeParams(brain, 't1')).toMatchObject({
+        sandbox: 'danger-full-access',
+        approvalPolicy: 'untrusted'
+      })
+    })
+
+    it("keeps today's sandboxes when the flag is off or absent", () => {
+      for (const codex of [{}, { skipApprovals: false }]) {
+        expect(buildThreadStartParams(request({ codex }))['sandbox']).toBe('workspace-write')
+        expect(
+          buildThreadStartParams(
+            request({ role: 'brain', access: 'brain-readonly', cwd: dir, codex })
+          )['sandbox']
+        ).toBe('read-only')
+      }
+    })
+
+    it('builds the explicit restore policy per role, with both tmp excludes for a worker', () => {
+      const worker = request({ addDirs: [second] })
+      expect(sandboxPolicyFor(worker, true)).toEqual({ type: 'dangerFullAccess' })
+      expect(sandboxPolicyFor(worker, false)).toEqual({
+        type: 'workspaceWrite',
+        writableRoots: writableRootsFor(worker),
+        networkAccess: false,
+        excludeSlashTmp: true,
+        excludeTmpdirEnvVar: true
+      })
+      const brain = request({ role: 'brain', access: 'brain-readonly', cwd: dir })
+      expect(sandboxPolicyFor(brain, true)).toEqual({ type: 'dangerFullAccess' })
+      expect(sandboxPolicyFor(brain, false)).toEqual({ type: 'readOnly' })
+    })
   })
 
   it('leaves out the arc server when there is no bridge, and the instructions when there are none', () => {

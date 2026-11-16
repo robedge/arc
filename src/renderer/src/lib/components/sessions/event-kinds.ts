@@ -19,6 +19,8 @@ export const EVENT_STYLE: Record<string, EventStyle> = {
   'allow-rule': { icon: 'check', tone: 'success', label: 'Allow rule added' },
   'auto-approved': { icon: 'check', tone: 'accent', label: 'Auto-approved' },
   'auto-approve': { icon: 'info', tone: 'accent', label: 'Auto-approve changed' },
+  'skip-approvals': { icon: 'warning', tone: 'danger', label: 'Skip all approvals changed' },
+  'skip-approved': { icon: 'check', tone: 'danger', label: 'Approved (skipping approvals)' },
   undo: { icon: 'info', tone: 'accent', label: 'Undone' },
   push: { icon: 'success', tone: 'success', label: 'Pushed' },
   shared: { icon: 'link', tone: 'accent', label: 'Shared' },
@@ -65,6 +67,8 @@ export function cursorBlockedRest(data: CursorBlockedData): string {
       if (data.kind === 'edit')
         return `couldn't change ${data.action}: Arc blocked it. Rerun this step on a Claude or Codex worker.`
       return `couldn't run \`${data.action}\`: Arc blocked it because Cursor can't ask. Rerun this step on a Claude or Codex worker.`
+    case 'push-blocked':
+      return 'was blocked from pushing. Your Cursor settings allow pushes without asking, so Arc keeps them blocked; run the push from Review changes.'
     case 'ran-unasked':
       return `ran \`${data.action}\` without asking (allowed by your Cursor settings).`
     case 'outside-edit':

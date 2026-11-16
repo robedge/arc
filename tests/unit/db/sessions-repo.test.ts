@@ -70,6 +70,18 @@ describe('SessionsRepo', () => {
     expect(sessions.getById('nope')).toBeUndefined()
   })
 
+  it('skip_approvals defaults to false, can be created on, and the setter flips it without touching auto_approve', () => {
+    sessions.create(sessionRow('a'))
+    sessions.create(sessionRow('b', { skipApprovals: true }))
+    expect(sessions.getById('a')?.skipApprovals).toBe(false)
+    expect(sessions.getById('b')?.skipApprovals).toBe(true)
+    sessions.setAutoApprove('a', true)
+    sessions.setSkipApprovals('a', true)
+    expect(sessions.getById('a')).toMatchObject({ skipApprovals: true, autoApprove: true })
+    sessions.setSkipApprovals('a', false)
+    expect(sessions.getById('a')).toMatchObject({ skipApprovals: false, autoApprove: true })
+  })
+
   it('updates fields and touch reorders', () => {
     sessions.create(sessionRow('a', { lastActiveAt: 10 }))
     sessions.create(sessionRow('b', { lastActiveAt: 20 }))

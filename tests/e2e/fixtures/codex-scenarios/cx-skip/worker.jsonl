@@ -1,0 +1,16 @@
+# A Codex worker for spec 015 slice 5. Turn one waits for the file `gate1` in its working copy (the test writes it
+# once it has changed the switch), then ends without report_done, so Arc starts a second turn with its nudge. That
+# turn asks for extra permissions (covered while Skip all approvals is on) and then to push (never covered).
+{"expect":"turn/start"}
+{"turnStarted":true}
+{"say":"Round one."}
+{"shell":"until [ -f gate1 ]; do sleep 0.1; done","id":"gate"}
+{"turnCompleted":"completed"}
+{"expect":"turn/start","text":"You have not called report_done"}
+{"turnStarted":true}
+{"shell":"rm -f gate1","id":"cleanup"}
+{"request":{"method":"item/permissions/requestApproval","params":{"itemId":"perm-1","reason":"Write the notes outside the working copy","permissions":{"fileSystem":{"write":["/Users/redgell/v9-outside"]}}}},"saveAs":"perm"}
+{"say":"Permissions answered."}
+{"shell":"git push origin arc/skip","run":"echo pushed > pushed.txt","id":"push-1","approval":true,"saveAs":"push"}
+{"mcp":{"tool":"report_done","args":{"summary":"Round two"}},"id":"done-1"}
+{"turnCompleted":"completed"}

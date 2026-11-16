@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { classify } from '../../../src/main/policy/classify'
+import { classify, isPublishMcpTool, writesToAttachments } from '../../../src/main/policy/classify'
+import { normalizeClaudeCall } from '../../../src/main/policy/normalized-action'
 import type { ClassifyContext } from '../../../src/main/policy/classify'
 import { BASH_CASES, fillCase, type Expected } from './classify-cases'
 
@@ -221,5 +222,74 @@ describe('classify: the system temp folder and reads outside', () => {
       '/opt/app/b.txt'
     ])
     expect(bash('git push origin main').paths).toEqual([])
+  })
+})
+
+describe('isPublishMcpTool', () => {
+  it.each([
+    'create_pull_request',
+    'merge_pull_request',
+    'update_pull_request_branch',
+    'pull_request_review_write',
+    'create_merge_request',
+    'merge_merge_request',
+    'approve_merge_request',
+    'submit_pull_request_review',
+    'push_files',
+    'create_or_update_file',
+    'delete_file',
+    'create_branch'
+  ])('matches %s', (tool) => {
+    expect(isPublishMcpTool(`mcp__github__${tool}`)).toBe(true)
+  })
+
+  it.each([
+    'update_pull_request',
+    'create_repository',
+    'fork_repository',
+    'get_pull_request',
+    'list_pull_requests',
+    'pull_request_read',
+    'merge_request_read',
+    'get_file_contents',
+    'add_issue_comment'
+  ])('does not match %s', (tool) => {
+    expect(isPublishMcpTool(`mcp__github__${tool}`)).toBe(false)
+  })
+
+  it('reads the tool after the server, whatever the server is called', () => {
+    expect(isPublishMcpTool('mcp__git_lab_ci__create_merge_request')).toBe(true)
+    expect(isPublishMcpTool('mcp__create_pull_request__list_things')).toBe(false)
+  })
+
+  it('is false for a name that is not an MCP tool', () => {
+    expect(isPublishMcpTool('create_pull_request')).toBe(false)
+    expect(isPublishMcpTool('Bash')).toBe(false)
+  })
+})
+
+describe('writesToAttachments', () => {
+  const attachments = (): ClassifyContext => ({ ...ctx, attachmentsDir: join(base, 'att') })
+  const writes = (tool: string, input: Record<string, unknown>): boolean =>
+    writesToAttachments(normalizeClaudeCall(tool, input), attachments())
+
+  it('finds a command, an edit and an extra-access request that change an attachment', () => {
+    expect(writes('Bash', { command: `rm ${base}/att/a1/x.png` })).toBe(true)
+    expect(writes('Bash', { command: `rm -rf ${base}/att/a1` })).toBe(true)
+    expect(writes('Bash', { command: `echo x > ${base}/att/a1/x.txt` })).toBe(true)
+    expect(writes('Write', { file_path: `${base}/att/a1/x.txt` })).toBe(true)
+    expect(
+      writes('CodexPermissions', { reason: 'x', fileSystem: { write: [`${base}/att/a1`] } })
+    ).toBe(true)
+  })
+
+  it('leaves everything else alone', () => {
+    expect(writes('Bash', { command: 'rm -rf build' })).toBe(false)
+    expect(writes('Bash', { command: `rm -rf ${base}/att-other/x` })).toBe(false)
+    expect(writes('Write', { file_path: `${wt}/src/a.ts` })).toBe(false)
+    expect(writes('CodexPermissions', { reason: 'x', network: true })).toBe(false)
+    expect(
+      writesToAttachments(normalizeClaudeCall('Bash', { command: `rm ${base}/att/x` }), ctx)
+    ).toBe(false)
   })
 })

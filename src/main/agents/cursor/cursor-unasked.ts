@@ -1,5 +1,10 @@
 import type { CursorBlockedOutcome } from '@shared/types/session'
-import { PolicyCategory, classifyAction, type ClassifyContext } from '../../policy/classify'
+import {
+  PolicyCategory,
+  classifyAction,
+  isPublishAction,
+  type ClassifyContext
+} from '../../policy/classify'
 import type { CursorToolCall } from './cursor-types'
 import { nonBlankString } from '../../util/json'
 
@@ -72,13 +77,23 @@ function editHappened(call: CursorToolCall): boolean {
   )
 }
 
+/** Skip all approvals is on (spec 015): only publish commands are still worth a note. */
+export interface UnaskedSkip {
+  /** The publish deny entries are in the worker's file (the user's Cursor setup would let a push through). */
+  publishBlocked: boolean
+}
+
 /**
  * The note for a tool call that completed with no permission request, or `undefined` when there is
- * nothing to say (an ordinary command in the working copy, a read, a call that did ask).
+ * nothing to say (an ordinary command in the working copy, a read, a call that did ask). While Skip
+ * all approvals is on, edits outside the working copy and non-publish commands are what the user chose
+ * to allow, so they get no note; a publish command keeps its note, and a push that Arc's kept deny
+ * stopped says why (`push-blocked`).
  */
 export function classifyUnaskedCall(
   call: CursorToolCall,
-  ctx: ClassifyContext
+  ctx: ClassifyContext,
+  skip?: UnaskedSkip
 ): CursorBlockedNote | undefined {
   if (call.permissionAsked) return undefined
   if (call.status !== 'completed' && call.status !== 'failed') return undefined
@@ -86,14 +101,18 @@ export function classifyUnaskedCall(
   if (call.kind === 'execute') {
     const command = commandOf(call)
     if (command === undefined) return undefined
+    const publish = isPublishAction('Bash', { command })
+    if (skip && !publish) return undefined
     const found = classifyAction({ kind: 'bash', command }, ctx)
     if (found.category === null || !found.mustEscalate) return undefined
     const began = call.inProgressAt ?? call.startedAt
     const took = (call.completedAt ?? began) - began
     const refused = call.rawOutput === undefined && took <= BLOCKED_WITHIN_MS
-    return { outcome: refused ? 'blocked' : 'ran-unasked', action: short(command), kind: 'execute' }
+    const outcome = !refused ? 'ran-unasked' : skip?.publishBlocked ? 'push-blocked' : 'blocked'
+    return { outcome, action: short(command), kind: 'execute' }
   }
 
+  if (skip) return undefined
   if (EDIT_KINDS.has(call.kind)) {
     const paths = editPathsOf(call)
     if (paths.length === 0) return undefined
@@ -116,6 +135,8 @@ export function cursorBlockedText(who: string, note: CursorBlockedNote): string 
       return note.kind === 'edit'
         ? `${who} was blocked from changing ${note.action} outside its working copy. Rerun this step on a Claude or Codex worker.`
         : `${who} was blocked from running \`${note.action}\`: Cursor can't ask, so Arc blocked it. Rerun this step on a Claude or Codex worker.`
+    case 'push-blocked':
+      return `${who} was blocked from pushing. Your Cursor settings allow pushes without asking, so Arc keeps them blocked; run the push from Review changes.`
     case 'ran-unasked':
       return `${who} ran \`${note.action}\` without asking: your Cursor settings let it through. See Settings → Providers.`
     case 'outside-edit':

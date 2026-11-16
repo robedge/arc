@@ -1,0 +1,8 @@
+# Autonomous brain for Skip all approvals on a Claude worker: starts one worker and stays quiet.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Skip relaunch\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"relaunch","task":"Run the relaunch checks","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

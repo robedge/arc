@@ -13,6 +13,7 @@ import {
   splitTitle
 } from '../../../src/main/sessions/orchestrator'
 import { SUMMARY_PUSH_MS } from '../../../src/main/sessions/session-service'
+import { skipApprovalsOffNote, skipApprovalsOnNote } from '../../../src/main/sessions/orchestrator'
 import type { ModelRef } from '../../../src/shared/types/provider'
 import { useTempDir } from '../helpers/temp-dir'
 import { makeRig } from './helpers'
@@ -746,6 +747,81 @@ describe('new sessions copy the Settings defaults', () => {
   })
 })
 
+describe('create with Skip all approvals', () => {
+  const startText = 'Session started with Skip all approvals on'
+  const create = async (skip?: boolean): Promise<string> => {
+    const result = await rig.service.create(
+      rig.groupId,
+      'hello there',
+      'plan_first',
+      3,
+      undefined,
+      undefined,
+      skip
+    )
+    if (!('sessionId' in result)) throw new Error('expected a session id')
+    await settle()
+    return result.sessionId
+  }
+  const texts = (id: string): string[] => rig.eventsRepo.latest(id, 20).map((e) => e.text)
+
+  it('starts with the flag the payload says, whatever the default is', async () => {
+    rig = await makeRig(dir())
+    const on = await create(true)
+    expect(rig.sessionsRepo.getById(on)?.skipApprovals).toBe(true)
+    expect(rig.service.snapshot(on).header.skipApprovals).toBe(true)
+    expect(texts(on)).toContain(startText)
+
+    rig.appSettingsRepo.set('approvals.skipAllByDefault', true, 1)
+    const off = await create(false)
+    expect(rig.sessionsRepo.getById(off)?.skipApprovals).toBe(false)
+    expect(texts(off)).not.toContain(startText)
+  })
+
+  it('copies the default when the payload leaves the field out', async () => {
+    rig = await makeRig(dir())
+    const plain = await create()
+    expect(rig.sessionsRepo.getById(plain)?.skipApprovals).toBe(false)
+    expect(texts(plain)).not.toContain(startText)
+
+    rig.appSettingsRepo.set('approvals.skipAllByDefault', true, 1)
+    const byDefault = await create()
+    expect(rig.sessionsRepo.getById(byDefault)?.skipApprovals).toBe(true)
+    expect(texts(byDefault)).toContain(startText)
+  })
+
+  it('leaves an existing session alone when the default changes later', async () => {
+    rig = await makeRig(dir())
+    rig.appSettingsRepo.set('approvals.skipAllByDefault', true, 1)
+    const first = await create()
+    rig.appSettingsRepo.set('approvals.skipAllByDefault', false, 2)
+    const second = await create()
+    expect(rig.sessionsRepo.getById(first)?.skipApprovals).toBe(true)
+    expect(rig.sessionsRepo.getById(second)?.skipApprovals).toBe(false)
+  })
+
+  it('carries the flag in the list summary', async () => {
+    rig = await makeRig(dir())
+    const on = await create(true)
+    const off = await create(false)
+    const byId = new Map(rig.service.list(rig.groupId).map((s) => [s.id, s.skipApprovals]))
+    expect(byId.get(on)).toBe(true)
+    expect(byId.get(off)).toBe(false)
+  })
+
+  it('keeps the flag after the session is closed and resumed', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await create(true)
+    await rig.service.shutdown()
+    await rig.service.sendMessage(sessionId, 'and then?')
+    await settle()
+    expect(rig.service.snapshot(sessionId).header.skipApprovals).toBe(true)
+    expect(rig.sessionsRepo.getById(sessionId)?.skipApprovals).toBe(true)
+    expect(rig.service.list(rig.groupId).find((s) => s.id === sessionId)?.skipApprovals).toBe(true)
+    expect(texts(sessionId).filter((t) => t === startText)).toHaveLength(1)
+  })
+})
+
 describe('create with a brain model', () => {
   it('uses the picked brain and saves it as the Settings default', async () => {
     rig = await makeRig(dir())
@@ -931,5 +1007,110 @@ describe('set-config and the brain model', () => {
     await settle()
     expect(rig.adapter.handles[0]?.stopped).toBe(true)
     expect(rig.adapter.starts[1]?.model).toBe('haiku')
+  })
+})
+
+describe('setConfig skipApprovals brain note', () => {
+  it('puts one note per change in front of the next message to the brain, once', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await startPastTitle()
+    const brain = rig.adapter.last
+    const reply = async (): Promise<void> => {
+      brain.emit({ type: 'turn-result', ok: true, interrupted: false, durationMs: 1 })
+      await settle(200)
+    }
+
+    rig.service.setConfig(sessionId, { skipApprovals: true })
+    const before = brain.sent.length
+    await rig.service.sendMessage(sessionId, 'go')
+    await settle()
+    expect(brain.sent.slice(before)).toEqual([`${skipApprovalsOnNote}\n\ngo`])
+    await reply()
+
+    await rig.service.sendMessage(sessionId, 'and now')
+    await settle()
+    expect(brain.sent.at(-1)).toBe('and now')
+    await reply()
+
+    rig.service.setConfig(sessionId, { skipApprovals: false })
+    await rig.service.sendMessage(sessionId, 'stop')
+    await settle()
+    expect(brain.sent.at(-1)).toBe(`${skipApprovalsOffNote}\n\nstop`)
+    await reply()
+
+    // No change, no note; two changes before a send are two notes, oldest first.
+    rig.service.setConfig(sessionId, { skipApprovals: false })
+    rig.service.setConfig(sessionId, { skipApprovals: true })
+    rig.service.setConfig(sessionId, { skipApprovals: false })
+    await rig.service.sendMessage(sessionId, 'again')
+    await settle()
+    expect(brain.sent.at(-1)).toBe(`${skipApprovalsOnNote}\n\n${skipApprovalsOffNote}\n\nagain`)
+  })
+})
+
+describe('setConfig skipApprovals', () => {
+  it('saves the flag, writes the event for each change and pushes the header', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await startPastTitle()
+    rig.pushed.length = 0
+    const on = rig.service.setConfig(sessionId, { skipApprovals: true })
+    expect(on.skipApprovals).toBe(true)
+    expect(rig.sessionsRepo.getById(sessionId)).toMatchObject({
+      skipApprovals: true,
+      autoApprove: false
+    })
+    expect(rig.pushed.some((p) => p.event === 'session:header')).toBe(true)
+    expect(rig.service.setConfig(sessionId, { skipApprovals: false }).skipApprovals).toBe(false)
+    const events = rig.eventsRepo.latest(sessionId, 20).filter((e) => e.kind === 'skip-approvals')
+    expect(events.map((e) => e.text)).toEqual([
+      "Skip all approvals turned on: every permission is approved except pushes and pull or merge requests; limits lift from each agent's next turn",
+      "Skip all approvals turned off; limits return from each agent's next turn"
+    ])
+  })
+
+  it('writes no event when the value does not change', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await startPastTitle()
+    rig.service.setConfig(sessionId, { skipApprovals: false })
+    expect(rig.eventsRepo.latest(sessionId, 20).some((e) => e.kind === 'skip-approvals')).toBe(
+      false
+    )
+  })
+
+  it('on turning on, approves a waiting permission row and leaves a push and a question', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await startPastTitle()
+    const row = (id: string, extra: Record<string, unknown>) =>
+      rig.deps.attentionRepo.create({
+        id,
+        sessionId,
+        source: 'brain',
+        kind: 'permission',
+        toolName: 'Bash',
+        escalated: true,
+        createdAt: 1,
+        ...extra
+      })
+    row('commit', {
+      action: 'git commit -am x',
+      category: 'changes_checkout',
+      toolInputJson: JSON.stringify({ command: 'git commit -am x' })
+    })
+    row('push', {
+      action: 'git push origin a',
+      category: 'leaves_machine',
+      toolInputJson: JSON.stringify({ command: 'git push origin a' })
+    })
+    row('question', { kind: 'question', toolName: null, action: 'Which one?' })
+
+    rig.service.setConfig(sessionId, { skipApprovals: true })
+    expect(rig.deps.attentionRepo.listPending(sessionId).map((r) => r.id)).toEqual([
+      'push',
+      'question'
+    ])
+    expect(rig.deps.attentionRepo.get('commit')?.status).toBe('approved')
+    expect(rig.eventsRepo.latest(sessionId, 20).map((e) => e.text)).toContain(
+      'Approved (skipping approvals): git commit -am x'
+    )
   })
 })

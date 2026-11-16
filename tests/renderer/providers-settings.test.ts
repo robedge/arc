@@ -156,7 +156,7 @@ it('Providers is first in the Settings nav and the default page', async () => {
   render(SettingsView)
   const nav = screen.getByRole('navigation', { name: 'Settings' })
   const items = Array.from(nav.querySelectorAll('li button')).map((b) => b.textContent)
-  expect(items).toEqual(['Providers', 'Plugins', 'Agent loading', 'Knowledge'])
+  expect(items).toEqual(['Providers', 'Plugins', 'Agent loading', 'Knowledge', 'Approvals'])
   expect(screen.getByRole('button', { name: 'Providers' }).getAttribute('aria-current')).toBe(
     'page'
   )

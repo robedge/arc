@@ -99,6 +99,31 @@ describe('settings:set', () => {
     )
   })
 
+  it('persists approvals.skipAllByDefault and rejects a non-boolean in the schema', async () => {
+    const store: Record<string, unknown> = { 'approvals.skipAllByDefault': false }
+    const appSettings = {
+      get: vi.fn(),
+      getAll: vi.fn(() => ({ ...store })),
+      setMany: vi.fn((entries: Record<string, unknown>) => Object.assign(store, entries))
+    }
+    const services = {
+      appSettings,
+      commandCatalogue: { invalidate: vi.fn() },
+      sessions: { knowledgeSuggestSettingChanged: vi.fn() }
+    }
+    await register(services as never)
+    const result = await call(captured, 'settings:set', { 'approvals.skipAllByDefault': true })
+    expect(appSettings.setMany).toHaveBeenCalledWith(
+      { 'approvals.skipAllByDefault': true },
+      expect.any(Number)
+    )
+    expect(result).toMatchObject({ 'approvals.skipAllByDefault': true })
+    expect(services.sessions.knowledgeSuggestSettingChanged).not.toHaveBeenCalled()
+    const schema = channelSchemas['settings:set']
+    expect(schema.safeParse({ 'approvals.skipAllByDefault': false }).success).toBe(true)
+    expect(schema.safeParse({ 'approvals.skipAllByDefault': 'no' }).success).toBe(false)
+  })
+
   it('rejects a non-boolean knowledge.suggestOnFinish in the schema', () => {
     const schema = channelSchemas['settings:set']
     expect(schema.safeParse({ 'knowledge.suggestOnFinish': false }).success).toBe(true)

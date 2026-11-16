@@ -1,0 +1,578 @@
+[
+  {
+    "n": 1,
+    "scenario": "K1-danger-cmd",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 2,
+    "scenario": "K1-danger-cmd",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 3,
+    "scenario": "K1-danger-patch",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 4,
+    "scenario": "K1-danger-patch",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 5,
+    "scenario": "K1-danger-patch-outside",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 6,
+    "scenario": "K1-danger-patch-outside",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 7,
+    "scenario": "K1-danger-push-rule",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 8,
+    "scenario": "K1-danger-push-rule",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 9,
+    "scenario": "K1-danger-push-control",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 10,
+    "scenario": "K1-danger-push-control",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 11,
+    "scenario": "K1-fallback-cmd",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 12,
+    "scenario": "K1-fallback-cmd",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 13,
+    "scenario": "K1-fallback-patch",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 14,
+    "scenario": "K1-fallback-patch",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 15,
+    "scenario": "K1-fallback-patch-outside",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 16,
+    "scenario": "K1-fallback-patch-outside",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 17,
+    "scenario": "K1-fallback-push-rule",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 18,
+    "scenario": "K1-fallback-push-rule",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 19,
+    "scenario": "K1-fallback-push-control",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 20,
+    "scenario": "K1-fallback-push-control",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 21,
+    "scenario": "K2-T1-baseline-no-override",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 22,
+    "scenario": "K2-T1-baseline-no-override",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 23,
+    "scenario": "K2-T2-override-danger",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 24,
+    "scenario": "K2-T2-override-danger",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 25,
+    "scenario": "K2-T3-no-override-after-danger",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 26,
+    "scenario": "K2-T3-no-override-after-danger",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 27,
+    "scenario": "K2-T4-restore-with-tmp-excludes",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 28,
+    "scenario": "K2-T4-restore-with-tmp-excludes",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 29,
+    "scenario": "K2-T5-no-override-after-restore",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 30,
+    "scenario": "K2-T5-no-override-after-restore",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  },
+  {
+    "n": 31,
+    "scenario": "K2-T6-restore-without-tmp-excludes",
+    "toolOutputsSoFar": 0,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "message",
+    "emitted": "function_call:exec_command"
+  },
+  {
+    "n": 32,
+    "scenario": "K2-T6-restore-without-tmp-excludes",
+    "toolOutputsSoFar": 1,
+    "tools": [
+      "function:exec_command",
+      "function:write_stdin",
+      "function:request_user_input",
+      "function:view_image",
+      "namespace:multi_agent_v1",
+      "function:get_goal",
+      "function:create_goal",
+      "function:update_goal",
+      "web_search:"
+    ],
+    "lastInputType": "function_call_output",
+    "emitted": "message"
+  }
+]

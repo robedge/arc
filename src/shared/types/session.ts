@@ -19,7 +19,12 @@ export type BrainState = 'idle' | 'thinking' | 'waiting'
 export const PLACEHOLDER_SESSION_NAME = 'New session'
 
 /** What a `cursor-blocked` event reports about a call Cursor made without asking Arc. */
-export const CURSOR_BLOCKED_OUTCOMES = ['blocked', 'ran-unasked', 'outside-edit'] as const
+export const CURSOR_BLOCKED_OUTCOMES = [
+  'blocked',
+  'push-blocked',
+  'ran-unasked',
+  'outside-edit'
+] as const
 export type CursorBlockedOutcome = (typeof CURSOR_BLOCKED_OUTCOMES)[number]
 
 /**
@@ -40,6 +45,8 @@ export interface SessionSummary {
   listStatus: SessionListStatus
   /** Pending requests that are with the user. */
   attentionCount: number
+  /** Skip all approvals is on for this session (the list shows a marker). */
+  skipApprovals: boolean
 }
 
 /** One project of a session: the session branch it has, a git project with no branch yet, or read only when it is not a git repository. */
@@ -84,6 +91,8 @@ export interface SessionHeader {
   brainRunningOn?: RunningOn
   /** Every protected request is approved without asking, except pushes and merge/pull requests. */
   autoApprove: boolean
+  /** Every approval is skipped except pushes, merge/pull requests and questions. */
+  skipApprovals: boolean
   /** The session's "Always allow this in this session" rules, oldest first. */
   allowRules: AllowRuleView[]
   status: SessionStatus

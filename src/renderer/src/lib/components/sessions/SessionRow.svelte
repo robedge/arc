@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { SessionListStatus, SessionSummary } from '@shared/types/session'
   import { relativeTime } from '../../relative-time'
+  import { messageKinds } from '../ui/kinds'
+  import Icon from '../ui/Icon.svelte'
   import IconButton from '../ui/IconButton.svelte'
   import Menu from '../ui/Menu.svelte'
   import MenuItem from '../ui/MenuItem.svelte'
@@ -26,6 +28,8 @@
     idle: 'text-text-muted',
     stopped: 'text-text-faint'
   }
+
+  const skipKind = messageKinds.error
 
   let menuOpen = $state(false)
   let root: HTMLElement | undefined = $state()
@@ -79,6 +83,16 @@
     class="flex min-h-[var(--size-hit)] min-w-0 flex-1 items-center justify-between gap-3 rounded-control border border-border bg-surface-raised px-3 py-2 text-left transition-shadow duration-(--duration-fast) hover:border-border-strong focus:outline-none focus-visible:shadow-focus"
   >
     <span class="min-w-0 flex-1 truncate text-sm font-medium text-text">{session.name}</span>
+    {#if session.skipApprovals}
+      <span
+        role="img"
+        aria-label="Skipping approvals"
+        data-session-skip-marker
+        class="inline-flex shrink-0 items-center rounded-pill border px-1.5 py-0.5 {skipKind.text} {skipKind.border} {skipKind.bg}"
+      >
+        <Icon name={skipKind.icon} size={12} />
+      </span>
+    {/if}
     <span class="shrink-0 text-xs text-text-muted">{relativeTime(session.lastActiveAt)}</span>
     <span
       class="shrink-0 text-xs font-semibold tracking-label uppercase {STATUS_TONE[

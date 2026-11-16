@@ -114,7 +114,11 @@ export function buildClaudeArgs(options: ClaudeStartRequest): string[] {
       ...WORKER_BASE_TOOLS,
       ...(mcpTools.length > 0 ? ['ToolSearch', ...mcpTools] : [])
     )
-    const deny = denyEditRules(options.readOnlyDirs ?? [])
+    // Skip all approvals lifts the edit limits on the knowledge folder and other checkouts, not on attachments (spec 015).
+    const readOnly = options.readOnlyDirs ?? []
+    const deny = denyEditRules(
+      claude.skipApprovals ? readOnly.filter((dir) => dir === claude.attachmentsDir) : readOnly
+    )
     if (deny.length > 0) args.push('--disallowedTools', ...deny)
   }
   return args
@@ -346,6 +350,11 @@ class ClaudeHandle implements AgentHandle {
 
   get pid(): number | undefined {
     return this.proc.pid
+  }
+
+  /** Between turns: no turn running and the process alive, so it can be replaced (spec 015). */
+  isIdle(): boolean {
+    return !this.turnActive && !this.exitSeen
   }
 
   private emit(event: AgentEvent): void {
