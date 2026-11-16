@@ -2,7 +2,7 @@
 
 ## Open Questions
 
-- Functional spec 2.4, "a Claude worker tries to edit an attachment, then the edit is refused": covered only by a proxy. The fake Claude CLI cannot refuse an edit, so the tests assert what makes the real CLI refuse it: the attachments `Edit(//<attachments>/**)` entry stays in `--disallowedTools` while skip is on (`tests/unit/agents/claude/claude-args.test.ts`, and the argv checks in `tests/e2e/skip-approvals-claude.spec.ts`), and the bridge never covers a permission request that writes into the attachments folder (`attention-allow.test.ts`). No real turn has shown the refusal (spike K5 showed the opposite case, an edit going through once the deny was removed), so a user who wants it proven needs one more approved real Claude turn.
+- Resolved 2026-11-16 at /awos:verify: the user accepted the indirect evidence for "a Claude worker tries to edit an attachment, then the edit is refused" (the attachments deny entry kept in `--disallowedTools`, plus spike K5). No further real turn is needed.
 
 Conventions for every Verify task below, the same as specs 007 to 014:
 
