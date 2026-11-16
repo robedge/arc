@@ -3,27 +3,59 @@
   import type { AllowRuleView } from '@shared/types/session'
   import IconButton from '../ui/IconButton.svelte'
   import Toggle from '../ui/Toggle.svelte'
+  import SkipApprovalsDialog from './SkipApprovalsDialog.svelte'
 
   interface Props {
     id: string
     autoApprove: boolean
+    skipApprovals?: boolean
     rules: readonly AllowRuleView[]
     onautoapprove: (value: boolean) => void
+    onskipapprovals?: (value: boolean) => void
     onremove: (ruleId: string) => void
   }
 
-  let { id, autoApprove, rules, onautoapprove, onremove }: Props = $props()
+  let {
+    id,
+    autoApprove,
+    skipApprovals = false,
+    rules,
+    onautoapprove,
+    onskipapprovals,
+    onremove
+  }: Props = $props()
 
   let open = $state(false)
   let root: HTMLElement | undefined = $state()
   let button: HTMLButtonElement | undefined = $state()
-  let checked = $derived(autoApprove)
+  // While skip is on, Auto-approve reads as on and locked; the stored value is never written from here.
+  let checked = $derived(autoApprove || skipApprovals)
+  let skipChecked = $derived(skipApprovals)
+  let confirmingSkip = $state(false)
+
+  function onskipchange(): void {
+    if (skipChecked) {
+      // Turning on needs the warning first: the switch stays off until the user confirms. The menu
+      // closes so the warning is the only thing on screen (the menu sits above the modal scrim).
+      skipChecked = false
+      open = false
+      confirmingSkip = true
+    } else {
+      onskipapprovals?.(false)
+    }
+  }
 
   async function toggle(): Promise<void> {
     open = !open
     if (!open) return
     await tick()
     root?.querySelector<HTMLElement>('[role="dialog"] input, [role="dialog"] button')?.focus()
+  }
+
+  async function endConfirm(): Promise<void> {
+    confirmingSkip = false
+    await tick()
+    button?.focus()
   }
 
   function close(): void {
@@ -63,11 +95,26 @@
       class="absolute left-0 z-20 mt-1 flex w-80 max-w-[90vw] flex-col gap-2 rounded-hud border border-border-strong bg-surface-panel p-3"
     >
       <Toggle
-        id="auto-approve-{id}"
-        label="Auto-approve"
-        bind:checked
-        onchange={() => onautoapprove(checked)}
+        id="skip-approvals-{id}"
+        label="Skip all approvals"
+        bind:checked={skipChecked}
+        onchange={onskipchange}
       />
+      <div
+        title={skipApprovals ? 'Covered by Skip all approvals' : undefined}
+        aria-describedby={skipApprovals ? `auto-approve-covered-${id}` : undefined}
+      >
+        <Toggle
+          id="auto-approve-{id}"
+          label="Auto-approve"
+          bind:checked
+          disabled={skipApprovals}
+          onchange={() => onautoapprove(checked)}
+        />
+        {#if skipApprovals}
+          <span id="auto-approve-covered-{id}" class="sr-only">Covered by Skip all approvals</span>
+        {/if}
+      </div>
       <p class="text-xs text-text-muted">Pushes and merge requests always ask</p>
       <h3 class="text-xs tracking-label text-text-muted uppercase">Allow rules ({rules.length})</h3>
       {#if rules.length === 0}
@@ -88,5 +135,15 @@
         </ul>
       {/if}
     </div>
+  {/if}
+  {#if confirmingSkip}
+    <SkipApprovalsDialog
+      scope="session"
+      onconfirm={() => {
+        void endConfirm()
+        onskipapprovals?.(true)
+      }}
+      oncancel={() => void endConfirm()}
+    />
   {/if}
 </div>

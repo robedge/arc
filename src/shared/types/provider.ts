@@ -89,6 +89,8 @@ export interface AppSettings {
   /** Send one tiny Claude request when Arc opens so the plan meter has a value (default true). */
   'usage.checkClaudePlanOnLaunch': boolean
   'knowledge.suggestOnFinish': boolean
+  /** New sessions start with Skip all approvals on (default false; spec 015). */
+  'approvals.skipAllByDefault': boolean
   /** What Arc agents do not load, per role (spec 009). Everything is on by default. */
   'agents.loadOff': AgentLoadOff
 }

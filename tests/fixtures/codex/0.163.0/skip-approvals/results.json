@@ -1,0 +1,525 @@
+{
+  "k1": {
+    "danger": {
+      "threadStart": "ok",
+      "turns": [
+        {
+          "scenario": "K1-danger-cmd",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/commandExecution/requestApproval",
+              "command": "/bin/zsh -lc 'touch <TMP>/k1-danger-rules/k1-cmd.txt && echo made'",
+              "proposedExecpolicyAmendment": ["touch", "<TMP>/k1-danger-rules/k1-cmd.txt"]
+            }
+          ],
+          "items": [
+            {
+              "type": "commandExecution",
+              "command": "/bin/zsh -lc 'touch <TMP>/k1-danger-rules/k1-cmd.txt && echo made'",
+              "status": "completed",
+              "exitCode": 0,
+              "output": "made\n"
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-danger-patch",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/fileChange/requestApproval"
+            }
+          ],
+          "items": [
+            {
+              "type": "fileChange",
+              "status": "completed",
+              "changes": [
+                {
+                  "path": "<TMP>/k1-danger-rules/k1-patch.txt",
+                  "kind": {
+                    "type": "add"
+                  },
+                  "diff": "patched\n"
+                }
+              ]
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-danger-patch-outside",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/fileChange/requestApproval"
+            }
+          ],
+          "items": [
+            {
+              "type": "fileChange",
+              "status": "completed",
+              "changes": [
+                {
+                  "path": "<TMP>/outside/k1-danger-patch-outside.txt",
+                  "kind": {
+                    "type": "add"
+                  },
+                  "diff": "outside\n"
+                }
+              ]
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-danger-push-rule",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/commandExecution/requestApproval",
+              "command": "/bin/zsh -lc 'git push origin HEAD'",
+              "reason": "`/bin/zsh -lc 'git push origin HEAD'` requires approval by policy"
+            }
+          ],
+          "items": [
+            {
+              "type": "commandExecution",
+              "command": "/bin/zsh -lc 'git push origin HEAD'",
+              "status": "completed",
+              "exitCode": 0,
+              "output": "To <TMP>/remote.git\n * [new branch]      HEAD -> k1-danger-rules\n"
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-danger-push-control",
+          "status": "completed",
+          "approvals": [],
+          "items": [
+            {
+              "type": "commandExecution",
+              "command": "/bin/zsh -lc 'git push origin HEAD'",
+              "status": "completed",
+              "exitCode": 0,
+              "output": "To <TMP>/remote.git\n * [new branch]      HEAD -> k1-danger-control\n"
+            }
+          ],
+          "settingsEchoes": []
+        }
+      ],
+      "sandboxEcho": {
+        "type": "dangerFullAccess"
+      },
+      "files": {
+        "cmd": true,
+        "patch": true,
+        "patchOutside": true
+      },
+      "remoteBranches": ["k1-danger-control", "k1-danger-rules", "* main"]
+    },
+    "fallback": {
+      "threadStart": "ok",
+      "turns": [
+        {
+          "scenario": "K1-fallback-cmd",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/commandExecution/requestApproval",
+              "command": "/bin/zsh -lc 'touch <TMP>/k1-fallback-rules/k1-cmd.txt && echo made'",
+              "proposedExecpolicyAmendment": ["touch", "<TMP>/k1-fallback-rules/k1-cmd.txt"]
+            }
+          ],
+          "items": [
+            {
+              "type": "commandExecution",
+              "command": "/bin/zsh -lc 'touch <TMP>/k1-fallback-rules/k1-cmd.txt && echo made'",
+              "status": "completed",
+              "exitCode": 0,
+              "output": "made\n"
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-fallback-patch",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/fileChange/requestApproval"
+            }
+          ],
+          "items": [
+            {
+              "type": "fileChange",
+              "status": "completed",
+              "changes": [
+                {
+                  "path": "<TMP>/k1-fallback-rules/k1-patch.txt",
+                  "kind": {
+                    "type": "add"
+                  },
+                  "diff": "patched\n"
+                }
+              ]
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-fallback-patch-outside",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/fileChange/requestApproval"
+            }
+          ],
+          "items": [
+            {
+              "type": "fileChange",
+              "status": "completed",
+              "changes": [
+                {
+                  "path": "<TMP>/outside/k1-fallback-patch-outside.txt",
+                  "kind": {
+                    "type": "add"
+                  },
+                  "diff": "outside\n"
+                }
+              ]
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-fallback-push-rule",
+          "status": "completed",
+          "approvals": [
+            {
+              "method": "item/commandExecution/requestApproval",
+              "command": "/bin/zsh -lc 'git push origin HEAD'",
+              "reason": "`/bin/zsh -lc 'git push origin HEAD'` requires approval by policy"
+            }
+          ],
+          "items": [
+            {
+              "type": "commandExecution",
+              "command": "/bin/zsh -lc 'git push origin HEAD'",
+              "status": "completed",
+              "exitCode": 0,
+              "output": "To <TMP>/remote.git\n * [new branch]      HEAD -> k1-fallback-rules\n"
+            }
+          ],
+          "settingsEchoes": []
+        },
+        {
+          "scenario": "K1-fallback-push-control",
+          "status": "completed",
+          "approvals": [],
+          "items": [
+            {
+              "type": "commandExecution",
+              "command": "/bin/zsh -lc 'git push origin HEAD'",
+              "status": "completed",
+              "exitCode": 0,
+              "output": "To <TMP>/remote.git\n * [new branch]      HEAD -> k1-fallback-control\n"
+            }
+          ],
+          "settingsEchoes": []
+        }
+      ],
+      "sandboxEcho": {
+        "type": "workspaceWrite",
+        "writableRoots": ["/"],
+        "networkAccess": true,
+        "excludeTmpdirEnvVar": true,
+        "excludeSlashTmp": true
+      },
+      "files": {
+        "cmd": true,
+        "patch": true,
+        "patchOutside": true
+      },
+      "remoteBranches": [
+        "k1-danger-control",
+        "k1-danger-rules",
+        "k1-fallback-control",
+        "k1-fallback-rules",
+        "* main"
+      ]
+    }
+  },
+  "k2": {
+    "threadStart": "ok",
+    "sandboxEcho": {
+      "type": "workspaceWrite",
+      "writableRoots": [],
+      "networkAccess": false,
+      "excludeTmpdirEnvVar": true,
+      "excludeSlashTmp": true
+    },
+    "turns": [
+      {
+        "scenario": "K2-T1-baseline-no-override",
+        "status": "completed",
+        "approvals": [
+          {
+            "method": "item/commandExecution/requestApproval",
+            "command": "/bin/zsh -lc 'echo t1 > <TMP>/outside/t1.txt; echo \"outside-exit=$?\"; echo t1 > <TMP>/k2-wt/in-t1.txt; echo \"inside-exit=$?\"'",
+            "proposedExecpolicyAmendment": [
+              "/bin/zsh",
+              "-lc",
+              "echo t1 > <TMP>/outside/t1.txt; echo \"outside-exit=$?\"; echo t1 > <TMP>/k2-wt/in-t1.txt; echo \"inside-exit=$?\""
+            ]
+          }
+        ],
+        "items": [
+          {
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'echo t1 > <TMP>/outside/t1.txt; echo \"outside-exit=$?\"; echo t1 > <TMP>/k2-wt/in-t1.txt; echo \"inside-exit=$?\"'",
+            "status": "completed",
+            "exitCode": 0,
+            "output": "outside-exit=1\nzsh:1: operation not permitted: <TMP>/outside/t1.txt\ninside-exit=0\n"
+          }
+        ],
+        "settingsEchoes": [],
+        "outsideFileExists": false,
+        "insideFileExists": true
+      },
+      {
+        "scenario": "K2-T2-override-danger",
+        "status": "completed",
+        "approvals": [
+          {
+            "method": "item/commandExecution/requestApproval",
+            "command": "/bin/zsh -lc 'echo t2 > <TMP>/outside/t2.txt; echo \"outside-exit=$?\"; echo t2 > <TMP>/k2-wt/in-t2.txt; echo \"inside-exit=$?\"'",
+            "proposedExecpolicyAmendment": [
+              "/bin/zsh",
+              "-lc",
+              "echo t2 > <TMP>/outside/t2.txt; echo \"outside-exit=$?\"; echo t2 > <TMP>/k2-wt/in-t2.txt; echo \"inside-exit=$?\""
+            ]
+          }
+        ],
+        "items": [
+          {
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'echo t2 > <TMP>/outside/t2.txt; echo \"outside-exit=$?\"; echo t2 > <TMP>/k2-wt/in-t2.txt; echo \"inside-exit=$?\"'",
+            "status": "completed",
+            "exitCode": 0,
+            "output": "outside-exit=0\ninside-exit=0\n"
+          }
+        ],
+        "settingsEchoes": [
+          {
+            "threadId": "01a1e283-797e-7951-b68d-8b9d3a1daff9",
+            "threadSettings": {
+              "disabledPluginIds": [],
+              "cwd": "<TMP>/k2-wt",
+              "approvalPolicy": "untrusted",
+              "approvalsReviewer": "user",
+              "sandboxPolicy": {
+                "type": "dangerFullAccess"
+              },
+              "activePermissionProfile": null,
+              "model": "scripted-model",
+              "modelProvider": "scripted",
+              "serviceTier": null,
+              "effort": null,
+              "summary": null,
+              "collaborationMode": {
+                "mode": "default",
+                "settings": {
+                  "model": "scripted-model",
+                  "reasoning_effort": null,
+                  "developer_instructions": null
+                }
+              },
+              "multiAgentMode": "explicitRequestOnly",
+              "personality": null
+            }
+          }
+        ],
+        "outsideFileExists": true,
+        "insideFileExists": true
+      },
+      {
+        "scenario": "K2-T3-no-override-after-danger",
+        "status": "completed",
+        "approvals": [
+          {
+            "method": "item/commandExecution/requestApproval",
+            "command": "/bin/zsh -lc 'echo t3 > <TMP>/outside/t3.txt; echo \"outside-exit=$?\"; echo t3 > <TMP>/k2-wt/in-t3.txt; echo \"inside-exit=$?\"'",
+            "proposedExecpolicyAmendment": [
+              "/bin/zsh",
+              "-lc",
+              "echo t3 > <TMP>/outside/t3.txt; echo \"outside-exit=$?\"; echo t3 > <TMP>/k2-wt/in-t3.txt; echo \"inside-exit=$?\""
+            ]
+          }
+        ],
+        "items": [
+          {
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'echo t3 > <TMP>/outside/t3.txt; echo \"outside-exit=$?\"; echo t3 > <TMP>/k2-wt/in-t3.txt; echo \"inside-exit=$?\"'",
+            "status": "completed",
+            "exitCode": 0,
+            "output": "outside-exit=0\ninside-exit=0\n"
+          }
+        ],
+        "settingsEchoes": [],
+        "outsideFileExists": true,
+        "insideFileExists": true
+      },
+      {
+        "scenario": "K2-T4-restore-with-tmp-excludes",
+        "status": "completed",
+        "approvals": [
+          {
+            "method": "item/commandExecution/requestApproval",
+            "command": "/bin/zsh -lc 'echo t4 > <TMP>/outside/t4.txt; echo \"outside-exit=$?\"; echo t4 > <TMP>/k2-wt/in-t4.txt; echo \"inside-exit=$?\"'",
+            "proposedExecpolicyAmendment": [
+              "/bin/zsh",
+              "-lc",
+              "echo t4 > <TMP>/outside/t4.txt; echo \"outside-exit=$?\"; echo t4 > <TMP>/k2-wt/in-t4.txt; echo \"inside-exit=$?\""
+            ]
+          }
+        ],
+        "items": [
+          {
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'echo t4 > <TMP>/outside/t4.txt; echo \"outside-exit=$?\"; echo t4 > <TMP>/k2-wt/in-t4.txt; echo \"inside-exit=$?\"'",
+            "status": "completed",
+            "exitCode": 0,
+            "output": "outside-exit=1\nzsh:1: operation not permitted: <TMP>/outside/t4.txt\ninside-exit=0\n"
+          }
+        ],
+        "settingsEchoes": [
+          {
+            "threadId": "01a1e283-797e-7951-b68d-8b9d3a1daff9",
+            "threadSettings": {
+              "disabledPluginIds": [],
+              "cwd": "<TMP>/k2-wt",
+              "approvalPolicy": "untrusted",
+              "approvalsReviewer": "user",
+              "sandboxPolicy": {
+                "type": "workspaceWrite",
+                "writableRoots": [],
+                "networkAccess": false,
+                "excludeTmpdirEnvVar": true,
+                "excludeSlashTmp": true
+              },
+              "activePermissionProfile": null,
+              "model": "scripted-model",
+              "modelProvider": "scripted",
+              "serviceTier": null,
+              "effort": null,
+              "summary": null,
+              "collaborationMode": {
+                "mode": "default",
+                "settings": {
+                  "model": "scripted-model",
+                  "reasoning_effort": null,
+                  "developer_instructions": null
+                }
+              },
+              "multiAgentMode": "explicitRequestOnly",
+              "personality": null
+            }
+          }
+        ],
+        "outsideFileExists": false,
+        "insideFileExists": true
+      },
+      {
+        "scenario": "K2-T5-no-override-after-restore",
+        "status": "completed",
+        "approvals": [
+          {
+            "method": "item/commandExecution/requestApproval",
+            "command": "/bin/zsh -lc 'echo t5 > <TMP>/outside/t5.txt; echo \"outside-exit=$?\"; echo t5 > <TMP>/k2-wt/in-t5.txt; echo \"inside-exit=$?\"'",
+            "proposedExecpolicyAmendment": [
+              "/bin/zsh",
+              "-lc",
+              "echo t5 > <TMP>/outside/t5.txt; echo \"outside-exit=$?\"; echo t5 > <TMP>/k2-wt/in-t5.txt; echo \"inside-exit=$?\""
+            ]
+          }
+        ],
+        "items": [
+          {
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'echo t5 > <TMP>/outside/t5.txt; echo \"outside-exit=$?\"; echo t5 > <TMP>/k2-wt/in-t5.txt; echo \"inside-exit=$?\"'",
+            "status": "completed",
+            "exitCode": 0,
+            "output": "zsh:1: operation not permitted: <TMP>/outside/t5.txt\noutside-exit=1\ninside-exit=0\n"
+          }
+        ],
+        "settingsEchoes": [],
+        "outsideFileExists": false,
+        "insideFileExists": true
+      },
+      {
+        "scenario": "K2-T6-restore-without-tmp-excludes",
+        "status": "completed",
+        "approvals": [
+          {
+            "method": "item/commandExecution/requestApproval",
+            "command": "/bin/zsh -lc 'echo t6 > <TMP>/outside/t6.txt; echo \"outside-exit=$?\"; echo t6 > <TMP>/k2-wt/in-t6.txt; echo \"inside-exit=$?\"'",
+            "proposedExecpolicyAmendment": [
+              "/bin/zsh",
+              "-lc",
+              "echo t6 > <TMP>/outside/t6.txt; echo \"outside-exit=$?\"; echo t6 > <TMP>/k2-wt/in-t6.txt; echo \"inside-exit=$?\""
+            ]
+          }
+        ],
+        "items": [
+          {
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'echo t6 > <TMP>/outside/t6.txt; echo \"outside-exit=$?\"; echo t6 > <TMP>/k2-wt/in-t6.txt; echo \"inside-exit=$?\"'",
+            "status": "completed",
+            "exitCode": 0,
+            "output": "outside-exit=0\ninside-exit=0\n"
+          }
+        ],
+        "settingsEchoes": [
+          {
+            "threadId": "01a1e283-797e-7951-b68d-8b9d3a1daff9",
+            "threadSettings": {
+              "disabledPluginIds": [],
+              "cwd": "<TMP>/k2-wt",
+              "approvalPolicy": "untrusted",
+              "approvalsReviewer": "user",
+              "sandboxPolicy": {
+                "type": "workspaceWrite",
+                "writableRoots": [],
+                "networkAccess": false,
+                "excludeTmpdirEnvVar": false,
+                "excludeSlashTmp": false
+              },
+              "activePermissionProfile": null,
+              "model": "scripted-model",
+              "modelProvider": "scripted",
+              "serviceTier": null,
+              "effort": null,
+              "summary": null,
+              "collaborationMode": {
+                "mode": "default",
+                "settings": {
+                  "model": "scripted-model",
+                  "reasoning_effort": null,
+                  "developer_instructions": null
+                }
+              },
+              "multiAgentMode": "explicitRequestOnly",
+              "personality": null
+            }
+          }
+        ],
+        "outsideFileExists": true,
+        "insideFileExists": true
+      }
+    ]
+  }
+}

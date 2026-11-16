@@ -102,7 +102,7 @@ import {
   CURSOR_WAIT_FOR_LINE
 } from '../agents/cursor/cursor-instructions'
 import { createCodexApprovalHandler, McpCoverage } from './codex-approvals'
-import { writeCursorDeny } from '../agents/cursor/cursor-deny'
+import { keepsPublishBlocked, writeCursorDeny } from '../agents/cursor/cursor-deny'
 import { classifyUnaskedCall, cursorBlockedText } from '../agents/cursor/cursor-unasked'
 import type { CursorToolCall } from '../agents/cursor/cursor-types'
 import type { EnsureResult } from './branch-on-demand'
@@ -387,6 +387,12 @@ interface Running {
   /** Resolves once the exit has been classified and stored. */
   finished: Promise<void>
   markFinished: () => void
+  /** The Skip all approvals flag this process was launched with (spec 015); its limits are fixed at launch. */
+  launchedSkip: boolean
+  /** The flag changed since launch: the process is replaced at its next idle turn boundary (Cursor). */
+  pendingRelaunch: boolean
+  /** A live process is being replaced; a send or a step-in waits for it. */
+  relaunching: Promise<void> | undefined
 }
 
 /** "10 minutes" (or seconds, for the short caps tests use). */
@@ -604,6 +610,8 @@ export class WorkerManager {
   private readonly cursorTrees = new Map<string, string[]>()
   /** The user MCP servers switched off for each Cursor worker; its deny file lists them. */
   private readonly cursorOffMcp = new Map<string, string[]>()
+  /** Per Cursor worker: the user's own Cursor setup would let a push through, so skip keeps the publish denies. */
+  private readonly cursorPublishKept = new Map<string, boolean>()
   private readonly pushState = new Map<
     string,
     { last: number; timer: NodeJS.Timeout | undefined }
@@ -1409,7 +1417,10 @@ export class WorkerManager {
       recordChain: Promise.resolve(),
       resolver: false,
       finished,
-      markFinished
+      markFinished,
+      launchedSkip: false,
+      pendingRelaunch: false,
+      relaunching: undefined
     }
   }
 
@@ -1586,6 +1597,9 @@ export class WorkerManager {
     const first = trees[0]
     if (!first) throw new Error('no working copy')
     this.logFor(run.workerId).status('Starting')
+    // The limits are fixed for this process: a later toggle marks it for a relaunch (spec 015).
+    run.launchedSkip = this.skipApprovals()
+    run.pendingRelaunch = false
     const knowledgeDir = this.deps.getKnowledgeDir()
     const otherCheckouts = this.otherCheckouts(new Set(projects.map((p) => p.projectPath)))
     // Readable and not writable in every launch, so what a later message names is already reachable.
@@ -1593,7 +1607,11 @@ export class WorkerManager {
     const attachmentRefs = this.attachmentRefsOf(row)
     // A command is the whole first message, so its attachments go in the instructions instead.
     const refsViaPrompt = row.command !== null
-    const claude: ClaudeStartOptions = { permissionPromptTool: PERMISSION_PROMPT_TOOL }
+    const claude: ClaudeStartOptions = {
+      permissionPromptTool: PERMISSION_PROMPT_TOOL,
+      ...(run.launchedSkip ? { skipApprovals: true } : {}),
+      ...(attachmentsDir === undefined ? {} : { attachmentsDir })
+    }
     // Filled once the user's Codex servers are known; the Codex approval handler reads it.
     const mcpCover = new McpCoverage()
     const agent: BridgeAgent = {
@@ -1667,6 +1685,8 @@ export class WorkerManager {
     }
     // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
     const codex: CodexStartOptions = {
+      // The sandbox follows the live flag; a later toggle reaches the running handle (`setSkipApprovals`).
+      skipApprovals: run.launchedSkip,
       approvals: createCodexApprovalHandler({
         agent,
         requestAction: (a, action, meta, call) =>
@@ -1703,6 +1723,10 @@ export class WorkerManager {
         break
       case 'cursor': {
         // Arc's deny file goes in before Cursor starts, so the user's allow rules cannot skip it.
+        await this.judgeCursorPublish(
+          run.workerId,
+          trees.map((t) => t.path)
+        )
         this.writeCursorDenyFiles(
           run.workerId,
           trees.map((t) => t.path),
@@ -2026,9 +2050,10 @@ export class WorkerManager {
     }
     if (!run.nudged) {
       run.nudged = true
-      await handle.send(
+      const nudge =
         '[Arc] You have not called report_done. Commit your work in the working copy and call report_done with a short summary.'
-      )
+      // The turn just ended: a process marked for a relaunch is replaced here, and the nudge is its first message.
+      if ((await this.relaunchAtBoundary(run, nudge)) === 'not-due') await handle.send(nudge)
       return
     }
     run.failReason = 'The worker ended its turn twice without calling report_done.'
@@ -2427,12 +2452,21 @@ export class WorkerManager {
         .filter((t) => t.removedAt === null && t.workerId !== workerId)
         .map((t) => t.path)
     ]
+    const attachmentsDir = this.attachmentsDir()
     for (const worktree of trees) {
       const result = writeCursorDeny({
         worktree,
         ownWorktrees: trees,
         denyDirs,
-        offMcp: this.cursorOffMcp.get(workerId) ?? []
+        offMcp: this.cursorOffMcp.get(workerId) ?? [],
+        ...(this.skipApprovals()
+          ? {
+              skip: {
+                attachmentsDir,
+                keepPublish: this.cursorPublishKept.get(workerId) ?? false
+              }
+            }
+          : {})
       })
       if (!result.written) {
         this.deps.log.info(
@@ -2444,7 +2478,12 @@ export class WorkerManager {
 
   /** A Cursor tool call that completed without asking: blocked, ran unasked, or an edit outside the working copy. */
   private noteUnasked(run: Running, call: CursorToolCall): void {
-    const note = classifyUnaskedCall(call, this.policyContext(run.workerId))
+    const skip = this.skipApprovals()
+    const note = classifyUnaskedCall(
+      call,
+      this.policyContext(run.workerId),
+      skip ? { publishBlocked: this.cursorPublishKept.get(run.workerId) ?? false } : undefined
+    )
     if (!note) return
     this.host.logEvent(
       'cursor-blocked',
@@ -2489,7 +2528,8 @@ export class WorkerManager {
         ...own,
         ...(this.attachmentsDir() === undefined ? [] : [this.attachmentsDir() as string])
       ],
-      ...(roots[0] === undefined ? {} : { cwd: roots[0] })
+      ...(roots[0] === undefined ? {} : { cwd: roots[0] }),
+      attachmentsDir: this.attachmentsDir()
     }
   }
 
@@ -2598,6 +2638,76 @@ export class WorkerManager {
     )
   }
 
+  /** The worker's live working copies, each with its session project. */
+  private liveTrees(workerId: string): { path: string; project: SessionProjectRow }[] {
+    return this.deps.worktreesRepo
+      .listByWorker(workerId)
+      .filter((t) => t.removedAt === null)
+      .map((t) => ({
+        path: t.path,
+        project: this.deps.sessionProjectsRepo
+          .listBySession(this.deps.sessionId)
+          .find((p) => p.projectId !== null && p.projectId === t.projectId)
+      }))
+      .filter((t): t is { path: string; project: SessionProjectRow } => t.project !== undefined)
+  }
+
+  /**
+   * A live process whose Skip all approvals flag differs from the session's (spec 015) is replaced at
+   * an idle turn boundary: the old process stops and a new one loads the same conversation, with `text`
+   * as its first message. Never mid-turn, never while the user is in control (the hand-back is the
+   * boundary then), never for a worker that is stopping or has no stored conversation.
+   * `not-due` means nothing was done and the caller sends `text` itself.
+   */
+  private async relaunchAtBoundary(
+    run: Running,
+    text: string
+  ): Promise<'not-due' | 'delivered' | 'failed'> {
+    if (!run.pendingRelaunch) return 'not-due'
+    if (run.relaunching !== undefined) return 'not-due'
+    if (run.controlActive || run.resolver || run.stopRequestedBy !== null) return 'not-due'
+    if (this.stopping || this.disposed) return 'not-due'
+    const handle = run.handle
+    if (handle?.isIdle?.() !== true) return 'not-due'
+    if (this.skipApprovals() === run.launchedSkip) {
+      run.pendingRelaunch = false
+      return 'not-due'
+    }
+    const row = this.deps.workersRepo.get(run.workerId)
+    if (!row || row.providerSessionId === null || this.cannotLaunch(row) !== null) return 'not-due'
+    const trees = this.liveTrees(run.workerId)
+    if (trees.length === 0) return 'not-due'
+
+    run.pendingRelaunch = false
+    let delivered = false
+    const swap = async (): Promise<void> => {
+      // Its events, the exit included, are ignored from here: this is not the worker ending.
+      run.handle = undefined
+      await handle.stop()
+      this.deps.bridge?.revokeAgent(run.agentId)
+      try {
+        const sessionRow = this.deps.sessionsRepo.getById(this.deps.sessionId)
+        await this.launch(
+          run,
+          row,
+          trees,
+          sessionRow?.slug ?? null,
+          trees.map((t) => t.project),
+          undefined,
+          { sessionId: row.providerSessionId, message: text, freshMessage: text }
+        )
+        delivered = true
+      } catch (error: unknown) {
+        this.failRun(run, row, labelOf(row), error)
+      }
+    }
+    run.relaunching = swap().finally(() => {
+      run.relaunching = undefined
+    })
+    await run.relaunching
+    return delivered ? 'delivered' : 'failed'
+  }
+
   /**
    * Starts the process of a worker that has none (stopped by a quit or crash, paused on a request
    * that was answered after a restart, or waiting for the usage limit) in its existing working copy:
@@ -2621,16 +2731,7 @@ export class WorkerManager {
         return
       }
     }
-    const trees = this.deps.worktreesRepo
-      .listByWorker(workerId)
-      .filter((t) => t.removedAt === null)
-      .map((t) => ({
-        path: t.path,
-        project: this.deps.sessionProjectsRepo
-          .listBySession(this.deps.sessionId)
-          .find((p) => p.projectId !== null && p.projectId === t.projectId)
-      }))
-      .filter((t): t is { path: string; project: SessionProjectRow } => t.project !== undefined)
+    const trees = this.liveTrees(workerId)
     const now = this.deps.now()
     this.deps.workersRepo.setStatus(workerId, 'starting', now)
     this.deps.workersRepo.setActivity(workerId, 'Starting', now)
@@ -2687,22 +2788,28 @@ export class WorkerManager {
         this.drain()
         return
       }
-      this.running.delete(workerId)
-      this.deps.bridge?.revokeAgent(run.agentId)
-      const reason =
-        error instanceof ProviderHistoryMissingError
-          ? `The ${providerName(error.provider)} history for W${row.number} is gone.`
-          : `The worker could not be continued: ${error instanceof Error ? error.message : String(error)}`
-      this.logFor(workerId).finish(`Failed: ${reason}`)
-      this.deps.log.error(`worker ${label}: ${reason}`)
-      this.deps.workersRepo.setFailure(workerId, reason, this.deps.now())
-      this.deps.workersRepo.setActivity(workerId, null, this.deps.now())
-      this.host.logEvent('worker-failed', `${label} failed: ${reason}`, undefined, workerId)
-      this.pushNow(workerId)
-      this.host.onChange()
-      run.markFinished()
-      this.drain()
+      this.failRun(run, row, label, error)
     }
+  }
+
+  /** A process that could not be started again (continue, or a relaunch at a turn boundary): the worker fails with the reason. */
+  private failRun(run: Running, row: WorkerRow, label: string, error: unknown): void {
+    const workerId = row.id
+    this.running.delete(workerId)
+    this.deps.bridge?.revokeAgent(run.agentId)
+    const reason =
+      error instanceof ProviderHistoryMissingError
+        ? `The ${providerName(error.provider)} history for W${row.number} is gone.`
+        : `The worker could not be continued: ${error instanceof Error ? error.message : String(error)}`
+    this.logFor(workerId).finish(`Failed: ${reason}`)
+    this.deps.log.error(`worker ${label}: ${reason}`)
+    this.deps.workersRepo.setFailure(workerId, reason, this.deps.now())
+    this.deps.workersRepo.setActivity(workerId, null, this.deps.now())
+    this.host.logEvent('worker-failed', `${label} failed: ${reason}`, undefined, workerId)
+    this.pushNow(workerId)
+    this.host.onChange()
+    run.markFinished()
+    this.drain()
   }
 
   // ---- tool calls from workers ----
@@ -2758,13 +2865,19 @@ export class WorkerManager {
       return { delivered: false, queued: true }
     }
     const run = this.running.get(row.id)
+    // A process being replaced (spec 015) is back in moments; the message goes to the new one.
+    await run?.relaunching
     if (!run?.handle) {
       throw new BridgeToolError('worker_not_running', `W${row.number} ${row.slug} is not running.`)
     }
-    const delivered = await run.handle.send(
-      `${BRAIN_MESSAGE_PREFIX}${text}`,
-      refs.length > 0 ? refs : undefined
-    )
+    const sent = `${BRAIN_MESSAGE_PREFIX}${text}`
+    const relaunched = run
+      ? await this.relaunchAtBoundary(run, withAttachmentBlock(sent, refs))
+      : 'not-due'
+    const delivered =
+      relaunched === 'not-due'
+        ? ((await run?.handle?.send(sent, refs.length > 0 ? refs : undefined)) ?? false)
+        : relaunched === 'delivered'
     if (delivered) this.recordAttachments(row, refs)
     return { delivered }
   }
@@ -2806,6 +2919,8 @@ export class WorkerManager {
     if (found?.sessionId !== this.deps.sessionId || !this.canStepIn(found)) {
       throw new AppErrorException('VALIDATION_FAILED')
     }
+    // A process being replaced (spec 015) is interrupted once it is back.
+    await this.running.get(workerId)?.relaunching
     const run = this.running.get(workerId)
     // 1. The heads, and each live working copy's HEAD as the base of the hand-back summary.
     await this.doRecordHeads(workerId)
@@ -2981,8 +3096,14 @@ export class WorkerManager {
       ...pending.map((m) => heldMessageText(m.body))
     ].join('\n\n')
     let accepted = true
-    if (run?.handle && alive) accepted = await run.handle.send(text)
-    else {
+    if (run?.handle && alive) {
+      // A process marked for a relaunch while the user was in control is replaced now, with this text first.
+      const relaunched = await this.relaunchAtBoundary(run, text)
+      accepted =
+        relaunched === 'not-due'
+          ? ((await run.handle?.send(text)) ?? false)
+          : relaunched === 'delivered'
+    } else {
       await this.relaunch(this.deps.workersRepo.get(workerId) ?? row, text, [], {
         leadOnFresh: true
       })
@@ -3123,6 +3244,67 @@ export class WorkerManager {
     )
     this.host.onChange()
     await this.deps.cancelBranchOrphans?.()
+  }
+
+  /**
+   * Skip all approvals changed (spec 015): every live worker whose provider can switch its sandbox
+   * between turns does it now. A turn already running keeps its sandbox. A worker the user stepped in
+   * on is included: the sandbox is not an approval.
+   */
+  setSkipApprovals(on: boolean): void {
+    for (const run of this.running.values()) {
+      run.handle?.setSkipApprovals?.(on)
+      // A Cursor process does not re-read its `cli.json` (spike K3) and a Claude process keeps its
+      // `--disallowedTools` (K5): each is replaced at its next idle turn boundary.
+      if (
+        (run.handle?.provider === 'cursor' || run.handle?.provider === 'claude') &&
+        !run.resolver
+      ) {
+        run.pendingRelaunch = run.launchedSkip !== on
+      }
+    }
+    void this.refreshCursorDenyFiles()
+  }
+
+  /** The session's Skip all approvals flag, read from the row so a toggle is seen by the next launch. */
+  private skipApprovals(): boolean {
+    return this.deps.sessionsRepo.getById(this.deps.sessionId)?.skipApprovals ?? false
+  }
+
+  /** The flag changed: the deny files of the live Cursor workers are rewritten to match. */
+  private async refreshCursorDenyFiles(): Promise<void> {
+    for (const [id, trees] of [...this.cursorTrees]) {
+      if (!this.running.has(id)) continue
+      try {
+        await this.judgeCursorPublish(id, trees)
+        this.writeCursorDenyFor(id, trees)
+      } catch (error: unknown) {
+        this.deps.log.warn(`could not rewrite the Cursor deny file of ${id}`, error)
+      }
+    }
+  }
+
+  /**
+   * Whether the user's own Cursor setup (or a project `.cursor/cli.json` the repository commits) would
+   * let a push run without asking. Only matters while skip is on: the publish denies then stay.
+   */
+  private async judgeCursorPublish(workerId: string, trees: readonly string[]): Promise<void> {
+    if (!this.skipApprovals() || !this.deps.personal?.bypass) {
+      this.cursorPublishKept.set(workerId, false)
+      return
+    }
+    const repoPaths = [
+      ...this.deps.sessionProjectsRepo.listBySession(this.deps.sessionId).map((p) => p.projectPath),
+      ...trees
+    ]
+    try {
+      const report = await this.deps.personal.bypass(repoPaths)
+      this.cursorPublishKept.set(workerId, keepsPublishBlocked(report.cursor))
+    } catch (error: unknown) {
+      // Unreadable: keep the denies, the safe side.
+      this.deps.log.warn('could not read the Cursor settings for the skip check', error)
+      this.cursorPublishKept.set(workerId, true)
+    }
   }
 
   /** Workers that were stored as failed elsewhere (`BranchOnDemand`): they no longer wait, and their cards are pushed. */

@@ -204,6 +204,23 @@ describe('a session pinned to Codex starts Codex workers', () => {
   })
 })
 
+describe('Skip all approvals (spec 015)', () => {
+  it('starts a Codex worker with the live flag and reaches it, and the Codex brain, on a toggle', async () => {
+    const r = await codexRig()
+    const sessionId = await r.e.startSession('autonomous')
+    r.e.rig.service.setConfig(sessionId, { workers: { mode: 'provider', provider: 'codex' } })
+    await r.e.call(r.e.brain(), 'spawn_worker', spawnArgs('review'))
+    await until(() => r.codex.starts.length === 1)
+    expect(r.codex.starts[0]?.codex.skipApprovals).toBe(false)
+    const worker = r.codex.handles[0] as FakeHandle
+
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: true })
+    expect(worker.skipCalls).toEqual([true])
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: false })
+    expect(worker.skipCalls).toEqual([true, false])
+  })
+})
+
 describe('plan-first', () => {
   it('stores the provider the brain proposed and starts the approved worker on it', async () => {
     const r = await codexRig()

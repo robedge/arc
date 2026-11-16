@@ -89,6 +89,12 @@ export class FakeHandle implements AgentHandle {
   /** The models passed to `setModel`; only a Codex handle has it, as the real one does. */
   readonly models: string[] = []
   setModel?: (model: string) => void
+  /** The flags passed to `setSkipApprovals`; only a Codex handle has it, as the real one does. */
+  readonly skipCalls: boolean[] = []
+  setSkipApprovals?: (on: boolean) => void
+  /** Whether a Cursor or Claude handle is between turns; a Codex handle has no `isIdle`, as the real one has none. */
+  idle = true
+  isIdle?: () => boolean
   /** The structured inputs (skills) passed to `sendInput`; only a Codex handle has it, as the real one does. */
   readonly inputs: CodexInput[][] = []
   sendInput?: (input: CodexInput[]) => Promise<boolean>
@@ -101,9 +107,14 @@ export class FakeHandle implements AgentHandle {
     readonly agentId: string,
     readonly provider: ProviderId = 'claude'
   ) {
-    if (provider === 'cursor') this.setModel = (model) => void this.models.push(model)
+    if (provider === 'cursor') {
+      this.setModel = (model) => void this.models.push(model)
+      this.isIdle = () => this.idle
+    }
+    if (provider === 'claude') this.isIdle = () => this.idle
     if (provider === 'codex') {
       this.setModel = (model) => void this.models.push(model)
+      this.setSkipApprovals = (on) => void this.skipCalls.push(on)
       this.sendInput = (input) => {
         this.inputs.push(input)
         return Promise.resolve(true)
@@ -223,6 +234,8 @@ export class FakeAdapter implements AgentAdapter {
   readonly provider = 'claude' as const
   readonly handles: FakeHandle[] = []
   readonly starts: ClaudeStartRequest[] = []
+  /** The resumes alone (a `--resume` launch), a subset of `starts`. */
+  readonly resumes: ClaudeStartRequest[] = []
 
   start(options: StartOptions): Promise<AgentHandle> {
     if (options.provider !== 'claude') throw new Error('the fake adapter only starts Claude agents')
@@ -233,6 +246,7 @@ export class FakeAdapter implements AgentAdapter {
   }
 
   resume(options: StartOptions & { resume: { threadId: string } }): Promise<AgentHandle> {
+    if (options.provider === 'claude') this.resumes.push(options)
     return this.start(options)
   }
 

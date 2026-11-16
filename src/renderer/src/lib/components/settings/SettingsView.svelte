@@ -3,6 +3,7 @@
   import Button from '../ui/Button.svelte'
   import Panel from '../ui/Panel.svelte'
   import AgentLoadSettings from './AgentLoadSettings.svelte'
+  import ApprovalsSettings from './ApprovalsSettings.svelte'
   import KnowledgeSettings from './KnowledgeSettings.svelte'
   import PluginsSettings from './PluginsSettings.svelte'
   import ProvidersSettings from './ProvidersSettings.svelte'
@@ -11,7 +12,8 @@
     { id: 'providers', label: 'Providers' },
     { id: 'plugins', label: 'Plugins' },
     { id: 'agent-load', label: 'Agent loading' },
-    { id: 'knowledge', label: 'Knowledge' }
+    { id: 'knowledge', label: 'Knowledge' },
+    { id: 'approvals', label: 'Approvals' }
   ] as const
 
   function onkeydown(event: KeyboardEvent): void {
@@ -49,7 +51,8 @@
     <div class="p-4">
       {#if ui.settingsPage === 'providers'}<ProvidersSettings
         />{:else if ui.settingsPage === 'plugins'}<PluginsSettings
-        />{:else if ui.settingsPage === 'knowledge'}<KnowledgeSettings />{:else}<AgentLoadSettings
+        />{:else if ui.settingsPage === 'knowledge'}<KnowledgeSettings
+        />{:else if ui.settingsPage === 'approvals'}<ApprovalsSettings />{:else}<AgentLoadSettings
         />{/if}
     </div>
   </Panel>

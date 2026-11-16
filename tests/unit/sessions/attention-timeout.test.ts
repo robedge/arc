@@ -68,6 +68,7 @@ beforeEach(async () => {
     onBrainWaiting: () => undefined,
     onChanged: changed,
     autoApprove: () => false,
+    skipApprovals: () => false,
     allowRules: () => [],
     addAllowRule: () => {
       throw new Error('not used')

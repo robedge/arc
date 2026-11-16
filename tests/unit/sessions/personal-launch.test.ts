@@ -195,6 +195,7 @@ describe('personal MCP servers on Codex launches', () => {
     e!.rig.service.setConfig(sessionId, { workers: { mode: 'provider', provider: 'codex' } })
     await spawnWorker(e!)
     await until(() => codex.starts.length === 1)
-    expect(Object.keys(codex.starts[0]?.codex ?? {})).toEqual(['approvals'])
+    // No server names, only the sandbox flag (spec 015) and the approval handler.
+    expect(Object.keys(codex.starts[0]?.codex ?? {})).toEqual(['skipApprovals', 'approvals'])
   })
 })

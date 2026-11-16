@@ -17,6 +17,7 @@ const header: Header = {
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
+  skipApprovals: false,
   allowRules: [],
   status: 'active',
   createdAt: 1,
@@ -276,4 +277,49 @@ it('shows no Suggestions chip at zero, and a waiting request adds no header butt
   expect(screen.queryByRole('button', { name: /Needs attention/ })).toBeNull()
   expect(screen.queryByRole('dialog')).toBeNull()
   activeSession.attention = []
+})
+
+it('shows the Skipping approvals marker only while skip is on, in place of the Auto-approve badge', () => {
+  const view = render(SessionHeader, { header, groupName: 'Team', onback: vi.fn() })
+  expect(document.querySelector('[data-skip-approvals-on]')).toBeNull()
+  view.unmount()
+  render(SessionHeader, {
+    header: { ...header, autoApprove: true, skipApprovals: true },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  const marker = screen.getByRole('button', { name: 'Skipping approvals' })
+  expect(marker.hasAttribute('data-skip-approvals-on')).toBe(true)
+  expect(screen.queryByText('Auto-approve on')).toBeNull()
+})
+
+it('the marker asks before turning off, and Turn off sends set-config skipApprovals false', async () => {
+  render(SessionHeader, {
+    header: { ...header, skipApprovals: true },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  await fireEvent.click(screen.getByRole('button', { name: 'Skipping approvals' }))
+  expect(screen.getByRole('heading', { name: 'Turn Skip all approvals off?' })).toBeTruthy()
+  expect(invoke.mock.calls.some((c) => c[0] === 'sessions:set-config')).toBe(false)
+  await fireEvent.click(screen.getByRole('button', { name: 'Turn off' }))
+  await waitFor(() =>
+    expect(invoke).toHaveBeenCalledWith('sessions:set-config', {
+      sessionId: 's1',
+      skipApprovals: false
+    })
+  )
+})
+
+it('Cancel on the marker dialog keeps skip on and sends nothing', async () => {
+  render(SessionHeader, {
+    header: { ...header, skipApprovals: true },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  await fireEvent.click(screen.getByRole('button', { name: 'Skipping approvals' }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('heading', { name: 'Turn Skip all approvals off?' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Skipping approvals' })).toBeTruthy()
+  expect(invoke.mock.calls.some((c) => c[0] === 'sessions:set-config')).toBe(false)
 })

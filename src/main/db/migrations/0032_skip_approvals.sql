@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD `skip_approvals` integer DEFAULT false NOT NULL;

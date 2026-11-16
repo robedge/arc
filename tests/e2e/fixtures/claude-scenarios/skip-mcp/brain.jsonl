@@ -1,0 +1,15 @@
+# Autonomous brain: starts one worker. It ignores the first request (the test turns Skip all approvals on over it),
+# then tries to approve the pull request the worker opens, which Arc refuses because only the user may decide it.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Skip tool servers\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"figma-sync","task":"Update Figma and open a pull request","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"create_pull_request"}
+{"mcp":{"tool":"resolve_request","args":{"requestId":"{{REQUEST_ID}}","decision":"approve","note":"Looks fine."}}}
+{"say":"Arc refused; the user decides."}
+{"result":true}
+{"waitForStdin":"finished"}
+{"say":"The worker finished."}
+{"result":true}

@@ -65,6 +65,14 @@ export interface ClaudeStartOptions {
   permissionPromptTool?: string
   /** The sanitized plugin view (`--plugin-dir`); left unset when it could not be built. */
   pluginViewDir?: string
+  /**
+   * Skip all approvals was on at launch (spec 015): the edit denies for the read-only folders are left
+   * out, except the one for `attachmentsDir`. `--disallowedTools` is fixed for the process, so a toggle
+   * relaunches the worker at a turn boundary.
+   */
+  skipApprovals?: boolean
+  /** The folder whose edit deny is kept under `skipApprovals` (the session's sent attachments). */
+  attachmentsDir?: string
 }
 
 /** What only the Codex adapter needs. */
@@ -95,6 +103,11 @@ export interface CodexStartOptions {
    * `enabled: false` on the thread, so it does not start; the override merges with the user's entry (spike S10).
    */
   disabledMcpServers?: readonly string[]
+  /**
+   * Skip all approvals is on for the session when the thread starts or resumes (spec 015): the thread
+   * runs with `danger-full-access` instead of the role's sandbox. Approvals still reach Arc.
+   */
+  skipApprovals?: boolean
 }
 
 /** One of the user's Codex MCP servers, as far as Arc reads it: the name and the tools with their own approval mode. */
@@ -223,6 +236,18 @@ export interface AgentHandle {
    * change restarts the process.
    */
   setModel?(model: string): void
+  /**
+   * Skip all approvals was turned on or off (spec 015). Present when the provider's sandbox can change
+   * between turns (Codex `turn/start.sandboxPolicy`); it applies from the next turn, never to the
+   * one running. Cursor and Claude change their limits through files and a relaunch instead.
+   */
+  setSkipApprovals?(on: boolean): void
+  /**
+   * True while the agent is between turns: no turn running and no send waiting behind one. Present
+   * when Arc may replace the process at a turn boundary (a live Cursor or Claude worker relaunched
+   * after Skip all approvals changed, spec 015); a handle without it is never replaced.
+   */
+  isIdle?(): boolean
   /**
    * The agent's own view of its MCP servers and their tool annotations (Claude `control_request`
    * `mcp_status`, Codex `mcpServerStatus/list`). Arc asks it when a tool of a personal server needs a

@@ -1,0 +1,8 @@
+# Autonomous brain: starts one worker for the Skip all approvals checks and stays quiet.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Skip approvals\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"skip","task":"Run the skip-approvals checks","repos":["api"]}}}
+{"say":"The worker is running."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

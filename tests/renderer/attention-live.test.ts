@@ -30,6 +30,7 @@ const header: Header = {
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
+  skipApprovals: false,
   allowRules: [],
   status: 'active',
   createdAt: 1,
@@ -222,7 +223,8 @@ it('shows an amber dot for groups with pending requests and follows pushes', asy
       lastActiveAt: 1,
       status: 'active',
       listStatus: 'idle',
-      attentionCount: 0
+      attentionCount: 0,
+      skipApprovals: false
     }
   })
   await waitFor(() =>
@@ -257,7 +259,8 @@ it('navigateToAttention finds the group from loaded sessions when the payload ha
         lastActiveAt: 1,
         status: 'active',
         listStatus: 'needs-attention',
-        attentionCount: 1
+        attentionCount: 1,
+        skipApprovals: false
       }
     ]
   }

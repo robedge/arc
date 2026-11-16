@@ -88,6 +88,7 @@ it('attaching by the picker and starting with text sends the draft id and ordere
     request: 'Look at these',
     mode: 'plan_first',
     workerLimit: 3,
+    skipApprovals: false,
     draftId: draftName(1),
     attachmentIds: [A, B]
   })

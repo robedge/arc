@@ -1,0 +1,12 @@
+# A worker whose turns the test holds open with gate files in its working copy (the test finds it from the output of `pwd`). Every launch replays this script from
+# the top, and its first stdin message is the turn: the task, then the report_done nudge, then the hand-back text.
+# The first process (no `ran1` yet) holds turn one until `gate1` exists, then ends it without report_done, so Arc
+# nudges once. Every later process holds its turn until `gate2` exists, which the test writes only at the end.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"mcp":{"tool":"report_progress","args":{"note":"conversation={{SESSION_ID}}"}}}
+{"shell":"pwd"}
+{"shell":"if [ -f ran1 ]; then until [ -f gate2 ]; do sleep 0.1; done; else touch ran1; until [ -f gate1 ]; do sleep 0.1; done; fi"}
+{"say":"Turn over."}
+{"result":true}
+{"waitForStdin":"NEVER-SENT"}

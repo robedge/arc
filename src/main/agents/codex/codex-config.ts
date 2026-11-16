@@ -127,6 +127,33 @@ export function buildThreadConfig(options: CodexStartRequest): JsonObject {
 }
 
 /**
+ * The thread's sandbox mode. Skip all approvals lifts it to `danger-full-access` for workers and the
+ * brain alike (spike K1: approvals and `arc.rules` prompt rules still reach Arc there). Otherwise the
+ * brain reads only and a worker writes in its working copies.
+ */
+export function sandboxModeFor(options: CodexStartRequest): string {
+  if (options.codex.skipApprovals === true) return 'danger-full-access'
+  return options.access === 'brain-readonly' ? 'read-only' : 'workspace-write'
+}
+
+/**
+ * The `sandboxPolicy` a later `turn/start` carries when Skip all approvals changes. A turn with no
+ * override keeps the last policy (spike K2), so turning it off sends the role's policy explicitly. The
+ * worker's restore needs both tmp excludes, or its sandbox would let it write to the system temp folder.
+ */
+export function sandboxPolicyFor(options: CodexStartRequest, skip: boolean): JsonObject {
+  if (skip) return { type: 'dangerFullAccess' }
+  if (options.access === 'brain-readonly') return { type: 'readOnly' }
+  return {
+    type: 'workspaceWrite',
+    writableRoots: writableRootsFor(options),
+    networkAccess: false,
+    excludeSlashTmp: true,
+    excludeTmpdirEnvVar: true
+  }
+}
+
+/**
  * Params shared by `thread/start` and `thread/resume`. Instructions and MCP config are sent again on
  * every resume. The brain reads only (`read-only` is enforced by the OS sandbox); a worker writes in
  * its working copies (`workspace-write`). There is no full-access fallback.
@@ -138,7 +165,7 @@ export function buildThreadParams(options: CodexStartRequest): JsonObject {
     modelProvider: CODEX_MODEL_PROVIDER,
     approvalPolicy: CODEX_APPROVAL_POLICY,
     approvalsReviewer: 'user',
-    sandbox: options.access === 'brain-readonly' ? 'read-only' : 'workspace-write',
+    sandbox: sandboxModeFor(options),
     config: buildThreadConfig(options)
   }
   // `developerInstructions`, never `baseInstructions`: the latter replaces Codex's own prompt.

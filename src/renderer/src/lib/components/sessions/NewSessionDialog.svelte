@@ -12,6 +12,8 @@
   import Modal from '../ui/Modal.svelte'
   import Radio from '../ui/Radio.svelte'
   import Select from '../ui/Select.svelte'
+  import Toggle from '../ui/Toggle.svelte'
+  import SkipApprovalsDialog from './SkipApprovalsDialog.svelte'
   import TextArea from '../ui/TextArea.svelte'
 
   interface Props {
@@ -39,6 +41,9 @@
   const brain = $derived<ModelRef>(
     picked ?? settings.values?.['providers.brain'] ?? { provider: 'claude', model: 'sonnet' }
   )
+  // Starts from the Settings default; turning it off here never changes that default.
+  let skipChecked = $derived(settings.values?.['approvals.skipAllByDefault'] ?? false)
+  let confirmingSkip = $state(false)
   let attempted = $state(false)
   let busy = $state(false)
   let serverError = $state<string | null>(null)
@@ -54,6 +59,13 @@
   onDestroy(() => {
     if (!finished) void attachments.discard(attachKey)
   })
+
+  function onskipchange(): void {
+    if (!skipChecked) return
+    // Turning on needs the warning first: the switch stays off until the user confirms.
+    skipChecked = false
+    confirmingSkip = true
+  }
 
   function cancel(): void {
     void attachments.discard(attachKey)
@@ -83,6 +95,7 @@
         request: request.trim(),
         mode,
         workerLimit: Number(limit),
+        skipApprovals: skipChecked,
         // Only a changed brain is sent; main saves it as the new default.
         ...(draftId !== null && attachmentIds.length > 0 ? { draftId, attachmentIds } : {}),
         ...(picked ? { brainModel: $state.snapshot(picked) } : {})
@@ -140,6 +153,13 @@
   </fieldset>
   <BrainPicker id="new-session-brain" value={brain} onchange={(ref) => (picked = ref)} />
   <Select id="new-session-limit" label="Worker limit" bind:value={limit} options={LIMITS} />
+  <Toggle
+    id="new-session-skip-approvals"
+    label="Skip all approvals"
+    bind:checked={skipChecked}
+    disabled={busy}
+    onchange={onskipchange}
+  />
   {#if serverError}<ErrorText message={serverError} />{/if}
   <div class="flex justify-end gap-2">
     <Button onclick={cancel}>Cancel</Button>
@@ -155,3 +175,14 @@
     {/if}
   </div>
 </Modal>
+{#if confirmingSkip}
+  <!-- A sibling of the New session modal, later in the DOM, so it stacks above it and its Escape never reaches it. -->
+  <SkipApprovalsDialog
+    scope="session"
+    onconfirm={() => {
+      skipChecked = true
+      confirmingSkip = false
+    }}
+    oncancel={() => (confirmingSkip = false)}
+  />
+{/if}

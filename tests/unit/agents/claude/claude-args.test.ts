@@ -141,6 +141,34 @@ describe('buildClaudeArgs', () => {
       'NotebookEdit(//repo/other/**)'
     ])
   })
+
+  it('worker under skip: leaves out the knowledge and other-checkout denies and keeps the attachments one (spec 015)', () => {
+    const readOnlyDirs = ['/know', '/repo/other', '/sess/attachments']
+    const off = build({ role: 'worker', readOnlyDirs })
+    const offDeny = off.slice(off.indexOf('--disallowedTools') + 1)
+    expect(offDeny).toHaveLength(9)
+    expect(offDeny).toContain('Edit(//know/**)')
+
+    const on = build({
+      role: 'worker',
+      readOnlyDirs,
+      claude: { skipApprovals: true, attachmentsDir: '/sess/attachments' }
+    })
+    expect(on.slice(on.indexOf('--disallowedTools') + 1)).toEqual([
+      'Edit(//sess/attachments/**)',
+      'Write(//sess/attachments/**)',
+      'NotebookEdit(//sess/attachments/**)'
+    ])
+  })
+
+  it('worker under skip with no attachments folder: no --disallowedTools at all', () => {
+    const args = build({
+      role: 'worker',
+      readOnlyDirs: ['/know'],
+      claude: { skipApprovals: true }
+    })
+    expect(args).not.toContain('--disallowedTools')
+  })
 })
 
 describe('buildClaudeArgs personal hooks and MCP', () => {

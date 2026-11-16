@@ -33,6 +33,7 @@ function snapshot(over: Partial<SessionSnapshot> = {}): SessionSnapshot {
       workers: { mode: 'auto' },
       brainModel: 'sonnet',
       autoApprove: false,
+      skipApprovals: false,
       allowRules: [],
       status: 'active',
       createdAt: 1,

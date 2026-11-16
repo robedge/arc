@@ -8,6 +8,7 @@ import {
   NETWORK_TOOLS,
   type Prefix
 } from '../protected-commands'
+import type { CursorBypass } from '../../../shared/types/provider'
 import { excludeFromGit } from '../worktree-git'
 
 /**
@@ -82,6 +83,56 @@ export function shellDenyEntries(): string[] {
   return [...new Set(commands)].map((command) => `Shell(${command})`)
 }
 
+/**
+ * The `Shell(...)` entries Arc keeps while Skip all approvals is on (spec 015, tech spec 2.5): the
+ * commands `isPublishAction` sends to the user. Without them Cursor asks over ACP, which is how a
+ * push reaches Needs attention. The other publishing commands (`docker push`, `npm publish`) are not
+ * pushes or merge requests to Arc, so skip lifts them with the network, destructive and install entries.
+ */
+export const PUBLISH_DENY_ENTRIES: readonly string[] = [
+  'Shell(git push)',
+  'Shell(gh)',
+  'Shell(glab)'
+]
+
+/** The publish prefixes above, as words, for the allow-entry overlap check. */
+const PUBLISH_WORDS: readonly (readonly string[])[] = [['git', 'push'], ['gh'], ['glab']]
+
+/** True when one word list is the start of the other (`git` and `git push`, or `git push origin` and `git push`). */
+function sharesStart(a: readonly string[], b: readonly string[]): boolean {
+  const n = Math.min(a.length, b.length)
+  return a.slice(0, n).every((word, index) => word === b[index])
+}
+
+/** True when a `Shell(...)` allow entry would let `git push`, `gh` or `glab` run without a prompt. */
+function allowCoversPublish(entry: string): boolean {
+  const match = /^Shell\(([\s\S]*)\)$/.exec(entry.trim())
+  if (!match) return false
+  const words = (match[1] ?? '')
+    .replace(/(?::?\*+)\s*$/, '')
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word !== '')
+  // `Shell(*)` allows every command.
+  if (words.length === 0) return true
+  return PUBLISH_WORDS.some((publish) => sharesStart(words, publish))
+}
+
+/**
+ * True when the user's own Cursor setup (or a project `.cursor/cli.json` the repository commits, which
+ * K4 showed skips the ask too) would let a push run without asking: an allow entry that covers
+ * `git push`, `gh` or `glab`, a hook that can answer "allow", or an `approvalMode` other than
+ * `allowlist`. Skip then keeps the publish entries, so the push stays blocked (tech spec 2.5).
+ */
+export function keepsPublishBlocked(bypass: CursorBypass | undefined): boolean {
+  if (bypass === undefined) return false
+  return (
+    bypass.hookEvents.length > 0 ||
+    (bypass.approvalMode !== undefined && bypass.approvalMode !== 'allowlist') ||
+    bypass.allowEntries.some(allowCoversPublish)
+  )
+}
+
 function realOrSame(path: string): string {
   try {
     return realpathSync(path)
@@ -120,6 +171,14 @@ export function writeDenyEntries(
   return [...new Set(entries)]
 }
 
+/** How the deny file changes while Skip all approvals is on (spec 015). */
+export interface CursorSkipDeny {
+  /** The session's attachments folder: its `Write` entry stays, so attachments stay read-only. */
+  attachmentsDir?: string | undefined
+  /** The user's Cursor setup lets a push through unasked (`keepsPublishBlocked`): the publish entries stay. */
+  keepPublish: boolean
+}
+
 export interface CursorDenyOptions {
   /** The working copy the file goes into (and the worker's own working copies, for the Write entries). */
   worktree: string
@@ -129,6 +188,12 @@ export interface CursorDenyOptions {
   denyDirs: readonly string[]
   /** User MCP servers switched off for the worker role: each gets an `Mcp(<server>:*)` deny (tech spec 2.5, defence in depth). */
   offMcp?: readonly string[]
+  /**
+   * Skip all approvals is on: the `Write` entries go, apart from the attachments folder, and so do the
+   * network, destructive, global-install and other `Shell` entries. The publish entries go too unless
+   * `keepPublish` says the user's own Cursor setup would let a push run unasked. `Mcp` entries stay.
+   */
+  skip?: CursorSkipDeny | undefined
 }
 
 /** `Mcp(<server>:*)` for each switched-off user server. */
@@ -145,14 +210,15 @@ export function cursorDenyText(
     ...(options.worktree === undefined ? [] : [options.worktree])
   ]
   // Only `permissions`: Cursor rejects any other top-level key of a project cli.json and exits (spike N6).
+  const skip = options.skip
+  const shell = skip ? (skip.keepPublish ? [...PUBLISH_DENY_ENTRIES] : []) : shellDenyEntries()
+  const write = skip
+    ? writeDenyEntries(skip.attachmentsDir === undefined ? [] : [skip.attachmentsDir], own)
+    : writeDenyEntries(options.denyDirs, own)
   const config = {
     permissions: {
       allow: [] as string[],
-      deny: [
-        ...shellDenyEntries(),
-        ...writeDenyEntries(options.denyDirs, own),
-        ...mcpDenyEntries(options.offMcp)
-      ]
+      deny: [...shell, ...write, ...mcpDenyEntries(options.offMcp)]
     }
   }
   return `${JSON.stringify(config, null, 2)}\n`

@@ -25,7 +25,8 @@ const summary = (
   lastActiveAt,
   status: listStatus === 'stopped' ? 'stopped' : 'active',
   listStatus,
-  attentionCount: 0
+  attentionCount: 0,
+  skipApprovals: false
 })
 
 const message = (id: number): SessionMessage => ({
@@ -160,6 +161,7 @@ it('Load earlier appears for a full snapshot, pages with the smallest id and pre
       workers: { mode: 'auto' },
       brainModel: 'sonnet',
       autoApprove: false,
+      skipApprovals: false,
       allowRules: [],
       status: 'active',
       createdAt: 1,
@@ -189,4 +191,15 @@ it('Load earlier appears for a full snapshot, pages with the smallest id and pre
   await waitFor(() => expect(activeSession.messages[0]!.id).toBe(96))
   expect(activeSession.messages).toHaveLength(105)
   expect(screen.queryByRole('button', { name: 'Load earlier' })).toBeNull()
+})
+
+it('shows the Skipping approvals marker only on the skipping row', () => {
+  render(SessionRow, {
+    session: { ...summary('a', 1), skipApprovals: true },
+    onopen: () => {}
+  })
+  expect(screen.getByRole('img', { name: 'Skipping approvals' })).toBeTruthy()
+  cleanup()
+  render(SessionRow, { session: summary('b', 1), onopen: () => {} })
+  expect(screen.queryByRole('img', { name: 'Skipping approvals' })).toBeNull()
 })

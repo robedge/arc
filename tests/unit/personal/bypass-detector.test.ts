@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { keepsPublishBlocked } from '../../../src/main/agents/cursor/cursor-deny'
 import { BypassDetector } from '../../../src/main/personal/bypass-detector'
 import type { PluginViewSource } from '../../../src/main/plugins/plugin-view'
 import { useTempDir } from '../helpers/temp-dir'
@@ -275,6 +276,21 @@ describe('Cursor settings that can skip the permission prompt', () => {
     const repo = join(dir(), 'repo')
     writeJson(join(repo, '.cursor', 'cli.json'), { permissions: { allow: ['Shell(npm test)'] } })
     expect((await detect(home, [repo])).cursor?.allowEntries).toEqual(['Shell(npm test)'])
+  })
+
+  it('sees a push allowed by a .cursor/cli.json the repository commits, so skip keeps the publish denies (spec 015)', async () => {
+    const home = join(dir(), 'home')
+    const worktree = join(dir(), 'worktree')
+    writeJson(join(worktree, '.cursor', 'cli.json'), {
+      permissions: { allow: ['Shell(git push)'], deny: [] }
+    })
+    const cursor = (await detect(home, [worktree])).cursor
+    expect(cursor?.allowEntries).toEqual(['Shell(git push)'])
+    expect(keepsPublishBlocked(cursor)).toBe(true)
+    // Arc's own deny file (allow is always empty) never makes it keep them.
+    const own = join(dir(), 'own')
+    writeJson(join(own, '.cursor', 'cli.json'), { permissions: { allow: [], deny: ['Shell(gh)'] } })
+    expect(keepsPublishBlocked((await detect(home, [own])).cursor)).toBe(false)
   })
 
   it('reports nothing for no Cursor files, and never throws on unreadable ones', async () => {

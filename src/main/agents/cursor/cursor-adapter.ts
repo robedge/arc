@@ -390,6 +390,11 @@ export class CursorHandle implements AgentHandle {
     return this.queuedSends.splice(0).map((s) => withAttachmentBlock(s.text, s.attachments))
   }
 
+  /** Between turns: nothing is running and nothing waits behind it, so the process can be replaced (spec 015). */
+  isIdle(): boolean {
+    return !this.exitSeen && !this.busy && this.queuedSends.length === 0
+  }
+
   /** A Cursor model change takes effect from the next prompt (`session/set_model`), with no restart. */
   setModel(model: string): void {
     this.pendingModel = model

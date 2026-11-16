@@ -1,5 +1,7 @@
 // @spec: 003-sessions-brain-and-workers
 // @regression
+import { mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import {
@@ -12,6 +14,8 @@ import {
 import type { Rig } from './sessions-rig'
 import {
   alwaysAllow,
+  choice,
+  submitChoices,
   approve,
   deny,
   expectNoneWaiting,
@@ -21,6 +25,8 @@ import {
   permissionFrom,
   request
 } from './attention-rig'
+
+const screenshotsDir = join(process.cwd(), 'docs', 'screenshots')
 
 let rig: Rig | undefined
 test.afterEach(async () => {
@@ -36,8 +42,8 @@ async function setup(scenario: string) {
 }
 
 async function openApprovals(page: Page) {
-  await page.getByRole('button', { name: 'Approvals' }).click()
-  return page.getByRole('dialog', { name: 'Approvals' })
+  await page.getByRole('button', { name: 'Approvals', exact: true }).click()
+  return page.getByRole('dialog', { name: 'Approvals', exact: true })
 }
 
 test('2.7: reads and temp writes need no request; Always allow, the rule, and removing it', async () => {
@@ -169,4 +175,129 @@ test("2.7: the brain's shell: read freely, ask for changes, Auto-approve, push s
   await expectWaiting(page, 1)
   expect(await pendingAction(page)).toBe('git push origin main')
   await expect(permissionFrom(page, 'Brain')).toBeVisible()
+})
+
+// Skip all approvals (spec 015, slice 1).
+const skipSwitch = (page: Page) => page.getByLabel('Skip all approvals', { exact: true })
+const skipDialog = (page: Page) => page.getByRole('dialog', { name: 'Skip all approvals?' })
+const marker = (page: Page) => page.locator('[data-skip-approvals-on]')
+
+async function startSkipSession(): Promise<Page> {
+  const r = await setup('skip-approvals')
+  await startSession(r.page, { request: 'Run the skip-approvals checks', mode: 'Autonomous' })
+  await expectWaiting(r.page, 1)
+  expect(await pendingAction(r.page)).toBe('rm -rf build')
+  return r.page
+}
+
+async function confirmSkip(page: Page): Promise<void> {
+  const approvals = await openApprovals(page)
+  await skipSwitch(page).click()
+  await expect(skipDialog(page)).toBeVisible()
+  await skipDialog(page).getByRole('button', { name: 'Skip all approvals' }).click()
+  await expect(skipDialog(page)).toHaveCount(0)
+  await expect(marker(page)).toBeVisible()
+  await expect(approvals).toHaveCount(0)
+}
+
+test('015 2.1: the warning dialog; Cancel, Escape and Enter leave it off; confirming shows the marker and covers Auto-approve', async () => {
+  const page = await startSkipSession()
+  const approvals = await openApprovals(page)
+  await expect(skipSwitch(page)).not.toBeChecked()
+
+  // Turning it on opens the dialog and closes the menu so the warning is never under it.
+  await skipSwitch(page).click()
+  await expect(skipDialog(page)).toBeVisible()
+  await expect(skipDialog(page)).toContainText('Arc will still ask before pushing a branch')
+  await expect(approvals).toHaveCount(0)
+  // Cancel is the focused default.
+  await expect(skipDialog(page).getByRole('button', { name: 'Cancel' })).toBeFocused()
+
+  // Cancel leaves the switch off.
+  await skipDialog(page).getByRole('button', { name: 'Cancel' }).click()
+  await expect(skipDialog(page)).toHaveCount(0)
+  await openApprovals(page)
+  await expect(skipSwitch(page)).not.toBeChecked()
+
+  // Enter with Cancel focused cancels.
+  await skipSwitch(page).click()
+  await expect(skipDialog(page).getByRole('button', { name: 'Cancel' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(skipDialog(page)).toHaveCount(0)
+  await expect(marker(page)).toHaveCount(0)
+
+  // Escape cancels the dialog.
+  await openApprovals(page)
+  await skipSwitch(page).click()
+  await expect(skipDialog(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(skipDialog(page)).toHaveCount(0)
+  await expect(marker(page)).toHaveCount(0)
+  await openApprovals(page)
+  await expect(skipSwitch(page)).not.toBeChecked()
+  // Nothing was approved by any of that.
+  await expectWaiting(page, 1)
+  await expect(eventLog(page).filter({ hasText: 'Approved (skipping approvals)' })).toHaveCount(0)
+
+  // Confirm.
+  await skipSwitch(page).click()
+  await skipDialog(page).getByRole('button', { name: 'Skip all approvals' }).click()
+  await expect(skipDialog(page)).toHaveCount(0)
+  await expect(marker(page)).toBeVisible()
+  await expect(marker(page)).toContainText('Skipping approvals')
+  await expect(approvals).toHaveCount(0)
+  await openApprovals(page)
+  await expect(skipSwitch(page)).toBeChecked()
+  await expect(page.getByLabel('Auto-approve', { exact: true })).toBeChecked()
+  await expect(page.getByLabel('Auto-approve', { exact: true })).toBeDisabled()
+  await expect(page.getByText('Covered by Skip all approvals').first()).toBeAttached()
+  await page.keyboard.press('Escape')
+
+  await mkdir(screenshotsDir, { recursive: true })
+  await marker(page)
+    .locator('xpath=..')
+    .screenshot({ path: join(screenshotsDir, '015-skip-approvals-header-marker.png') })
+})
+
+test('015 2.3-2.5: confirming sweeps the waiting request; later commands run with the event text; pushes and questions still ask; turning off asks again', async () => {
+  const page = await startSkipSession()
+  await confirmSkip(page)
+
+  // The waiting `rm -rf build` left the dock at once, with the event text.
+  await expect(
+    eventLog(page).filter({ hasText: 'Approved (skipping approvals): rm -rf build' })
+  ).toHaveCount(1)
+  // The next destructive command runs with no request.
+  await expect(
+    eventLog(page).filter({
+      hasText: 'Approved (skipping approvals): rm -rf /Users/redgell/v9-outside/old'
+    })
+  ).toHaveCount(1)
+  // The push still asks.
+  await expectWaiting(page, 1)
+  expect(await pendingAction(page)).toBe('git push origin arc/skip')
+  await deny(request(page, 'permission'))
+
+  // The worker's question still reaches the dock.
+  await expectWaiting(page, 1)
+  const question = request(page, 'question')
+  await expect(question).toContainText('Which target should the cleanup use?')
+
+  // Click the marker, Turn off: it goes without the dialog for Skip all approvals.
+  await marker(page).click()
+  const confirm = page.getByRole('dialog', { name: 'Turn Skip all approvals off?' })
+  await expect(confirm).toBeVisible()
+  await confirm.getByRole('button', { name: 'Turn off' }).click()
+  await expect(marker(page)).toHaveCount(0)
+
+  // The next destructive command asks again.
+  await choice(question, 'Dist').click()
+  await submitChoices(question)
+  await expect(request(page, 'permission')).toBeVisible()
+  expect(await pendingAction(page)).toBe('rm -rf dist')
+  await expect(
+    eventLog(page)
+      .filter({ hasText: 'rm -rf dist' })
+      .filter({ hasText: 'Approved (skipping approvals)' })
+  ).toHaveCount(0)
 })

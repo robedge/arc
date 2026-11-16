@@ -1,0 +1,59 @@
+{
+  "create": {
+    "permissionMode": "acceptEdits",
+    "additionalDirectories": ["<TMP>/other"],
+    "tools": [],
+    "resultSubtype": "success",
+    "isError": false,
+    "resultText": "ok",
+    "permissionDenials": [],
+    "numTurns": 1,
+    "sessionIdMatches": true
+  },
+  "createExit": {
+    "code": 0,
+    "stderr": ""
+  },
+  "resume": {
+    "permissionMode": "acceptEdits",
+    "additionalDirectories": ["<TMP>/other"],
+    "tools": [
+      {
+        "id": "toolu_01XhoyARXW5ftDNKhyPdwFu8",
+        "tool": "Read",
+        "input": {
+          "file_path": "<TMP>/other/notes.txt"
+        },
+        "result": {
+          "isError": false,
+          "content": "1\tstatus: old\n2\t"
+        }
+      },
+      {
+        "id": "toolu_011jiuQQqB6Hxq537JV7m6cP",
+        "tool": "Edit",
+        "input": {
+          "replace_all": false,
+          "file_path": "<TMP>/other/notes.txt",
+          "old_string": "status: old",
+          "new_string": "status: new"
+        },
+        "result": {
+          "isError": false,
+          "content": "The file <TMP>/other/notes.txt has been updated successfully. (file state is current in your context — no need to Read it back)"
+        }
+      }
+    ],
+    "resultSubtype": "success",
+    "isError": false,
+    "resultText": "done",
+    "permissionDenials": [],
+    "numTurns": 3,
+    "sessionIdMatches": true
+  },
+  "resumeExit": {
+    "code": 0,
+    "stderr": ""
+  },
+  "notesAfter": "status: new\n"
+}

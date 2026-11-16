@@ -61,6 +61,10 @@ export class SessionsRepo {
     this.db.update(sessions).set({ autoApprove }).where(eq(sessions.id, id)).run()
   }
 
+  setSkipApprovals(id: string, skipApprovals: boolean): void {
+    this.db.update(sessions).set({ skipApprovals }).where(eq(sessions.id, id)).run()
+  }
+
   setBrainCwd(id: string, brainCwd: string): void {
     this.db.update(sessions).set({ brainCwd }).where(eq(sessions.id, id)).run()
   }

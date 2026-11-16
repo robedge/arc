@@ -49,12 +49,15 @@ async function startWorker(brainAnswerMs?: number): Promise<Started> {
   return { changes, rig: e, sessionId, workerId, worker }
 }
 
-const permission = (s: Started, command: string): Promise<ToolCallOutcome> =>
-  s.rig.call(s.worker, 'request_permission', {
+// A turn is running while a permission waits, so the process is not idle and a Skip all approvals relaunch waits (spec 015).
+const permission = (s: Started, command: string): Promise<ToolCallOutcome> => {
+  s.worker.idle = false
+  return s.rig.call(s.worker, 'request_permission', {
     tool_name: 'Bash',
     input: { command, description: 'x' },
     tool_use_id: 'toolu_1'
   })
+}
 
 const askUserQuestion = (s: Started): Promise<ToolCallOutcome> =>
   s.rig.call(s.worker, 'request_permission', {
@@ -441,5 +444,77 @@ describe('what the renderer is sent', () => {
     s.rig.rig.service.answerAttention(queuedRow.id, { approve: false })
     s.rig.rig.service.answerAttention(terminalRow.id, { approve: false })
     await Promise.all([queued, inTerminal])
+  })
+})
+
+describe('Skip all approvals and a worker the user is in control of', () => {
+  const skipOn = (s: Started): void => {
+    s.rig.rig.service.setConfig(s.sessionId, { skipApprovals: true })
+  }
+
+  it('routes a destructive command to the terminal, and the brain cannot approve it', async () => {
+    const s = await startWorker()
+    skipOn(s)
+    await stepIn(s)
+    const call = permission(s, 'rm -rf build')
+    const waiting = watch(call)
+    const row = await pendingRow(s)
+    await settle()
+    expect(row).toMatchObject({ route: 'terminal', status: 'pending' })
+    expect(waiting.settled()).toBe(false)
+    expect(events(s).some((t) => t.startsWith('Approved (skipping approvals)'))).toBe(false)
+    const attempt = await s.rig.call(s.rig.brain(), 'resolve_request', {
+      requestId: row.id,
+      decision: 'approve'
+    })
+    expect(attempt.value['error']).toBe('not_resolvable')
+    s.rig.rig.service.answerAttention(row.id, { approve: false })
+    await call
+  })
+
+  it('does not sweep a request waiting in the terminal when turned on, and approves it at hand-back', async () => {
+    const s = await startWorker()
+    const call = permission(s, 'rm -rf build')
+    const row = await pendingRow(s)
+    await stepIn(s)
+    expect(repo(s).get(row.id)?.route).toBe('terminal')
+
+    skipOn(s)
+    await settle()
+    expect(repo(s).get(row.id)).toMatchObject({ route: 'terminal', status: 'pending' })
+
+    await handBack(s)
+    expect((await call).value).toMatchObject({ behavior: 'allow' })
+    expect(repo(s).get(row.id)?.status).toBe('approved')
+    expect(events(s)).toContain('Approved (skipping approvals): rm -rf build')
+    expect(repo(s).listPending(s.sessionId)).toEqual([])
+  })
+
+  it('keeps a waiting push after hand-back, and runs the next command with no request', async () => {
+    const s = await startWorker()
+    const push = permission(s, 'git push origin arc/retry-work')
+    const row = await pendingRow(s)
+    await stepIn(s)
+    skipOn(s)
+    await handBack(s)
+    expect(repo(s).get(row.id)).toMatchObject({ route: 'queue', status: 'pending' })
+
+    expect((await permission(s, 'rm -rf build')).value).toMatchObject({ behavior: 'allow' })
+    s.rig.rig.service.answerAttention(row.id, { approve: false })
+    await push
+  })
+
+  it('leaves Auto-approve as it is on a stepped-in worker while skip is off', async () => {
+    const s = await startWorker()
+    const call = permission(s, 'rm -rf build')
+    const row = await pendingRow(s)
+    await stepIn(s)
+    s.rig.rig.service.setConfig(s.sessionId, { autoApprove: true })
+    await settle()
+    // Unchanged: the sweep covers a request waiting in the terminal, and a new one is covered too.
+    expect(repo(s).get(row.id)?.status).toBe('approved')
+    expect((await call).value).toMatchObject({ behavior: 'allow' })
+    expect((await permission(s, 'brew install jq')).value).toMatchObject({ behavior: 'allow' })
+    expect(events(s).some((t) => t.startsWith('Approved (skipping approvals)'))).toBe(false)
   })
 })

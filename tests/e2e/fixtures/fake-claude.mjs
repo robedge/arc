@@ -55,6 +55,7 @@
 //                           The role is FAKE_CLAUDE_ROLE, else the marker `[arc-role:<role>]` found in
 //                           the value of `--append-system-prompt`. A worker also tries
 //                           `<dir>/worker-<slug>.jsonl` first, with the slug from `[arc-worker:<slug>]`.
+//                           A worker started with `--resume` tries `<dir>/worker-<slug>-resumed.jsonl` before that.
 //                           A brain started with `--resume` tries `<dir>/brain-resumed-<n>.jsonl` first (n = 1 for
 //                           the first resumed brain run in FAKE_CLAUDE_LOG, 2 for the next, and so on), then
 //                           `<dir>/brain-resumed.jsonl`, so a restarted brain can behave differently from the first run.
@@ -490,6 +491,10 @@ function resolveScriptPath() {
     const role = env.FAKE_CLAUDE_ROLE ?? marker?.[1]
     const worker = /\[arc-worker:([A-Za-z0-9_-]+)\]/.exec(flagValue('--append-system-prompt') ?? '')
     if (role === 'worker' && worker) {
+      if (flagValue('--resume')) {
+        const resumed = join(dir, `worker-${worker[1]}-resumed.jsonl`)
+        if (existsSync(resumed)) return resumed
+      }
       const specific = join(dir, `worker-${worker[1]}.jsonl`)
       if (existsSync(specific)) return specific
     }

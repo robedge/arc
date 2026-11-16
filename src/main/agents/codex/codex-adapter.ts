@@ -28,6 +28,7 @@ import {
   buildThreadResumeParams,
   buildThreadStartParams,
   finishCodexEnv,
+  sandboxPolicyFor,
   workingCopiesOf
 } from './codex-config'
 import { writeArcRules } from './codex-rules'
@@ -229,6 +230,10 @@ class CodexHandle implements AgentHandle {
   private threadId = ''
   /** Set by `setModel`; sent with every `turn/start` from then on. */
   private modelOverride: string | undefined
+  /** Set by `setSandbox`; sent as `sandboxPolicy` with every `turn/start` from then on (a turn without it keeps the last policy). */
+  private sandboxOverride: JsonObject | undefined
+  /** What the thread started with; the restore policy on turning Skip all approvals off is built from it. */
+  private startOptions: CodexStartRequest | undefined
   private activeTurnId: string | null = null
   /** The in-flight `turn/start`; `interrupt()` waits for it because the turn id is not known before. */
   private starting: Promise<void> | null = null
@@ -352,6 +357,7 @@ class CodexHandle implements AgentHandle {
       throw new ProviderUnavailableError('codex', 'signed_out', "Codex isn't signed in.")
     }
 
+    this.startOptions = options
     const resumeId = options.resume?.threadId
     const reply = threadResponseSchema.safeParse(
       resumeId
@@ -494,7 +500,8 @@ class CodexHandle implements AgentHandle {
         await this.rpc.request('turn/start', {
           threadId: this.threadId,
           input: typeof input === 'string' ? [{ type: 'text', text: input }] : input,
-          ...(this.modelOverride !== undefined ? { model: this.modelOverride } : {})
+          ...(this.modelOverride !== undefined ? { model: this.modelOverride } : {}),
+          ...(this.sandboxOverride !== undefined ? { sandboxPolicy: this.sandboxOverride } : {})
         })
       )
       const id = reply.turn.id
@@ -528,6 +535,17 @@ class CodexHandle implements AgentHandle {
   /** A Codex model change takes effect from the next turn: `turn/start` carries the model (tech spec 2.1). */
   setModel(model: string): void {
     this.modelOverride = model
+  }
+
+  /** The sandbox for the turns that start from now on. A turn already running keeps its own. */
+  setSandbox(policy: JsonObject): void {
+    this.sandboxOverride = policy
+  }
+
+  /** Skip all approvals changed (spec 015): lift the sandbox, or restore the role's own explicitly. */
+  setSkipApprovals(on: boolean): void {
+    if (!this.startOptions) return
+    this.setSandbox(sandboxPolicyFor(this.startOptions, on))
   }
 
   /**

@@ -1,0 +1,13 @@
+# A destructive command that waits for the user, then another, a push, a question and a last destructive command.
+# Turning skip on approves the first at once and the second runs on its own; the push and the question still ask;
+# the last command asks again once the test has turned skip off.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool":{"name":"Bash","input":{"command":"rm -rf build","description":"Delete the build folder"}}}
+{"tool":{"name":"Bash","input":{"command":"rm -rf /Users/redgell/v9-outside/old","description":"Delete a folder"}}}
+{"tool":{"name":"Bash","input":{"command":"git push origin arc/skip","description":"Push"}}}
+{"tool":{"name":"AskUserQuestion","input":{"questions":[{"question":"Which target should the cleanup use?","header":"Target","options":[{"label":"Dist","description":"Clean dist"},{"label":"Build","description":"Clean build"}],"multiSelect":false}]}}}
+{"tool":{"name":"Bash","input":{"command":"rm -rf dist","description":"Delete the dist folder"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Finished the checks"}}}
+{"say":"Done."}
+{"result":true}

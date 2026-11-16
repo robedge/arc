@@ -1,0 +1,8 @@
+# The same worker after Arc replaced its process at hand-back (Skip all approvals changed while the user was in control):
+# its first message is the hand-back text, and it carries on with the second destructive command.
+{"waitForStdin":"handed control back to you"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"tool":{"name":"Bash","input":{"command":"rm -rf dist","description":"Delete the dist folder"}}}
+{"mcp":{"tool":"report_done","args":{"summary":"Cleaned up"}}}
+{"say":"Done."}
+{"result":true}

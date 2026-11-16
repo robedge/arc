@@ -17,6 +17,7 @@ const header: Header = {
   workers: { mode: 'auto' },
   brainModel: 'sonnet',
   autoApprove: false,
+  skipApprovals: false,
   allowRules: [],
   status: 'active',
   createdAt: 1,
@@ -128,4 +129,96 @@ it('maps the new event kinds to icons and tones', () => {
   expect(eventStyle('allow-rule')).toMatchObject({ icon: 'check', tone: 'success' })
   expect(eventStyle('auto-approved')).toMatchObject({ icon: 'check', tone: 'accent' })
   expect(eventStyle('auto-approve')).toMatchObject({ icon: 'info', tone: 'accent' })
+})
+
+const lastSetConfig = (): unknown =>
+  invoke.mock.calls.filter((c) => c[0] === 'sessions:set-config').at(-1)?.[1]
+
+it('turning Skip all approvals on opens the dialog and the switch stays off until confirmed', async () => {
+  show()
+  await openApprovals()
+  const skip = screen.getByRole('switch', { name: 'Skip all approvals' }) as HTMLInputElement
+  await fireEvent.click(skip)
+  expect(screen.getByRole('heading', { name: 'Skip all approvals?' })).toBeTruthy()
+  // The menu closes so it never sits on top of the warning.
+  expect(screen.queryByRole('dialog', { name: 'Approvals' })).toBeNull()
+  expect(invoke.mock.calls.some((c) => c[0] === 'sessions:set-config')).toBe(false)
+  await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('heading', { name: 'Skip all approvals?' })).toBeNull()
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Approvals/ }))
+  )
+  await openApprovals()
+  expect(
+    (screen.getByRole('switch', { name: 'Skip all approvals' }) as HTMLInputElement).checked
+  ).toBe(false)
+  expect(invoke.mock.calls.some((c) => c[0] === 'sessions:set-config')).toBe(false)
+})
+
+it('confirming the dialog sends set-config skipApprovals true and never touches autoApprove', async () => {
+  show()
+  await openApprovals()
+  await fireEvent.click(screen.getByRole('switch', { name: 'Skip all approvals' }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Skip all approvals' }))
+  await waitFor(() =>
+    expect(invoke).toHaveBeenCalledWith('sessions:set-config', {
+      sessionId: 's1',
+      skipApprovals: true
+    })
+  )
+  expect(lastSetConfig()).not.toHaveProperty('autoApprove')
+})
+
+it('turning Skip all approvals off sends set-config false with no dialog', async () => {
+  show({ skipApprovals: true })
+  await openApprovals()
+  const skip = screen.getByRole('switch', { name: 'Skip all approvals' }) as HTMLInputElement
+  expect(skip.checked).toBe(true)
+  await fireEvent.click(skip)
+  expect(screen.queryByRole('heading', { name: 'Skip all approvals?' })).toBeNull()
+  await waitFor(() =>
+    expect(invoke).toHaveBeenCalledWith('sessions:set-config', {
+      sessionId: 's1',
+      skipApprovals: false
+    })
+  )
+})
+
+it('Auto-approve shows on and locked while skip is on, and the user value returns after', async () => {
+  const view = show({ autoApprove: false, skipApprovals: true })
+  await openApprovals()
+  const auto = screen.getByRole('switch', { name: 'Auto-approve' }) as HTMLInputElement
+  expect(auto.checked).toBe(true)
+  expect(auto.disabled).toBe(true)
+  const wrapper = auto.closest('[title]') as HTMLElement
+  expect(wrapper.getAttribute('title')).toBe('Covered by Skip all approvals')
+  const describedBy = wrapper.getAttribute('aria-describedby') as string
+  expect(document.getElementById(describedBy)?.textContent).toBe('Covered by Skip all approvals')
+
+  await view.rerender({
+    header: { ...header, autoApprove: false, skipApprovals: false },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  const after = screen.getByRole('switch', { name: 'Auto-approve' }) as HTMLInputElement
+  expect(after.checked).toBe(false)
+  expect(after.disabled).toBe(false)
+})
+
+it('a user Auto-approve of on is still on after skip turns off', async () => {
+  const view = show({ autoApprove: true, skipApprovals: true })
+  await openApprovals()
+  await view.rerender({
+    header: { ...header, autoApprove: true, skipApprovals: false },
+    groupName: 'Team',
+    onback: vi.fn()
+  })
+  expect((screen.getByRole('switch', { name: 'Auto-approve' }) as HTMLInputElement).checked).toBe(
+    true
+  )
+})
+
+it('maps the skip event kinds', () => {
+  expect(eventStyle('skip-approvals')).toMatchObject({ tone: 'danger' })
+  expect(eventStyle('skip-approved')).toMatchObject({ icon: 'check' })
 })

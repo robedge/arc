@@ -6,7 +6,11 @@ import type { PersonalLaunchConfig } from '../../../src/main/personal/personal-c
 import { BypassDetector } from '../../../src/main/personal/bypass-detector'
 import { mapCursorModels } from '../../../src/main/agents/cursor/cursor-probe'
 import { ModelRegistry } from '../../../src/main/models/model-registry'
-import { buildResolverPrompt, buildWorkerPrompt } from '../../../src/main/sessions/worker-manager'
+import {
+  buildResolverPrompt,
+  buildWorkerPrompt,
+  HAND_BACK_TEXT
+} from '../../../src/main/sessions/worker-manager'
 import type { WorkerManager } from '../../../src/main/sessions/worker-manager'
 import type {
   ProviderState,
@@ -876,5 +880,227 @@ describe('the user Cursor servers switched off for Workers', () => {
       new AbortController().signal
     )
     expect(decision?.decision).toBe('reject')
+  })
+})
+
+describe('Skip all approvals on a live Cursor worker (spec 015)', () => {
+  const NUDGE = '[Arc] You have not called report_done.'
+  const turnOver = (handle: FakeHandle): void =>
+    handle.emit({ type: 'turn-result', ok: true, interrupted: false, durationMs: 1 })
+
+  const denyOf = (path: string): string[] =>
+    (
+      JSON.parse(readFileSync(join(path, '.cursor', 'cli.json'), 'utf8')) as {
+        permissions: { deny: string[] }
+      }
+    ).permissions.deny
+
+  async function liveWorker(personal?: PersonalLaunchConfig): Promise<{
+    r: CursorRig
+    sessionId: string
+    workerId: string
+    tree: string
+    first: FakeHandle
+  }> {
+    const r = await cursorRig('ok', personal)
+    const sessionId = await r.e.startSession('autonomous')
+    r.e.rig.service.setConfig(sessionId, { workers: { mode: 'provider', provider: 'cursor' } })
+    const result = await r.e.call(r.e.brain(), 'spawn_worker', spawnArgs('review'))
+    const workerId = String(result.value['workerId'])
+    await until(() => r.cursor.handles.length === 1)
+    const first = r.cursor.handles[0] as FakeHandle
+    first.emit({ type: 'session', providerSessionId: 'acp-1', model: 'default[]', mcpServers: [] })
+    await until(() => r.e.rig.deps.workersRepo.get(workerId)?.status === 'working')
+    const tree = r.e.rig.deps.worktreesRepo.listByWorker(workerId)[0]?.path ?? ''
+    return { r, sessionId, workerId, tree, first }
+  }
+
+  it('rewrites the live worker file at once and replaces the process after its turn, loading the same conversation', async () => {
+    const { r, sessionId, workerId, tree, first } = await liveWorker()
+    expect(denyOf(tree)).toContain('Shell(curl)')
+    expect(denyOf(tree).some((d) => d.startsWith('Write(') && d.includes(r.e.api.path))).toBe(true)
+
+    // The turn is running: the toggle rewrites the file and marks the worker, and nothing is replaced.
+    first.idle = false
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: true })
+    await until(() => !denyOf(tree).includes('Shell(curl)'))
+    expect(
+      denyOf(tree).filter((d) => d.startsWith('Write(') && !d.includes('/attachments/'))
+    ).toEqual([])
+    expect(denyOf(tree).some((d) => d.includes('/attachments/**'))).toBe(true)
+    expect(denyOf(tree).filter((d) => d.startsWith('Shell('))).toEqual([])
+    expect(first.stopped).toBe(false)
+    expect(r.cursor.resumes).toHaveLength(0)
+
+    // The turn ends: the nudge is sent as the first message of a process that loads the conversation.
+    first.idle = true
+    turnOver(first)
+    await until(() => r.cursor.resumes.length === 1)
+    expect(first.stopped).toBe(true)
+    expect(r.cursor.resumes[0]?.resume?.threadId).toBe('acp-1')
+    const second = r.cursor.handles[1] as FakeHandle
+    await until(() => second.sent.length === 1)
+    expect(second.sent[0]).toContain(NUDGE)
+    expect(first.sent.filter((t) => t.includes(NUDGE))).toEqual([])
+    // The worker is still working: the old process's exit was not the worker ending.
+    expect(r.e.rig.deps.workersRepo.get(workerId)?.status).not.toBe('failed')
+  })
+
+  it('does the same in the other direction, restoring the full file and relaunching again', async () => {
+    const { r, sessionId, tree, first } = await liveWorker()
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: true })
+    turnOver(first)
+    await until(() => r.cursor.resumes.length === 1)
+    const second = r.cursor.handles[1] as FakeHandle
+    second.emit({ type: 'session', providerSessionId: 'acp-1', model: 'default[]', mcpServers: [] })
+    await until(() => second.sent.length === 1)
+
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: false })
+    await until(() => denyOf(tree).includes('Shell(curl)'))
+    expect(denyOf(tree).some((d) => d.startsWith('Write(') && d.includes(r.e.api.path))).toBe(true)
+    // Idle between turns: the brain's next message is the boundary.
+    const sent = await r.e.call(r.e.brain(), 'message_worker', { workerId: 'W1', text: 'go on' })
+    expect(sent.value).toMatchObject({ delivered: true })
+    await until(() => r.cursor.resumes.length === 2)
+    expect(second.stopped).toBe(true)
+    expect(r.cursor.resumes[1]?.resume?.threadId).toBe('acp-1')
+    const third = r.cursor.handles[2] as FakeHandle
+    await until(() => third.sent.length === 1)
+    expect(third.sent[0]).toContain('go on')
+  })
+
+  it('does not replace the process when the flag is back where it started before the turn ends', async () => {
+    const { r, sessionId, first } = await liveWorker()
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: true })
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: false })
+    turnOver(first)
+    await until(() => first.sent.some((t) => t.includes(NUDGE)))
+    expect(first.stopped).toBe(false)
+    expect(r.cursor.resumes).toHaveLength(0)
+  })
+
+  it('does not replace it mid-turn when a message from the brain arrives, and sends it to the new process at the boundary', async () => {
+    const { r, workerId, sessionId, first } = await liveWorker()
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: true })
+    first.idle = false
+    const queued = await r.e.call(r.e.brain(), 'message_worker', { workerId: 'W1', text: 'use v2' })
+    expect(queued.value).toMatchObject({ delivered: true })
+    expect(first.stopped).toBe(false)
+    expect(first.sent.at(-1)).toContain('use v2')
+
+    first.idle = true
+    const next = await r.e.call(r.e.brain(), 'message_worker', { workerId: 'W1', text: 'and v3' })
+    expect(next.value).toMatchObject({ delivered: true })
+    await until(() => r.cursor.resumes.length === 1)
+    expect(first.stopped).toBe(true)
+    const second = r.cursor.handles[1] as FakeHandle
+    await until(() => second.sent.length === 1)
+    expect(second.sent[0]).toContain('and v3')
+    expect(r.e.rig.deps.workersRepo.get(workerId)?.status).not.toBe('failed')
+  })
+
+  it('waits while the user is in control and replaces the process at hand-back', async () => {
+    const { r, workerId, sessionId, first } = await liveWorker()
+    await r.e.rig.service.stepInWorker(workerId)
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: true })
+    turnOver(first)
+    await until(
+      () =>
+        !denyOf(r.e.rig.deps.worktreesRepo.listByWorker(workerId)[0]?.path ?? '').includes(
+          'Shell(curl)'
+        )
+    )
+    expect(first.stopped).toBe(false)
+    expect(r.cursor.resumes).toHaveLength(0)
+
+    await r.e.rig.service.handBackWorker(workerId)
+    await until(() => r.cursor.resumes.length === 1)
+    expect(first.stopped).toBe(true)
+    const second = r.cursor.handles[1] as FakeHandle
+    await until(() => second.sent.length === 1)
+    expect(second.sent[0]).toContain(HAND_BACK_TEXT)
+    expect(r.e.rig.deps.workersRepo.get(workerId)?.userControl).toBeNull()
+  })
+
+  it('keeps the publish entries when the user Cursor setup would let a push through, and says so when a push is blocked', async () => {
+    const personal: PersonalLaunchConfig = {
+      claude: () => Promise.reject(new Error('no claude here')),
+      codexMcp: () => Promise.resolve({ servers: [], degraded: false }),
+      bypass: () =>
+        Promise.resolve({
+          claudeHookEvents: [],
+          claudeHookEventsByRole: { brain: [], workers: [] },
+          codexAllowPrefixes: [],
+          codexRulesCovered: 0,
+          cursor: { allowEntries: ['Shell(git push)'], hookEvents: [] }
+        })
+    }
+    const { r, sessionId, workerId, tree } = await liveWorker(personal)
+    r.e.rig.service.setConfig(sessionId, { skipApprovals: true })
+    await until(() => !denyOf(tree).includes('Shell(curl)'))
+    expect(denyOf(tree).filter((d) => d.startsWith('Shell('))).toEqual([
+      'Shell(git push)',
+      'Shell(gh)',
+      'Shell(glab)'
+    ])
+
+    const start = r.cursor.starts[0]
+    const base = {
+      status: 'completed',
+      rawInput: {},
+      locations: [],
+      content: [],
+      permissionAsked: false,
+      startedAt: 1,
+      inProgressAt: 2,
+      completedAt: 64
+    }
+    start?.cursor.onUnasked?.({
+      ...base,
+      toolCallId: 'a',
+      title: '',
+      kind: 'execute',
+      rawInput: { command: 'git push origin HEAD' }
+    })
+    start?.cursor.onUnasked?.({
+      ...base,
+      toolCallId: 'b',
+      title: '',
+      kind: 'execute',
+      rawInput: { command: 'curl https://example.com' }
+    })
+    start?.cursor.onUnasked?.({
+      ...base,
+      toolCallId: 'c',
+      title: '',
+      kind: 'edit',
+      locations: [join(r.e.web.path, 'src', 'x.ts')],
+      content: [{ type: 'diff', path: join(r.e.web.path, 'src', 'x.ts') }]
+    })
+    const notes = r.e.rig.deps.eventsRepo
+      .latest(sessionId, 100)
+      .filter((e) => e.kind === 'cursor-blocked')
+    expect(notes.map((n) => n.text)).toEqual([
+      'W1 (Cursor) was blocked from pushing. Your Cursor settings allow pushes without asking, so Arc keeps them blocked; run the push from Review changes.'
+    ])
+    expect(notes[0]?.workerId).toBe(workerId)
+  })
+
+  it('writes the lifted file at launch when the session already skips approvals', async () => {
+    const r = await cursorRig()
+    const sessionId = await r.e.startSession('autonomous')
+    r.e.rig.service.setConfig(sessionId, {
+      workers: { mode: 'provider', provider: 'cursor' },
+      skipApprovals: true
+    })
+    const result = await r.e.call(r.e.brain(), 'spawn_worker', spawnArgs('review'))
+    await until(() => r.cursor.starts.length === 1)
+    const tree =
+      r.e.rig.deps.worktreesRepo.listByWorker(String(result.value['workerId']))[0]?.path ?? ''
+    expect(
+      denyOf(tree).filter(
+        (d) => d.startsWith('Shell(') || (d.startsWith('Write(') && !d.includes('/attachments/'))
+      )
+    ).toEqual([])
   })
 })

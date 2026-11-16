@@ -202,6 +202,7 @@ export const channelSchemas = {
       'providers.workers': workersPrefSchema.optional(),
       'usage.checkClaudePlanOnLaunch': z.boolean().optional(),
       'knowledge.suggestOnFinish': z.boolean().optional(),
+      'approvals.skipAllByDefault': z.boolean().optional(),
       'agents.loadOff': agentLoadOffSchema.optional()
     })
     .strict(),
@@ -235,6 +236,8 @@ export const channelSchemas = {
       workerLimit: z.number().int().min(1).max(6),
       // The brain picked in the dialog; saved as the Settings brain default.
       brainModel: modelRefSchema.optional(),
+      // Start with Skip all approvals on; left out, the Settings default applies.
+      skipApprovals: z.boolean().optional(),
       ...attachmentFields
     })
     .strict()
@@ -326,7 +329,9 @@ export const channelSchemas = {
       workers: workersPrefSchema.optional(),
       brainModel: modelRefSchema.optional(),
       // Approve every protected request automatically, except pushes and merge/pull requests.
-      autoApprove: z.boolean().optional()
+      autoApprove: z.boolean().optional(),
+      // Skip every approval except pushes, merge/pull requests and questions.
+      skipApprovals: z.boolean().optional()
     })
     .strict(),
   // Removes one "Always allow this in this session" rule; returns the updated header.

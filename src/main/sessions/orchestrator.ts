@@ -102,6 +102,7 @@ import { createCursorApprovalHandler } from './cursor-approvals'
 import type { TerminalBacklog } from './terminal-log'
 import { effectiveBrain } from './session-prefs'
 import { earlierAttachmentsBlock } from '../attachments/attachment-block'
+import { sentAttachmentsRoot } from '../attachments/attachment-paths'
 import { refOfRow } from '../attachments/worker-attachments'
 import { LOST_HISTORY_HEADER, buildHandoffPreamble } from './brain-handoff'
 import { reasonOf } from '../models/provider-resolution'
@@ -212,6 +213,12 @@ export function modeLabel(mode: SessionMode): string {
 }
 
 /** The "[Arc] Mode is now ..." note sent to a running brain after the user changes mode or limit. */
+/** The notes put in front of the brain's next message when Skip all approvals turns on or off. */
+export const skipApprovalsOnNote =
+  "[Arc] Skip all approvals is on. Worker permission requests are approved automatically; don't wait on them or call resolve_request for them. Pushes, pull and merge requests, and questions still go to the user. Sandbox and blocked-edit limits are lifted from each agent's next turn, so don't suggest rerunning a step on another provider."
+export const skipApprovalsOffNote =
+  '[Arc] Skip all approvals is off. Workers ask permission again; requests reach you as before.'
+
 export function modeNote(mode: SessionMode, workerLimit: number): string {
   return `[Arc] Mode is now ${modeLabel(mode)}, limit ${workerLimit}.`
 }
@@ -764,6 +771,8 @@ export class Orchestrator {
   private readonly brainAgentId: string
   /** Set when mode or limit changed while the brain runs; delivered in front of its next message. */
   private pendingModeNote: string | undefined
+  /** One note per Skip all approvals change since the brain's last send, oldest first. */
+  private pendingSkipNotes: string[] = []
   private pendingPromptNote: string | undefined
   /** The group's projects or knowledge folder changed; delivered in front of the brain's next message. */
   private pendingGroupNote: string | undefined
@@ -934,6 +943,7 @@ export class Orchestrator {
         setWorkerStatus: (workerId, status) => this.workers.setAttentionStatus(workerId, status),
         isControlled: (workerId) => this.workers.isControlled(workerId),
         autoApprove: () => deps.sessionsRepo.getById(deps.sessionId)?.autoApprove ?? false,
+        skipApprovals: () => deps.sessionsRepo.getById(deps.sessionId)?.skipApprovals ?? false,
         allowRules: () => resources.allowRulesRepo.listBySession(deps.sessionId),
         addAllowRule: (rule) => {
           const row = {
@@ -1101,10 +1111,12 @@ export class Orchestrator {
     const suggestChange = this.pendingSuggestChange
     const handoff = this.pendingHandoff
     this.pendingHandoff = undefined
+    const skipNotes = this.pendingSkipNotes
     const notes = [
       handoff,
       this.pendingPromptNote,
       this.pendingModeNote,
+      ...skipNotes,
       groupNote,
       commandsNote,
       undone.length > 0 ? undoNote(undone) : undefined,
@@ -1114,6 +1126,7 @@ export class Orchestrator {
     const promptNoteSent = this.pendingPromptNote !== undefined
     this.pendingPromptNote = undefined
     this.pendingModeNote = undefined
+    this.pendingSkipNotes = []
     this.pendingGroupNote = undefined
     this.pendingCommandsNote = undefined
     this.pendingUndoNotes = []
@@ -1125,6 +1138,7 @@ export class Orchestrator {
     )
     if (!written) {
       this.pendingHandoff ??= handoff
+      this.pendingSkipNotes = [...skipNotes, ...this.pendingSkipNotes]
       this.pendingUndoNotes = [...undone, ...this.pendingUndoNotes]
       this.pendingDiscardedSuggestions = [...discarded, ...this.pendingDiscardedSuggestions]
       this.pendingGroupNote ??= groupNote
@@ -1331,6 +1345,19 @@ export class Orchestrator {
       })
       if (this.handle) this.pendingModeNote = modeNote(after.mode, after.workerLimit)
     }
+  }
+
+  /**
+   * Skip all approvals was turned on or off: the brain learns of it with a note in front of its next
+   * message, once per change. A session whose brain has not started yet reads the flag when it does.
+   */
+  setSkipApprovals(on: boolean): void {
+    if (this.closed) return
+    // The sandbox of a Codex brain and of the live Codex workers changes from their next turn.
+    this.workers.setSkipApprovals(on)
+    if (!this.handle) return
+    this.handle.setSkipApprovals?.(on)
+    this.pendingSkipNotes.push(on ? skipApprovalsOnNote : skipApprovalsOffNote)
   }
 
   /**
@@ -1727,7 +1754,10 @@ export class Orchestrator {
     return {
       worktreeRoots: [],
       readOnlyDirs: [],
-      cwd: this.runningLaunch?.cwd ?? this.deps.getLaunch().cwd
+      cwd: this.runningLaunch?.cwd ?? this.deps.getLaunch().cwd,
+      ...(this.deps.resources.getSessionDir === undefined
+        ? {}
+        : { attachmentsDir: sentAttachmentsRoot(this.deps.resources.getSessionDir()) })
     }
   }
 
@@ -2073,6 +2103,7 @@ export class Orchestrator {
     const claude: ClaudeStartOptions = {}
     // Codex asks Arc through this handler; Claude's prompts arrive through the bridge instead.
     const codex: CodexStartOptions = {
+      skipApprovals: this.deps.sessionsRepo.getById(this.deps.sessionId)?.skipApprovals ?? false,
       approvals: createCodexApprovalHandler({
         agent: brainAgent,
         requestAction: (a, action, meta, call) =>

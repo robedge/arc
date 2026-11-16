@@ -15,6 +15,7 @@ export const appSettingSchemas = {
   'providers.workers': workersPrefSchema,
   'usage.checkClaudePlanOnLaunch': z.boolean(),
   'knowledge.suggestOnFinish': z.boolean(),
+  'approvals.skipAllByDefault': z.boolean(),
   'agents.loadOff': agentLoadOffSchema
 } as const
 
@@ -26,6 +27,7 @@ export const appSettingDefaults: AppSettingValues = {
   'providers.workers': { mode: 'auto' },
   'usage.checkClaudePlanOnLaunch': true,
   'knowledge.suggestOnFinish': true,
+  'approvals.skipAllByDefault': false,
   'agents.loadOff': { brain: [], workers: [] }
 }
 
@@ -78,6 +80,7 @@ export class AppSettingsRepo {
       'providers.workers': this.get('providers.workers'),
       'usage.checkClaudePlanOnLaunch': this.get('usage.checkClaudePlanOnLaunch'),
       'knowledge.suggestOnFinish': this.get('knowledge.suggestOnFinish'),
+      'approvals.skipAllByDefault': this.get('approvals.skipAllByDefault'),
       'agents.loadOff': this.get('agents.loadOff')
     }
   }
