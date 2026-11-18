@@ -7,7 +7,7 @@ export function mockArc(
   const invoke = vi.fn(async (channel: string, request: unknown) => handler(channel, request))
   Object.defineProperty(window, 'arc', {
     configurable: true,
-    value: { invoke, on: vi.fn(() => () => {}), getPathForFile: vi.fn(() => '') }
+    value: { invoke, send: vi.fn(), on: vi.fn(() => () => {}), getPathForFile: vi.fn(() => '') }
   })
   return invoke
 }

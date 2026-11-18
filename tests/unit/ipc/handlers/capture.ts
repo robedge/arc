@@ -6,6 +6,7 @@ export type Captured = Map<string, (request: unknown) => unknown>
 export function registerMock(captured: Captured, emit: unknown = vi.fn()): Record<string, unknown> {
   return {
     handle: (channel: string, fn: (request: unknown) => unknown) => captured.set(channel, fn),
+    listen: (channel: string, fn: (request: unknown) => unknown) => captured.set(channel, fn),
     emit
   }
 }

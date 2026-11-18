@@ -1,13 +1,20 @@
 import { ipcMain } from 'electron'
 import type { IpcMainInvokeEvent } from 'electron'
 import type { z } from 'zod'
-import type { Channel, ChannelResponse, IpcEventName, IpcEvents } from '@shared/ipc/contract'
-import { channelSchemas } from '@shared/ipc/contract'
+import type {
+  Channel,
+  ChannelResponse,
+  IpcEventName,
+  IpcEvents,
+  SendChannel,
+  SendRequest
+} from '@shared/ipc/contract'
+import { channelSchemas, sendSchemas } from '@shared/ipc/contract'
 import { getMainWindow } from '../app/main-window'
 import { ipcLog } from '../logging'
 import { wrapHandler } from './wrap-handler'
 
-function isMainWindowTopFrame(event: IpcMainInvokeEvent): boolean {
+function isMainWindowTopFrame(event: Pick<IpcMainInvokeEvent, 'senderFrame'>): boolean {
   const win = getMainWindow()
   return win !== null && event.senderFrame === win.webContents.mainFrame
 }
@@ -26,6 +33,22 @@ export function handle<C extends Channel>(
     fn as (request: unknown) => ChannelResponse<C> | Promise<ChannelResponse<C>>
   )
   ipcMain.handle(channel, (event, raw: unknown) => wrapped(event, raw))
+}
+
+/**
+ * Receive a fire-and-forget message from the main window's top frame. There is no reply: a message
+ * from anywhere else, or one that fails validation, is dropped without a trace of its payload.
+ */
+export function listen<C extends SendChannel>(
+  channel: C,
+  fn: (request: SendRequest<C>) => void
+): void {
+  ipcMain.on(channel, (event, raw: unknown) => {
+    if (!isMainWindowTopFrame(event)) return
+    const parsed = sendSchemas[channel].safeParse(raw)
+    if (!parsed.success) return
+    fn(parsed.data)
+  })
 }
 
 /** Send a push event to the main window. */

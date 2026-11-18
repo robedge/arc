@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `spoken` integer DEFAULT false NOT NULL;

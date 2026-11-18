@@ -55,6 +55,7 @@ const expected: Record<string, string> = {
   ATTACHMENTS_WITH_COMMAND: "Attachments can't be sent with a command.",
   ATTACHMENTS_WITH_PLAN_FEEDBACK: "Attachments can't be added to plan feedback.",
   IO_FAILED: GENERIC,
+  VOICE_MODEL_MISSING: 'Download the voice models in Settings to talk to Nova.',
   INTERNAL: GENERIC,
   VALIDATION_FAILED: GENERIC
 }

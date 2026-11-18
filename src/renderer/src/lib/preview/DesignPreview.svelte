@@ -8,6 +8,7 @@
   import { commands } from '../stores/commands.svelte'
   import type { DraftStatus } from '../stores/item-draft.svelte'
   import Panel from '../components/ui/Panel.svelte'
+  import NovaPanel from '../components/nova/NovaPanel.svelte'
   import Wordmark from '../components/ui/Wordmark.svelte'
   import RingLogo from '../components/ui/RingLogo.svelte'
   import Button from '../components/ui/Button.svelte'
@@ -83,6 +84,8 @@
   import KnowledgeSuggestionEditor from '../components/knowledge-suggestions/KnowledgeSuggestionEditor.svelte'
   import KnowledgeSettings from '../components/settings/KnowledgeSettings.svelte'
   import ApprovalsSettings from '../components/settings/ApprovalsSettings.svelte'
+  import VoiceSettings from '../components/settings/VoiceSettings.svelte'
+  import { VoiceModelsStore } from '../stores/voice-models.svelte'
   import type { KnowledgeSuggestionView } from '@shared/types/knowledge-suggestion'
   import type { KnowledgeSuggestionProblem } from '../knowledge-suggestions/problem'
   import type { DiffHunk } from '@shared/types/review'
@@ -385,7 +388,12 @@
       'usage.checkClaudePlanOnLaunch': true,
       'knowledge.suggestOnFinish': true,
       'approvals.skipAllByDefault': false,
-      'agents.loadOff': { brain: [], workers: [] }
+      'agents.loadOff': { brain: [], workers: [] },
+      'voice.voiceId': 'af_heart',
+      'voice.speed': 1,
+      'voice.speakPolicy': 'all',
+      'voice.muted': false,
+      'voice.endPauseMs': 1000
     },
     models: sampleModels
   }
@@ -785,6 +793,34 @@
     codexRulesCovered: 12
   }
   const saveStates: DraftStatus[] = ['idle', 'saving', 'saved', 'error']
+
+  const voicePreviewStore = new VoiceModelsStore()
+  voicePreviewStore.seed(
+    [
+      {
+        id: 'kokoro',
+        kind: 'tts',
+        state: 'downloading',
+        bytes: 150_000_000,
+        totalBytes: 330_000_000
+      },
+      {
+        id: 'zipformer-en-20m',
+        kind: 'stt-stream',
+        state: 'missing',
+        bytes: 0,
+        totalBytes: 40_000_000
+      },
+      {
+        id: 'whisper-base-en',
+        kind: 'stt-final',
+        state: 'missing',
+        bytes: 0,
+        totalBytes: 150_000_000
+      }
+    ],
+    'offline'
+  )
 </script>
 
 {#snippet noteParts()}
@@ -1840,9 +1876,15 @@
         </div>
         <KnowledgeSettings preview />
         <ApprovalsSettings preview />
+        <div data-preview-voice-settings><VoiceSettings preview store={voicePreviewStore} /></div>
       </div>
     {/snippet}
     {@render block('Knowledge suggestions', knowledgeSuggestions)}
+
+    {#snippet novaSample()}
+      <div data-preview-nova class="h-96 max-w-[340px]"><NovaPanel preview /></div>
+    {/snippet}
+    {@render block('Nova', novaSample)}
 
     {#snippet attachments()}
       <div data-preview-attachments class="flex flex-col gap-4">

@@ -1,0 +1,8 @@
+# Brain for the Nova speech spec: answers typed questions; the first answer has a code block.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova speech\n\nReady."}
+{"result":true}
+{"waitForStdin":"Show the fix"}
+{"say":"Here is the fix for the bug.\n\n```ts\nconst retries = 3\nclient.configure({ retries })\n```\n\nThat should do it."}
+{"result":true}

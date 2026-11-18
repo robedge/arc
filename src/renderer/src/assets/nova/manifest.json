@@ -1,0 +1,310 @@
+{
+  "version": 1,
+  "baseSize": 1024,
+  "bases": [
+    {
+      "id": "base",
+      "src": "base.webp"
+    }
+  ],
+  "mouthLevels": 12,
+  "mouthBaseOpening": 0.1,
+  "frames": [
+    {
+      "id": "mouth-1",
+      "kind": "mouth",
+      "level": 1,
+      "src": "mouth-1.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 3.3,
+      "width": 204.2,
+      "params": {
+        "lip_variation_three": 7.0
+      }
+    },
+    {
+      "id": "mouth-2",
+      "kind": "mouth",
+      "level": 2,
+      "src": "mouth-2.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 10.0,
+      "width": 201.8,
+      "params": {
+        "lip_variation_three": 11.5
+      }
+    },
+    {
+      "id": "mouth-3",
+      "kind": "mouth",
+      "level": 3,
+      "src": "mouth-3.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 15.8,
+      "width": 198.0,
+      "params": {
+        "lip_variation_three": 21.5
+      }
+    },
+    {
+      "id": "mouth-4",
+      "kind": "mouth",
+      "level": 4,
+      "src": "mouth-4.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 21.5,
+      "width": 194.7,
+      "params": {
+        "lip_variation_three": 31.0
+      }
+    },
+    {
+      "id": "mouth-5",
+      "kind": "mouth",
+      "level": 5,
+      "src": "mouth-5.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 27.8,
+      "width": 190.9,
+      "params": {
+        "lip_variation_three": 38.5
+      }
+    },
+    {
+      "id": "mouth-6",
+      "kind": "mouth",
+      "level": 6,
+      "src": "mouth-6.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 34.2,
+      "width": 188.8,
+      "params": {
+        "lip_variation_three": 45.5
+      }
+    },
+    {
+      "id": "mouth-7",
+      "kind": "mouth",
+      "level": 7,
+      "src": "mouth-7.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 40.3,
+      "width": 187.1,
+      "params": {
+        "lip_variation_three": 52.5
+      }
+    },
+    {
+      "id": "mouth-8",
+      "kind": "mouth",
+      "level": 8,
+      "src": "mouth-8.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 46.4,
+      "width": 185.4,
+      "params": {
+        "lip_variation_three": 60.0
+      }
+    },
+    {
+      "id": "mouth-9",
+      "kind": "mouth",
+      "level": 9,
+      "src": "mouth-9.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 53.0,
+      "width": 183.4,
+      "params": {
+        "lip_variation_three": 67.0
+      }
+    },
+    {
+      "id": "mouth-10",
+      "kind": "mouth",
+      "level": 10,
+      "src": "mouth-10.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 59.0,
+      "width": 181.6,
+      "params": {
+        "lip_variation_three": 74.0
+      }
+    },
+    {
+      "id": "mouth-11",
+      "kind": "mouth",
+      "level": 11,
+      "src": "mouth-11.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 65.1,
+      "width": 180.4,
+      "params": {
+        "lip_variation_three": 82.0
+      }
+    },
+    {
+      "id": "mouth-12",
+      "kind": "mouth",
+      "level": 12,
+      "src": "mouth-12.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 71.2,
+      "width": 178.6,
+      "params": {
+        "lip_variation_three": 90.0
+      }
+    },
+    {
+      "id": "vowel-eee",
+      "kind": "mouth",
+      "vowel": "eee",
+      "src": "vowel-eee.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 39.3,
+      "width": 214.3,
+      "params": {
+        "lip_variation_two": 10.0,
+        "lip_variation_one": 6.0,
+        "input_lip_ratio": 0.1
+      }
+    },
+    {
+      "id": "vowel-eee-2",
+      "kind": "mouth",
+      "vowel": "eee",
+      "variant": 2,
+      "src": "vowel-eee-2.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 33.0,
+      "width": 207.4,
+      "params": {
+        "lip_variation_two": 5.0,
+        "lip_variation_one": 3.0,
+        "input_lip_ratio": 0.1
+      }
+    },
+    {
+      "id": "vowel-oo",
+      "kind": "mouth",
+      "vowel": "oo",
+      "src": "vowel-oo.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 28.6,
+      "width": 144.3,
+      "params": {
+        "lip_variation_two": -12.0,
+        "lip_variation_one": 8.0,
+        "lip_variation_three": 55.0
+      }
+    },
+    {
+      "id": "vowel-oo-2",
+      "kind": "mouth",
+      "vowel": "oo",
+      "variant": 2,
+      "src": "vowel-oo-2.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 12.7,
+      "width": 149.1,
+      "params": {
+        "lip_variation_two": -14.0,
+        "lip_variation_three": 40.0
+      }
+    },
+    {
+      "id": "mouth-closed",
+      "kind": "mouth",
+      "shape": "closed",
+      "src": "mouth-closed.webp",
+      "rect": [362, 546, 296, 240],
+      "feather": 12,
+      "opening": 1.3,
+      "width": 181.2,
+      "params": {
+        "lip_variation_one": 14.0
+      }
+    },
+    {
+      "id": "blink-1",
+      "kind": "blink",
+      "step": 1,
+      "src": "blink-1.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    },
+    {
+      "id": "blink-2",
+      "kind": "blink",
+      "step": 2,
+      "src": "blink-2.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    },
+    {
+      "id": "glance-left",
+      "kind": "glance",
+      "dir": "left",
+      "src": "glance-left.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    },
+    {
+      "id": "glance-right",
+      "kind": "glance",
+      "dir": "right",
+      "src": "glance-right.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    },
+    {
+      "id": "glance-up",
+      "kind": "glance",
+      "dir": "up",
+      "src": "glance-up.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    },
+    {
+      "id": "glance-down",
+      "kind": "glance",
+      "dir": "down",
+      "src": "glance-down.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    },
+    {
+      "id": "glance-upleft",
+      "kind": "glance",
+      "dir": "upleft",
+      "src": "glance-upleft.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    },
+    {
+      "id": "glance-upright",
+      "kind": "glance",
+      "dir": "upright",
+      "src": "glance-upright.webp",
+      "rect": [302, 290, 432, 200],
+      "feather": 12
+    }
+  ],
+  "blinkSequence": ["blink-1", "blink-2", "blink-1"],
+  "blinkTimingsMs": [45, 70, 60]
+}

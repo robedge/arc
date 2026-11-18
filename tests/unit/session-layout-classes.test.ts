@@ -9,9 +9,15 @@ describe('session screen containment (no child may widen its grid column)', () =
   it('SessionScreen grid chain is min-w-0 with a zero-min conversation column', () => {
     const src = sessions('SessionScreen.svelte')
     expect(src).toContain('grid-cols-[minmax(0,1fr)_minmax(300px,380px)]')
+    // Nova open: chat keeps 480px, Nova shrinks to 240px, and the Brain column collapses below 1044px.
+    expect(src).toContain(
+      'grid-cols-[minmax(480px,1fr)_minmax(240px,340px)] @min-[1044px]:grid-cols-[minmax(480px,1fr)_minmax(300px,380px)_minmax(240px,340px)]'
+    )
+    expect(src).toContain("'hidden @min-[1044px]:grid'")
+    expect(src).toContain('@container grid min-h-0 min-w-0')
     expect(src).toContain('<div class="min-h-0 min-w-0">')
     expect(src).toMatch(/grid h-full min-h-0 min-w-0 grid-cols-\[minmax\(0,1fr\)\]/)
-    expect(src).toMatch(/grid min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)_minmax\(120px,32%\)\]/)
+    expect(src).toMatch(/min-h-0 min-w-0 grid-rows-\[minmax\(0,1fr\)_minmax\(120px,32%\)\]/)
   })
 
   it('ConversationTabs uses a single minmax(0,1fr) column and min-w-0 tabpanels', () => {

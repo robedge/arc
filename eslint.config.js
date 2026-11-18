@@ -19,7 +19,9 @@ export default tseslint.config(
       'context',
       'src/main/db/migrations',
       // The marketing site is its own pnpm project with its own checks.
-      'website'
+      'website',
+      // Spike N5's Python venv and LivePortrait clone.
+      'scripts/nova-face/.cache'
     ]
   },
   js.configs.recommended,

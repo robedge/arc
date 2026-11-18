@@ -3,6 +3,8 @@
   import { groups } from '../../stores/groups.svelte'
   import { review } from '../../stores/review.svelte'
   import ReviewScreen from '../review/ReviewScreen.svelte'
+  import { nova } from '../../stores/nova.svelte'
+  import NovaPanel from '../nova/NovaPanel.svelte'
   import { workerTerminals } from '../../stores/worker-terminals.svelte'
   import { workerControl } from '../../stores/worker-control.svelte'
   import { messageFor } from '../../ipc/messages'
@@ -26,6 +28,7 @@
     return () => {
       workerTerminals.reset()
       workerControl.reset()
+      nova.closeAndStop()
     }
   })
 
@@ -58,9 +61,13 @@
       <ProviderNote {header} workers={activeSession.workers} />
     </div>
     <!-- Both bodies share one cell; the hidden one keeps its layout so scroll and drafts survive. -->
-    <div class="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
+    <div
+      class="@container grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]"
+    >
       <div
-        class="col-start-1 row-start-1 grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_minmax(300px,380px)] gap-3 {review.open
+        class="col-start-1 row-start-1 grid min-h-0 min-w-0 gap-3 {nova.open
+          ? 'grid-cols-[minmax(480px,1fr)_minmax(240px,340px)] @min-[1044px]:grid-cols-[minmax(480px,1fr)_minmax(300px,380px)_minmax(240px,340px)]'
+          : 'grid-cols-[minmax(0,1fr)_minmax(300px,380px)]'} {review.open
           ? 'pointer-events-none invisible'
           : ''}"
         inert={review.open}
@@ -69,7 +76,11 @@
         <div class="min-h-0 min-w-0">
           <ConversationTabs sessionId={header.id} workers={activeSession.workers} />
         </div>
-        <div class="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_minmax(120px,32%)] gap-3">
+        <div
+          class="min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_minmax(120px,32%)] gap-3 {nova.open
+            ? 'hidden @min-[1044px]:grid'
+            : 'grid'}"
+        >
           <AgentColumn
             brainState={activeSession.brainState}
             brainRunningOn={activeSession.header?.brainRunningOn}
@@ -77,6 +88,9 @@
           />
           <EventLog events={activeSession.events} />
         </div>
+        {#if nova.open}
+          <NovaPanel />
+        {/if}
       </div>
       {#if review.open}
         <div class="col-start-1 row-start-1 min-h-0 min-w-0">

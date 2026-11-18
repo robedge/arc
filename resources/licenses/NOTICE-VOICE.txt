@@ -1,0 +1,101 @@
+Arc voice companion (Nova): third-party notices
+================================================
+
+Arc is free software, licensed under the GNU General Public License,
+version 3 or (at your option) any later version (GPL-3.0-or-later). The
+full text is in the LICENSE file at the root of the source repository.
+Arc's own source code is public at https://github.com/robedge/arc
+
+The voice companion uses the components below. Model weights are NOT
+bundled in the app. They are downloaded on first use, after you confirm,
+into Arc's data folder, from the pinned revisions listed here.
+
+
+Speech output (text to speech)
+------------------------------
+
+eSpeak NG
+  Licence:  GPL-3.0-or-later
+  Upstream: https://github.com/espeak-ng/espeak-ng
+  Use:      Phonemizer for Kokoro. It is bundled, compiled to JavaScript and
+            WebAssembly, in the "phonemizer" npm package (1.2.1), which is a
+            dependency of kokoro-js.
+  Source:   The corresponding source code of eSpeak NG is available at the
+            upstream URL above and in the phonemizer package at
+            https://github.com/xenova/phonemizer.js . The source code of
+            Arc itself, including how these components are combined, is at
+            https://github.com/robedge/arc
+
+kokoro-js 1.2.1
+  Licence:  Apache-2.0
+  Upstream: https://github.com/hexgrad/kokoro
+
+Kokoro-82M (ONNX export, fp32 weights and voice files)
+  Licence:  Apache-2.0
+  Upstream: https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX
+            (original model: https://huggingface.co/hexgrad/Kokoro-82M)
+  Revision: 1939ad2a8e416c0acfeecc08a694d14ef25f2231
+  Delivery: downloaded at first use
+
+Transformers.js (@huggingface/transformers 3.8.1)
+  Licence:  Apache-2.0
+  Upstream: https://github.com/huggingface/transformers.js
+
+
+Speech input (speech to text)
+-----------------------------
+
+sherpa-onnx (sherpa-onnx-node 2.0.1, sherpa-onnx-darwin-arm64 2.0.1)
+  Licence:  Apache-2.0
+  Upstream: https://github.com/k2-fsa/sherpa-onnx
+
+Streaming Zipformer English 20M model (sherpa-onnx-streaming-zipformer-en-20M-2023-02-17, int8)
+  Licence:  Apache-2.0
+  Upstream: https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17
+  Revision: d42f2d9f7ca24806fb667456a18a9f1b60f70d16
+  Delivery: downloaded at first use
+
+whisper.cpp (via @fugood/whisper.node 1.2.0-rc.2 and
+@fugood/node-whisper-darwin-arm64 1.2.0-rc.2)
+  Licence:  MIT
+  Upstream: https://github.com/ggml-org/whisper.cpp
+            https://github.com/mybigday/whisper.node
+
+Whisper base.en weights (ggml-base.en.bin, OpenAI Whisper)
+  Licence:  MIT
+  Upstream: https://huggingface.co/ggerganov/whisper.cpp
+            (original model: https://github.com/openai/whisper)
+  Revision: 5359861c739e955e79d9a303bcbc70fb988958b1
+  Delivery: downloaded at first use
+
+Silero VAD (via @ricky0123/vad-web 0.0.31, ISC)
+  Licence:  MIT (Silero VAD model), ISC (vad-web wrapper)
+  Upstream: https://github.com/snakers4/silero-vad
+            https://github.com/ricky0123/vad
+
+
+Runtime
+-------
+
+onnxruntime (onnxruntime-web 1.22.0-dev.20250409-89f8206ba4)
+  Licence:  MIT
+  Upstream: https://github.com/microsoft/onnxruntime
+  Use:      WebAssembly and WebGPU runtime for Kokoro and Silero VAD, served
+            from the app bundle. Nothing is fetched from a CDN.
+
+
+Nova's portrait frames
+----------------------
+
+LivePortrait
+  Licence:  MIT
+  Upstream: https://github.com/KwaiVGI/LivePortrait
+  Use:      Used offline, once, by the scripts in scripts/nova-face/ to
+            animate the mouth and eyes of Nova's portrait. Only the generated
+            images are shipped with Arc.
+
+InsightFace face detector (used by LivePortrait)
+  Licence:  non-commercial research licence
+  Use:      Used only offline, on the developer's machine, to produce the
+            portrait frames. It is NOT shipped in Arc and is not part of the
+            app at runtime.

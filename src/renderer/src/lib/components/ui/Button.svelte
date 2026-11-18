@@ -12,6 +12,8 @@
     ariaDescribedby?: string
     /** Names the button when its visible text alone is ambiguous (the same action on many rows). */
     ariaLabel?: string
+    /** Makes it a toggle button: `aria-pressed` reports whether it is on. */
+    pressed?: boolean
     /** Blocks clicks and sets aria-busy while keeping the label and focus. */
     busy?: boolean
     onclick?: (event: MouseEvent) => void
@@ -26,6 +28,7 @@
     ariaDisabled = false,
     ariaDescribedby,
     ariaLabel,
+    pressed,
     busy = false,
     onclick,
     children
@@ -48,10 +51,11 @@
   aria-disabled={ariaDisabled ? 'true' : undefined}
   aria-describedby={ariaDescribedby}
   aria-label={ariaLabel}
+  aria-pressed={pressed}
   onclick={handleClick}
   aria-busy={busy ? 'true' : undefined}
   data-variant={variant}
-  class="inline-flex min-h-[var(--size-hit)] items-center justify-center gap-2 rounded-control border font-sans text-sm font-semibold tracking-label uppercase transition-shadow duration-(--duration-fast) focus:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 {size ===
+  class="inline-flex min-h-[var(--size-hit)] items-center justify-center gap-2 rounded-control border font-sans text-sm font-semibold tracking-label uppercase transition-shadow duration-(--duration-fast) focus:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-pressed:border-accent aria-pressed:text-accent {size ===
   'icon'
     ? 'min-w-[var(--size-hit)] px-2'
     : 'px-4'} {style.base} {style.hover} {busy ? 'cursor-progress' : ''}"

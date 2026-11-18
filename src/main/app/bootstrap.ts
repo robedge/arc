@@ -25,13 +25,15 @@ import { MessagesRepo } from '../db/repositories/messages-repo'
 import { EventsRepo } from '../db/repositories/events-repo'
 import { emit } from '../ipc/register'
 import { registerAllHandlers } from '../ipc/handlers'
-import { configureLogging, dbLog, knowledgeLog, log, sessionsLog } from '../logging'
+import { configureLogging, dbLog, knowledgeLog, log, sessionsLog, voiceLog } from '../logging'
 import { createDialogs } from '../platform/dialogs'
 import { sweepOrphanAttachmentFolders } from '../attachments/attachment-cleanup'
 import { handleAttachmentProtocol } from '../protocol/attachment-protocol'
 import { handleKnowledgeProtocol } from '../protocol/knowledge-protocol'
+import { handleVoiceModelProtocol } from '../protocol/voice-model-protocol'
 import { registerAppSchemes } from '../protocol/schemes'
 import { buildCsp } from './csp'
+import { installPermissionHandlers } from './permissions'
 import { buildServices, pidLedgerPath, startServices } from './build-services'
 import type { AppServices } from './app-services'
 import { isSmokeRun, runSmoke } from './smoke'
@@ -44,7 +46,7 @@ import {
   withE2eOffscreen,
   withWorkAreaBounds
 } from './window-options'
-import { lockDownWindow } from './lockdown'
+import { isOwnNavigation, lockDownWindow } from './lockdown'
 import { buildAppMenuTemplate } from './app-menu'
 import { openDesignPreview } from './preview-window'
 
@@ -195,6 +197,16 @@ export function start(): void {
       })
     }
 
+    // Audio from the main window only; everything else, the Design Preview included, is denied.
+    installPermissionHandlers(session.defaultSession, {
+      getMainWebContents: () => getMainWindow()?.webContents ?? null,
+      isOwnPage: (url, wc) => {
+        const devUrl = rendererDevUrl()
+        return isOwnNavigation(url, devUrl ? { origin: devUrl } : { exact: () => wc.getURL() })
+      },
+      log: (line) => voiceLog.debug(`permission ${line}`)
+    })
+
     const dialogs = createDialogs(process.env, (options) => {
       const win = getMainWindow()
       return win
@@ -235,6 +247,11 @@ export function start(): void {
       getItem: (id) => built.itemsRepo.getById(id),
       getKnowledgeRoot: built.getKnowledgeRoot,
       log: knowledgeLog
+    })
+    handleVoiceModelProtocol({
+      manifest: built.voiceModels.manifest,
+      resolveFile: (model, relPath) => built.voiceModels.readyFilePath(model, relPath),
+      log: voiceLog
     })
     const userData = app.getPath('userData')
     handleAttachmentProtocol({
@@ -298,6 +315,8 @@ export function start(): void {
 
   // Cmd+Q: route through the same handshake by closing the window first.
   app.on('before-quit', (event) => {
+    // The speech process must not outlive the app, whichever way the quit goes on from here.
+    services?.speechHost.dispose()
     const win = getMainWindow()
     if (!win || closeGate?.isOpen) return
     isQuitting = true

@@ -10,3 +10,7 @@ playwright-report
 arc.db*
 .claude/scheduled_tasks.lock
 .desloppify/
+
+# Nova face pipeline (spec 016): clone, venv, weights and explore outputs
+scripts/nova-face/.cache/
+__pycache__/

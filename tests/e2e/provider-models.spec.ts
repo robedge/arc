@@ -41,7 +41,12 @@ test('providers:models lists Codex only while it is signed in, and settings roun
         'usage.checkClaudePlanOnLaunch': true,
         'knowledge.suggestOnFinish': true,
         'agents.loadOff': { brain: [], workers: [] },
-        'approvals.skipAllByDefault': false
+        'approvals.skipAllByDefault': false,
+        'voice.voiceId': 'af_heart',
+        'voice.speed': 1,
+        'voice.speakPolicy': 'all',
+        'voice.muted': false,
+        'voice.endPauseMs': 1000
       }
     })
 
@@ -64,7 +69,12 @@ test('providers:models lists Codex only while it is signed in, and settings roun
         'usage.checkClaudePlanOnLaunch': true,
         'knowledge.suggestOnFinish': true,
         'agents.loadOff': { brain: [], workers: [] },
-        'approvals.skipAllByDefault': false
+        'approvals.skipAllByDefault': false,
+        'voice.voiceId': 'af_heart',
+        'voice.speed': 1,
+        'voice.speakPolicy': 'all',
+        'voice.muted': false,
+        'voice.endPauseMs': 1000
       }
     })
     await expect

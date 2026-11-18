@@ -1,0 +1,10 @@
+# Brain for the Nova panel spec: starts one worker that changes a file, then answers one chat message.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova panel\n\nStarting a worker."}
+{"mcp":{"tool":"spawn_worker","args":{"name":"nova-edit","task":"Add a file","repos":["api"]}}}
+{"say":"Ready."}
+{"result":true}
+{"waitForStdin":"Hello with the panel open"}
+{"say":"Panel reply received."}
+{"result":true}

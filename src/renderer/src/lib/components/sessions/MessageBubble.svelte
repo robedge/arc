@@ -3,6 +3,7 @@
   import { recordText } from '@shared/attention-record'
   import MarkdownPreview from '../items/MarkdownPreview.svelte'
   import Button from '../ui/Button.svelte'
+  import Icon from '../ui/Icon.svelte'
   import AttachmentRow from '../ui/AttachmentRow.svelte'
   import BrainSurface from '../surface/BrainSurface.svelte'
   import { parseSurfaceAction } from '@shared/surface'
@@ -29,10 +30,12 @@
   const clicked = $derived(message.role === 'user' ? parseSurfaceAction(message.content) : null)
   const surface = $derived(message.prompt?.kind === 'surface' ? message.prompt.surface : null)
   const showBody = $derived(!((suggestions && message.role === 'system') || surface))
+  const errorNotice = $derived(message.prompt?.kind === 'error-notice')
   const LAYOUT = {
     user: 'self-end border-border-strong bg-accent/10',
     brain: 'self-start border-border bg-surface-raised',
     system: 'self-center border-border bg-surface-code text-text-muted',
+    error: 'self-center border-danger/55 bg-danger/10 text-danger',
     surface: 'self-start border-border bg-surface-raised'
   } as const
 </script>
@@ -51,8 +54,10 @@
   <div
     data-message-role={message.role}
     data-message-state={message.state}
+    data-error-notice={errorNotice ? '' : undefined}
+    role={errorNotice ? 'alert' : undefined}
     class="flex max-w-[85%] min-w-0 shrink-0 flex-col gap-1 rounded-hud border px-3 py-2 text-sm text-text {LAYOUT[
-      surface ? 'surface' : message.role
+      surface ? 'surface' : errorNotice ? 'error' : message.role
     ]}"
   >
     {#if !showBody}
@@ -108,6 +113,11 @@
     {/if}
     {#if surface}
       <BrainSurface {surface} sessionId={message.sessionId} messageId={message.id} />
+    {/if}
+    {#if message.spoken && message.role === 'user'}
+      <span data-spoken-marker class="self-end text-text-muted"
+        ><Icon name="mic" size={14} title="Spoken" /></span
+      >
     {/if}
     {#if message.state === 'stopped'}
       <span class="self-start text-xs tracking-label text-attention uppercase">Stopped</span>

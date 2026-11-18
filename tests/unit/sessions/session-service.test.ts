@@ -347,12 +347,61 @@ describe('stop and failures', () => {
     expect(rig.of('session:event-logged').flatMap((p) => p.entries.map((e) => e.text))).toContain(
       'Brain stopped unexpectedly'
     )
-    expect(rig.messagesRepo.latest(sessionId, 10).at(-1)).toMatchObject({
+    expect(rig.messagesRepo.latest(sessionId, 10).at(-2)).toMatchObject({
       role: 'brain',
       state: 'stopped',
       content: 'partial'
     })
     expect(rig.service.snapshot(sessionId).brainState).toBe('idle')
+  })
+
+  it('adds one error notice to the chat when the brain crashes, and persists it', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await start()
+    const brain = rig.adapter.last
+    brain.emit({ type: 'exit', code: 1, signal: null, expected: false, stderrTail: 'boom' })
+    await settle(120)
+    const notices = rig.messagesRepo
+      .latest(sessionId, 20)
+      .filter((m) => m.role === 'system' && m.promptJson?.includes('error-notice'))
+    expect(notices).toHaveLength(1)
+    expect(notices[0]?.content).toBe('The brain stopped unexpectedly: boom')
+    const pushed = rig
+      .of('session:message')
+      .filter((p) => p.message.prompt?.kind === 'error-notice')
+    expect(pushed).toHaveLength(1)
+    expect(pushed[0]?.message).toMatchObject({
+      role: 'system',
+      content: 'The brain stopped unexpectedly: boom'
+    })
+  })
+
+  it('shows the last plain stderr line and skips stack frames', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await start()
+    rig.adapter.last.emit({
+      type: 'exit',
+      code: 1,
+      signal: null,
+      expected: false,
+      stderrTail: 'Error: bad thing\n    at run (/x/y.js:1:2)\n'
+    })
+    await settle(120)
+    const texts = rig.messagesRepo.latest(sessionId, 20).map((m) => m.content)
+    expect(texts).toContain('The brain stopped unexpectedly: Error: bad thing')
+  })
+
+  it('adds no notice for a stop the user asked for or a normal exit', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await start()
+    const brain = rig.adapter.last
+    brain.delta('partial')
+    await rig.service.stopReply(sessionId)
+    brain.emit({ type: 'exit', code: 0, signal: null, expected: true, stderrTail: '' })
+    await settle(120)
+    expect(
+      rig.messagesRepo.latest(sessionId, 20).filter((m) => m.promptJson?.includes('error-notice'))
+    ).toHaveLength(0)
   })
 
   it('reports signed-out when the brain fails authentication', async () => {
@@ -377,6 +426,17 @@ describe('send-message', () => {
       role: 'user',
       content: 'and also tests'
     })
+  })
+
+  it('stores spoken on the user message and does not tell the brain', async () => {
+    rig = await makeRig(dir())
+    const sessionId = await start()
+    const { messageId } = await rig.service.sendMessage(sessionId, 'by voice', undefined, true)
+    await settle()
+    expect(rig.messagesRepo.get(messageId)?.spoken).toBe(true)
+    expect(rig.adapter.last.sent.at(-1)).toBe('by voice')
+    const typed = await rig.service.sendMessage(sessionId, 'typed')
+    expect(rig.messagesRepo.get(typed.messageId)?.spoken).toBe(false)
   })
 
   it('starts a fresh brain when none is running, and touches last_active_at', async () => {

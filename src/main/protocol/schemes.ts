@@ -1,10 +1,12 @@
 import { protocol } from 'electron'
 import { ATTACHMENT_SCHEME } from './attachment-request'
 import { KNOWLEDGE_SCHEME } from './knowledge-request'
+import { VOICE_MODEL_SCHEME } from './voice-model-request'
 
 export const PRIVILEGED_SCHEMES: Electron.CustomScheme[] = [
   KNOWLEDGE_SCHEME,
-  ATTACHMENT_SCHEME
+  ATTACHMENT_SCHEME,
+  VOICE_MODEL_SCHEME
 ].map((scheme) => ({
   scheme,
   privileges: {

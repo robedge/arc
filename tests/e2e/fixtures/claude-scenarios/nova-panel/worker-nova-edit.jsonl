@@ -1,0 +1,7 @@
+# Worker: adds one file and finishes, so the session has a change to review.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"shell":"echo nova > nova.txt && git add -A && git -c user.name=Fake -c user.email=fake@example.com commit -q -m 'Add nova file'"}
+{"mcp":{"tool":"report_done","args":{"summary":"Added a file"}}}
+{"say":"Done."}
+{"result":true}

@@ -30,7 +30,18 @@ export function registerSettingsHandlers(services: SettingsServices): void {
         ...(patch['approvals.skipAllByDefault'] !== undefined
           ? { 'approvals.skipAllByDefault': patch['approvals.skipAllByDefault'] }
           : {}),
-        ...(patch['agents.loadOff'] ? { 'agents.loadOff': patch['agents.loadOff'] } : {})
+        ...(patch['agents.loadOff'] ? { 'agents.loadOff': patch['agents.loadOff'] } : {}),
+        ...(patch['voice.voiceId'] !== undefined
+          ? { 'voice.voiceId': patch['voice.voiceId'] }
+          : {}),
+        ...(patch['voice.speed'] !== undefined ? { 'voice.speed': patch['voice.speed'] } : {}),
+        ...(patch['voice.speakPolicy'] !== undefined
+          ? { 'voice.speakPolicy': patch['voice.speakPolicy'] }
+          : {}),
+        ...(patch['voice.muted'] !== undefined ? { 'voice.muted': patch['voice.muted'] } : {}),
+        ...(patch['voice.endPauseMs'] !== undefined
+          ? { 'voice.endPauseMs': patch['voice.endPauseMs'] }
+          : {})
       },
       Date.now()
     )

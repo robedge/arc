@@ -5,6 +5,10 @@ import { appSettings } from '../schema'
 import {
   agentLoadOffSchema,
   modelRefSchema,
+  voiceEndPauseMsSchema,
+  voiceIdSchema,
+  voiceSpeakPolicySchema,
+  voiceSpeedSchema,
   workersPrefSchema
 } from '../../../shared/provider-schemas'
 import type { AppSettings, ModelRef, ProviderId, WorkersPref } from '../../../shared/types/provider'
@@ -16,7 +20,12 @@ export const appSettingSchemas = {
   'usage.checkClaudePlanOnLaunch': z.boolean(),
   'knowledge.suggestOnFinish': z.boolean(),
   'approvals.skipAllByDefault': z.boolean(),
-  'agents.loadOff': agentLoadOffSchema
+  'agents.loadOff': agentLoadOffSchema,
+  'voice.voiceId': voiceIdSchema,
+  'voice.speed': voiceSpeedSchema,
+  'voice.speakPolicy': voiceSpeakPolicySchema,
+  'voice.muted': z.boolean(),
+  'voice.endPauseMs': voiceEndPauseMsSchema
 } as const
 
 export type AppSettingKey = keyof typeof appSettingSchemas
@@ -28,7 +37,12 @@ export const appSettingDefaults: AppSettingValues = {
   'usage.checkClaudePlanOnLaunch': true,
   'knowledge.suggestOnFinish': true,
   'approvals.skipAllByDefault': false,
-  'agents.loadOff': { brain: [], workers: [] }
+  'agents.loadOff': { brain: [], workers: [] },
+  'voice.voiceId': 'af_heart',
+  'voice.speed': 1,
+  'voice.speakPolicy': 'all',
+  'voice.muted': false,
+  'voice.endPauseMs': 1000
 }
 
 export interface ProviderDefaults {
@@ -81,7 +95,12 @@ export class AppSettingsRepo {
       'usage.checkClaudePlanOnLaunch': this.get('usage.checkClaudePlanOnLaunch'),
       'knowledge.suggestOnFinish': this.get('knowledge.suggestOnFinish'),
       'approvals.skipAllByDefault': this.get('approvals.skipAllByDefault'),
-      'agents.loadOff': this.get('agents.loadOff')
+      'agents.loadOff': this.get('agents.loadOff'),
+      'voice.voiceId': this.get('voice.voiceId'),
+      'voice.speed': this.get('voice.speed'),
+      'voice.speakPolicy': this.get('voice.speakPolicy'),
+      'voice.muted': this.get('voice.muted'),
+      'voice.endPauseMs': this.get('voice.endPauseMs')
     }
   }
 

@@ -13,6 +13,7 @@
   import { commands } from './lib/stores/commands.svelte'
   import { groups } from './lib/stores/groups.svelte'
   import { plugins } from './lib/stores/plugins.svelte'
+  import { voiceModels } from './lib/stores/voice-models.svelte'
   import { activeSession } from './lib/stores/active-session.svelte'
   import { review } from './lib/stores/review.svelte'
   import { workerTerminals } from './lib/stores/worker-terminals.svelte'
@@ -69,6 +70,8 @@
   $effect(() => window.arc.on('settings:changed', (e) => settings.apply(e)))
   $effect(() => window.arc.on('commands:changed', () => commands.handleChanged()))
   $effect(() => window.arc.on('plugins:progress', (e) => plugins.handleProgress(e)))
+  $effect(() => window.arc.on('voice:model-progress', (e) => voiceModels.handleProgress(e)))
+  $effect(() => window.arc.on('voice:error', (e) => voiceModels.handleError(e)))
   $effect(() => window.arc.on('plugins:changed', () => void plugins.load(true)))
   $effect(() => window.arc.on('session:brain-delta', (e) => activeSession.applyDelta(e)))
   $effect(() =>

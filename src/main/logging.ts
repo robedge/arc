@@ -22,4 +22,5 @@ export const knowledgeLog = log.scope('knowledge')
 export const cliLog = log.scope('cli')
 export const sessionsLog = log.scope('sessions')
 export const dbLog = log.scope('db')
+export const voiceLog = log.scope('voice')
 export { log }

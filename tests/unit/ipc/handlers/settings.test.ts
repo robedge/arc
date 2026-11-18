@@ -124,6 +124,15 @@ describe('settings:set', () => {
     expect(schema.safeParse({ 'approvals.skipAllByDefault': 'no' }).success).toBe(false)
   })
 
+  it('accepts valid voice settings and rejects out-of-range ones in the schema', () => {
+    const schema = channelSchemas['settings:set']
+    expect(schema.safeParse({ 'voice.voiceId': 'bf_emma', 'voice.speed': 0.7 }).success).toBe(true)
+    expect(schema.safeParse({ 'voice.voiceId': 'nope' }).success).toBe(false)
+    expect(schema.safeParse({ 'voice.speed': 2 }).success).toBe(false)
+    expect(schema.safeParse({ 'voice.speakPolicy': 'spoken-only' }).success).toBe(true)
+    expect(schema.safeParse({ 'voice.endPauseMs': 100 }).success).toBe(false)
+  })
+
   it('rejects a non-boolean knowledge.suggestOnFinish in the schema', () => {
     const schema = channelSchemas['settings:set']
     expect(schema.safeParse({ 'knowledge.suggestOnFinish': false }).success).toBe(true)

@@ -1,0 +1,9 @@
+# Brain for the Nova face test: the answer to "Think first" arrives after a pause, so the face is thinking for a while, then two sentences are spoken.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova face\n\nReady."}
+{"result":true}
+{"waitForStdin":"Think first"}
+{"delay":7000}
+{"say":"Here is the first sentence of the answer, long enough to hum for a moment. And here is the second sentence, which follows it."}
+{"result":true}

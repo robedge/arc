@@ -40,6 +40,9 @@ import type { CursorPlanReader } from '../usage/cursor-plan-reader'
 import type { PlanUsageService } from '../usage/plan-usage-service'
 import type { SuggestionService } from '../usage/suggestion-service'
 import type { UsageRecorder } from '../usage/usage-recorder'
+import type { MicAccess } from '../voice/mic-access'
+import type { ModelManager } from '../voice/model-manager'
+import type { SpeechHost } from '../voice/speech-host'
 import type { ProviderChecks } from './provider-checks'
 
 /**
@@ -97,4 +100,8 @@ export interface AppServices {
   messageAttachmentsRepo: MessageAttachmentsRepo
   branchQuestionsRepo: BranchQuestionsRepo
   attention: AttentionService
+
+  voiceModels: ModelManager
+  speechHost: SpeechHost
+  micAccess: MicAccess
 }
