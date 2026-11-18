@@ -118,6 +118,7 @@ export type MessagePrompt =
   | KnowledgeSuggestionsPrompt
   | SurfacePrompt
   | AttentionRecordPrompt
+  | ErrorNoticePrompt
 
 /** What the user decided on a request; `branch` is an unsaved-changes choice. */
 export type AttentionRecordDecision =
@@ -162,6 +163,14 @@ export interface KnowledgeSuggestionsPrompt {
   count: number
 }
 
+/**
+ * Marks a system message that reports the brain stopping unexpectedly. The conversation draws it as
+ * an error notice; Nova never reads it aloud (she says her own error line).
+ */
+export interface ErrorNoticePrompt {
+  kind: 'error-notice'
+}
+
 export interface SessionMessage {
   /** Database id; also the `messageId` of `session:brain-delta`. Ascending within a session. */
   id: number
@@ -174,6 +183,8 @@ export interface SessionMessage {
   prompt?: MessagePrompt
   /** Files attached to a user message, in order. Omitted when there are none. */
   attachments?: MessageAttachmentView[]
+  /** True on a user message sent by voice from Nova. Omitted otherwise. */
+  spoken?: boolean
   createdAt: number
   updatedAt: number
 }

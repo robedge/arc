@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import SessionHeader from '../../src/renderer/src/lib/components/sessions/SessionHeader.svelte'
 import RingLogo from '../../src/renderer/src/lib/components/ui/RingLogo.svelte'
 import { knowledgeSuggestions } from '../../src/renderer/src/lib/stores/knowledge-suggestions.svelte'
+import { nova } from '../../src/renderer/src/lib/stores/nova.svelte'
 import { activeSession } from '../../src/renderer/src/lib/stores/active-session.svelte'
 import type { SessionHeader as Header } from '../../src/shared/types/session'
 import { mockArc } from './helpers'
@@ -322,4 +323,15 @@ it('Cancel on the marker dialog keeps skip on and sends nothing', async () => {
   expect(screen.queryByRole('heading', { name: 'Turn Skip all approvals off?' })).toBeNull()
   expect(screen.getByRole('button', { name: 'Skipping approvals' })).toBeTruthy()
   expect(invoke.mock.calls.some((c) => c[0] === 'sessions:set-config')).toBe(false)
+})
+
+it('has a Nova button whose pressed state follows the panel', async () => {
+  nova.close()
+  render(SessionHeader, { header, groupName: 'Team', onback: vi.fn() })
+  const button = screen.getByRole('button', { name: 'Nova' })
+  expect(button.getAttribute('aria-pressed')).toBe('false')
+  await fireEvent.click(button)
+  expect(nova.open).toBe(true)
+  expect(button.getAttribute('aria-pressed')).toBe('true')
+  nova.close()
 })

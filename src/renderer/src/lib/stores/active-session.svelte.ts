@@ -353,7 +353,7 @@ class ActiveSessionStore {
   }
 
   /** User messages are not pushed; the sender appends them with the returned id. */
-  async send(text: string): Promise<AppError | null> {
+  async send(text: string, options: { spoken?: boolean } = {}): Promise<AppError | null> {
     const sessionId = this.sessionId
     if (sessionId === null) return null
     const key = sessionKey(sessionId)
@@ -365,6 +365,7 @@ class ActiveSessionStore {
     const res = await window.arc.invoke('sessions:send-message', {
       sessionId,
       text,
+      ...(options.spoken ? { spoken: true } : {}),
       ...(draftId !== null && attachmentIds.length > 0 ? { draftId, attachmentIds } : {})
     })
     if (!res.ok) return res.error
@@ -378,6 +379,7 @@ class ActiveSessionStore {
         content: text,
         state: 'complete',
         planId: null,
+        ...(options.spoken ? { spoken: true } : {}),
         ...(res.data.attachments?.length ? { attachments: res.data.attachments } : {}),
         createdAt: now,
         updatedAt: now

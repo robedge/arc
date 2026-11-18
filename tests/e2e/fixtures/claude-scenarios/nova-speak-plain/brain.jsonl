@@ -1,0 +1,11 @@
+# Brain for the Nova mute and speak-policy tests: short plain answers to typed questions.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova plain\n\nReady."}
+{"result":true}
+{"waitForStdin":"Second question"}
+{"say":"Here is a plain second answer."}
+{"result":true}
+{"waitForStdin":"Third question"}
+{"say":"Here is a plain third answer."}
+{"result":true}

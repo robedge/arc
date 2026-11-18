@@ -1,0 +1,11 @@
+# Brain that explains a plan and then waits for approval, so its turn ends in the waiting state.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova plan\n\nReady."}
+{"result":true}
+{"waitForStdin":"Plan the retry work"}
+{"say":"I suggest one worker to add retries to the client."}
+{"mcp":{"tool":"propose_plan","args":{"workers":[{"name":"api-retry","task":"Add retry to the API client","repos":["api"],"model":"sonnet","rationale":"The client has no retry."}]}},"saveAs":"plan"}
+{"waitForMcpResult":"plan"}
+{"say":"Plan approved."}
+{"result":true}

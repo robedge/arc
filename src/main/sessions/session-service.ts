@@ -1531,7 +1531,8 @@ export class SessionService {
   async sendMessage(
     sessionId: string,
     text: string,
-    files?: { draftId: string; attachmentIds: readonly string[] }
+    files?: { draftId: string; attachmentIds: readonly string[] },
+    spoken?: boolean
   ): Promise<{ messageId: number; attachments: MessageAttachmentView[] }> {
     const body = text.trim()
     const ids = files?.attachmentIds ?? []
@@ -1553,6 +1554,7 @@ export class SessionService {
       content: body,
       state: 'complete',
       planId: null,
+      spoken: spoken === true,
       createdAt: now,
       updatedAt: now
     } as const

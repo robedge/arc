@@ -70,6 +70,11 @@ beforeEach(() => {
     'usage.checkClaudePlanOnLaunch': true,
     'knowledge.suggestOnFinish': true,
     'approvals.skipAllByDefault': false,
+    'voice.voiceId': 'af_heart',
+    'voice.speed': 1,
+    'voice.speakPolicy': 'all',
+    'voice.muted': false,
+    'voice.endPauseMs': 1000,
     'agents.loadOff': { brain: [], workers: [] }
   }
   invoke = mockArc((channel, request) => {
@@ -245,6 +250,11 @@ it('Settings Providers: a saved Codex default stays, flagged unavailable, when C
     'usage.checkClaudePlanOnLaunch': true,
     'knowledge.suggestOnFinish': true,
     'approvals.skipAllByDefault': false,
+    'voice.voiceId': 'af_heart',
+    'voice.speed': 1,
+    'voice.speakPolicy': 'all',
+    'voice.muted': false,
+    'voice.endPauseMs': 1000,
     'agents.loadOff': { brain: [], workers: [] }
   }
   modelsReply = noCodex

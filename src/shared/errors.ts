@@ -45,6 +45,8 @@ export const ERROR_CODES = [
   'NOT_DRAFT',
   'TOO_MANY_NOTES',
   'IO_FAILED',
+  /** `voice:open` while the Whisper model is not downloaded (or is still downloading). */
+  'VOICE_MODEL_MISSING',
   /** A staged attachment is gone or unreadable at send time (`details.name` when known). */
   'ATTACHMENT_UNREADABLE',
   /** A message with attachments that starts with "/" (refused before anything is written). */

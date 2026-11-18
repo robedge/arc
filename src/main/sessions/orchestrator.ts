@@ -78,7 +78,12 @@ import { RateLimitGate } from './rate-limit-gate'
 import type { UsageRecorder } from '../usage/usage-recorder'
 import { forwardRateLimit } from '../usage/plan-usage-service'
 import type { PlanUsageService } from '../usage/plan-usage-service'
-import { continuePromptText, messageRowDto, suggestionsPromptText } from './message-prompt'
+import {
+  brainStoppedText,
+  continuePromptText,
+  messageRowDto,
+  suggestionsPromptText
+} from './message-prompt'
 import type { AttentionAnswer, AttentionState } from './attention-coordinator'
 import { DeltaBatcher, IntervalBatcher } from './batcher'
 import type { DeltaBatcherOptions } from './batcher'
@@ -2515,6 +2520,10 @@ export class Orchestrator {
         signal: event.signal,
         stderrTail: event.stderrTail
       })
+      // The chat shows it too: the event log alone leaves the conversation looking empty.
+      if (!this.closed) {
+        this.postSystemMessage(brainStoppedText(event.stderrTail), { kind: 'error-notice' })
+      }
     }
   }
 

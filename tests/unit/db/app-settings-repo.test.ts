@@ -32,7 +32,12 @@ describe('AppSettingsRepo', () => {
       'usage.checkClaudePlanOnLaunch',
       'knowledge.suggestOnFinish',
       'approvals.skipAllByDefault',
-      'agents.loadOff'
+      'agents.loadOff',
+      'voice.voiceId',
+      'voice.speed',
+      'voice.speakPolicy',
+      'voice.muted',
+      'voice.endPauseMs'
     ])
   })
 
@@ -91,6 +96,37 @@ describe('AppSettingsRepo', () => {
     expect(settings.get('approvals.skipAllByDefault')).toBe(false)
   })
 
+  it('keeps the voice settings, with defaults, a round trip and range checks', () => {
+    expect(settings.get('voice.voiceId')).toBe('af_heart')
+    expect(settings.get('voice.speed')).toBe(1)
+    expect(settings.get('voice.speakPolicy')).toBe('all')
+    expect(settings.get('voice.muted')).toBe(false)
+    expect(settings.get('voice.endPauseMs')).toBe(1000)
+    settings.setMany(
+      {
+        'voice.voiceId': 'bm_george',
+        'voice.speed': 1.3,
+        'voice.speakPolicy': 'spoken-only',
+        'voice.muted': true,
+        'voice.endPauseMs': 500
+      },
+      1
+    )
+    const all = settings.getAll()
+    expect(all['voice.voiceId']).toBe('bm_george')
+    expect(all['voice.speed']).toBe(1.3)
+    expect(all['voice.speakPolicy']).toBe('spoken-only')
+    expect(all['voice.muted']).toBe(true)
+    expect(all['voice.endPauseMs']).toBe(500)
+    expect(() => settings.setMany({ 'voice.voiceId': 'af_unknown' as never }, 2)).toThrow()
+    expect(() => settings.setMany({ 'voice.speed': 1.4 }, 2)).toThrow()
+    expect(() => settings.setMany({ 'voice.speed': 0.6 }, 2)).toThrow()
+    expect(() => settings.setMany({ 'voice.speakPolicy': 'none' as never }, 2)).toThrow()
+    expect(() => settings.setMany({ 'voice.endPauseMs': 2001 }, 2)).toThrow()
+    expect(() => settings.setMany({ 'voice.endPauseMs': 499 }, 2)).toThrow()
+    expect(settings.get('voice.voiceId')).toBe('bm_george')
+  })
+
   it('falls back to true when the stored knowledge.suggestOnFinish is not a boolean', () => {
     opened.sqlite
       .prepare(
@@ -139,7 +175,12 @@ describe('AppSettingsRepo', () => {
       'usage.checkClaudePlanOnLaunch': true,
       'knowledge.suggestOnFinish': true,
       'approvals.skipAllByDefault': false,
-      'agents.loadOff': { brain: [], workers: [] }
+      'agents.loadOff': { brain: [], workers: [] },
+      'voice.voiceId': 'af_heart',
+      'voice.speed': 1,
+      'voice.speakPolicy': 'all',
+      'voice.muted': false,
+      'voice.endPauseMs': 1000
     })
     settings.set('providers.workers', { mode: 'provider', provider: 'codex' }, 1)
     expect(settings.get('providers.workers')).toEqual({ mode: 'provider', provider: 'codex' })

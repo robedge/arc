@@ -1,0 +1,8 @@
+# Brain for the Nova Stop test: one long answer, so the tone is still playing when Stop is pressed.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova long answer\n\nReady."}
+{"result":true}
+{"waitForStdin":"Tell me a lot"}
+{"say":"The first part of this answer is deliberately long so that it takes a while to speak aloud. The second part is also long enough that the voice keeps going for several more seconds before it ends. The third part finishes the story with a little more text to read out."}
+{"result":true}

@@ -10,3 +10,4 @@ context
 .mcp.json
 src/main/db/migrations
 website
+scripts/nova-face/.cache

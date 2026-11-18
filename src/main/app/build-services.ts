@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { rmSync } from 'node:fs'
-import { join } from 'node:path'
-import { app, BrowserWindow, Notification, shell } from 'electron'
+import { dirname, join } from 'node:path'
+import { app, BrowserWindow, Notification, shell, systemPreferences } from 'electron'
 import type { Db } from '../db/client'
 import { GroupService } from '../groups/group-service'
 import { ProjectService } from '../groups/project-service'
@@ -96,7 +96,12 @@ import { AttentionService } from '../sessions/attention-service'
 import { NotificationService } from '../sessions/notification-service'
 import { SessionService } from '../sessions/session-service'
 import { emit } from '../ipc/register'
-import { cliLog, knowledgeLog, sessionsLog } from '../logging'
+import { cliLog, knowledgeLog, sessionsLog, voiceLog } from '../logging'
+import { createMicAccess } from '../voice/mic-access'
+import { ModelManager } from '../voice/model-manager'
+import { resolveManifest } from '../voice/model-manifest'
+import { SpeechHost } from '../voice/speech-host'
+import { forkSpeechWorker } from '../voice/speech-fork'
 import { createShellService } from '../platform/shell-service'
 import type { Dialogs } from '../platform/dialogs'
 import { getMainWindow } from './main-window'
@@ -710,6 +715,38 @@ export function buildServices(deps: BuildServicesDeps): AppServices {
     emit,
     log: cliLog
   })
+  const voiceModels = new ModelManager({
+    rootDir: join(app.getPath('userData'), 'voice-models'),
+    manifest: resolveManifest(process.env),
+    // Stub models only in an isolated user-data folder, never in a real one.
+    fake: process.env['HARNESS_VOICE_MODELS'] === 'fake' && !!process.env['HARNESS_USER_DATA'],
+    onProgress: (progress) => emit('voice:model-progress', progress),
+    onError: (error) => emit('voice:error', error),
+    log: voiceLog
+  })
+  const whisperSpec = voiceModels.manifest.find((m) => m.id === 'whisper-base-en')
+  const zipformerSpec = voiceModels.manifest.find((m) => m.id === 'zipformer-en-20m')
+  const speechHost = new SpeechHost({
+    fork: () => forkSpeechWorker(process.env),
+    whisperModelPath: async () => {
+      await voiceModels.init()
+      return whisperSpec && (await voiceModels.readyFilePath(whisperSpec, 'ggml-base.en.bin'))
+    },
+    zipformerModelPath: async () => {
+      const tokens = zipformerSpec && (await voiceModels.readyFilePath(zipformerSpec, 'tokens.txt'))
+      return tokens ? dirname(tokens) : undefined
+    },
+    emitState: (state) => emit('voice:engine-state', { state }),
+    emitPartial: (partial) => emit('voice:partial', partial),
+    emitError: (error) => emit('voice:error', error),
+    log: voiceLog
+  })
+  const micAccess = createMicAccess({
+    getStatus: () => systemPreferences.getMediaAccessStatus('microphone'),
+    ask: () => systemPreferences.askForMediaAccess('microphone'),
+    openExternal: (url) => shell.openExternal(url),
+    env: process.env
+  })
   return {
     ...core,
     ...providers,
@@ -720,7 +757,10 @@ export function buildServices(deps: BuildServicesDeps): AppServices {
     groupService,
     pluginService,
     claudePlanProbe,
-    providerChecks
+    providerChecks,
+    voiceModels,
+    speechHost,
+    micAccess
   }
 }
 

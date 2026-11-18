@@ -90,6 +90,11 @@ function appSettings(): AppSettings {
     'usage.checkClaudePlanOnLaunch': true,
     'knowledge.suggestOnFinish': true,
     'approvals.skipAllByDefault': false,
+    'voice.voiceId': 'af_heart',
+    'voice.speed': 1,
+    'voice.speakPolicy': 'all',
+    'voice.muted': false,
+    'voice.endPauseMs': 1000,
     'agents.loadOff': stored
   }
 }

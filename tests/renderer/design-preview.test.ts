@@ -162,3 +162,12 @@ it('shows a session list row with the skipping marker, and the Approvals setting
     within(section).getByRole('switch', { name: 'Skip all approvals by default' })
   ).toBeTruthy()
 })
+
+it('shows a Nova panel sample with the name and Idle state', () => {
+  const { container } = render(DesignPreview)
+  const sample = container.querySelector('[data-preview-nova]') as HTMLElement
+  expect(sample).toBeTruthy()
+  expect(within(sample).getByRole('heading', { name: 'Nova' })).toBeTruthy()
+  expect(sample.querySelector('[data-nova-state="idle"]')?.textContent?.trim()).toBe('Idle')
+  expect(sample.querySelector('img')).toBeTruthy()
+})

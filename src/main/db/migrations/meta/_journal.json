@@ -232,6 +232,13 @@
       "when": 1794798127344,
       "tag": "0032_skip_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1795011763494,
+      "tag": "0033_message_spoken",
+      "breakpoints": true
     }
   ]
 }

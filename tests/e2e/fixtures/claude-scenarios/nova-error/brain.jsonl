@@ -1,0 +1,8 @@
+# Brain that dies on the second message, so Arc logs "Brain stopped unexpectedly".
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova error\n\nReady."}
+{"result":true}
+{"waitForStdin":"Break it"}
+{"stderr":"the brain crashed"}
+{"exit":1}

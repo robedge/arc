@@ -33,11 +33,12 @@ export function registerSessionHandlers(services: SessionHandlerServices): void 
   handle('sessions:remove-allow-rule', ({ sessionId, ruleId }) =>
     sessions.removeAllowRule(sessionId, ruleId)
   )
-  handle('sessions:send-message', ({ sessionId, text, draftId, attachmentIds }) =>
+  handle('sessions:send-message', ({ sessionId, text, draftId, attachmentIds, spoken }) =>
     sessions.sendMessage(
       sessionId,
       text,
-      draftId !== undefined && attachmentIds ? { draftId, attachmentIds } : undefined
+      draftId !== undefined && attachmentIds ? { draftId, attachmentIds } : undefined,
+      spoken
     )
   )
   handle('sessions:stop-reply', ({ sessionId }) => sessions.stopReply(sessionId))

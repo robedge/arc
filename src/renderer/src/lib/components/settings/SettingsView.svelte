@@ -7,13 +7,15 @@
   import KnowledgeSettings from './KnowledgeSettings.svelte'
   import PluginsSettings from './PluginsSettings.svelte'
   import ProvidersSettings from './ProvidersSettings.svelte'
+  import VoiceSettings from './VoiceSettings.svelte'
 
   const pages = [
     { id: 'providers', label: 'Providers' },
     { id: 'plugins', label: 'Plugins' },
     { id: 'agent-load', label: 'Agent loading' },
     { id: 'knowledge', label: 'Knowledge' },
-    { id: 'approvals', label: 'Approvals' }
+    { id: 'approvals', label: 'Approvals' },
+    { id: 'voice', label: 'Voice' }
   ] as const
 
   function onkeydown(event: KeyboardEvent): void {
@@ -52,8 +54,8 @@
       {#if ui.settingsPage === 'providers'}<ProvidersSettings
         />{:else if ui.settingsPage === 'plugins'}<PluginsSettings
         />{:else if ui.settingsPage === 'knowledge'}<KnowledgeSettings
-        />{:else if ui.settingsPage === 'approvals'}<ApprovalsSettings />{:else}<AgentLoadSettings
-        />{/if}
+        />{:else if ui.settingsPage === 'approvals'}<ApprovalsSettings
+        />{:else if ui.settingsPage === 'voice'}<VoiceSettings />{:else}<AgentLoadSettings />{/if}
     </div>
   </Panel>
 </main>

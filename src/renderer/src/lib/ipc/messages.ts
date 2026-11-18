@@ -60,6 +60,7 @@ const MESSAGES: Record<ErrorCode, MessageEntry> = {
   ATTACHMENTS_WITH_COMMAND: "Attachments can't be sent with a command.",
   ATTACHMENTS_WITH_PLAN_FEEDBACK: "Attachments can't be added to plan feedback.",
   IO_FAILED: GENERIC_FAILURE,
+  VOICE_MODEL_MISSING: 'Download the voice models in Settings to talk to Nova.',
   INTERNAL: GENERIC_FAILURE,
   VALIDATION_FAILED: GENERIC_FAILURE
 }

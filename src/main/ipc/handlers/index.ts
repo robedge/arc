@@ -12,6 +12,7 @@ import { registerSessionHandlers } from './sessions'
 import { registerSettingsHandlers } from './settings'
 import { registerStorageHandlers } from './storage'
 import { registerUsageHandlers } from './usage'
+import { registerVoiceHandlers } from './voice'
 import { registerWorkerHandlers } from './workers'
 
 /** Registers every IPC channel of the contract, one domain module at a time. */
@@ -31,4 +32,5 @@ export function registerAllHandlers(services: AppServices, host: AppHost): void 
   registerSessionHandlers(services)
   registerReviewHandlers(services)
   registerWorkerHandlers(services)
+  registerVoiceHandlers(services)
 }

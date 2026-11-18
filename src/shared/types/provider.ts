@@ -1,4 +1,5 @@
 import type { AgentLoadOff } from './agent-load'
+import type { KokoroVoiceId, VoiceSpeakPolicy } from './voice'
 export const PROVIDER_IDS = ['claude', 'codex', 'cursor'] as const
 export type ProviderId = (typeof PROVIDER_IDS)[number]
 
@@ -93,6 +94,15 @@ export interface AppSettings {
   'approvals.skipAllByDefault': boolean
   /** What Arc agents do not load, per role (spec 009). Everything is on by default. */
   'agents.loadOff': AgentLoadOff
+  /** Nova voice companion (spec 016). */
+  'voice.voiceId': KokoroVoiceId
+  /** Speaking speed, 0.7 to 1.3. */
+  'voice.speed': number
+  /** Speak every answer, or only answers to spoken questions. */
+  'voice.speakPolicy': VoiceSpeakPolicy
+  'voice.muted': boolean
+  /** The pause that ends a spoken turn, 500 to 2000 ms. */
+  'voice.endPauseMs': number
 }
 
 /**

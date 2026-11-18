@@ -54,6 +54,7 @@ export function parsePrompt(json: string | null): MessagePrompt | undefined {
       }
     }
     if (parsed?.kind === 'review-link') return { kind: 'review-link' }
+    if (parsed?.kind === 'error-notice') return { kind: 'error-notice' }
     if (
       parsed?.kind === 'knowledge-suggestions' &&
       typeof parsed.count === 'number' &&
@@ -77,6 +78,18 @@ export function parsePrompt(json: string | null): MessagePrompt | undefined {
     // Not JSON: no prompt.
   }
   return undefined
+}
+
+/** "The brain stopped unexpectedly: <last plain stderr line>" (no stack frames, kept short). */
+export function brainStoppedText(stderrTail: string): string {
+  const line = stderrTail
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l !== '' && !/^at\s/.test(l))
+    .at(-1)
+  if (line === undefined) return 'The brain stopped unexpectedly.'
+  const short = line.length > 160 ? `${line.slice(0, 159)}…` : line
+  return `The brain stopped unexpectedly: ${short}`
 }
 
 /** "2 workers were stopped when Arc closed. Continue them?" */
@@ -111,6 +124,7 @@ export function messageRowDto(
           )
         }
       : {}),
+    ...(row.spoken ? { spoken: true } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   }

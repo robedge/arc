@@ -1,5 +1,12 @@
 import { z } from 'zod'
 import { PROVIDER_IDS } from './types/provider'
+import { KOKORO_VOICES } from './types/voice'
+
+/** Voice settings (spec 016). Shared by the settings store and the IPC contract. */
+export const voiceIdSchema = z.enum(KOKORO_VOICES)
+export const voiceSpeedSchema = z.number().min(0.7).max(1.3)
+export const voiceSpeakPolicySchema = z.enum(['all', 'spoken-only'])
+export const voiceEndPauseMsSchema = z.number().min(500).max(2000)
 
 /** A model with its provider. Shared by the settings store and the IPC contract. */
 export const modelRefSchema = z

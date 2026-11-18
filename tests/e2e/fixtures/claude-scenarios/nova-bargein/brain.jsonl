@@ -1,0 +1,29 @@
+# Brain for the Nova barge-in spec: a long spoken answer (about 13 s of fake tone) to any number of messages.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova barge in\n\nReady."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say": "The first part of this answer is long enough that it takes a good while to say out loud to you right now. The second part keeps going so the voice is still talking well after the first has ended. The third part finishes the story with a little more text for Nova to read out to the listener."}
+{"result":true}

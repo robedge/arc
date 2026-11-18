@@ -31,6 +31,7 @@
   import Panel from '../ui/Panel.svelte'
   import PopoverList from '../ui/PopoverList.svelte'
   import UsageChip from './UsageChip.svelte'
+  import { nova } from '../../stores/nova.svelte'
   import SkipApprovalsMarker from './SkipApprovalsMarker.svelte'
 
   interface Props {
@@ -308,6 +309,7 @@
       >
     {/if}
     <UsageChip sessionId={header.id} />
+    <IconButton label="Nova" icon="nova" aria-pressed={nova.open} onclick={() => nova.toggle()} />
     <span
       class="relative inline-flex"
       role="presentation"

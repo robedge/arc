@@ -17,12 +17,27 @@ import type {
   ProviderModels,
   ProviderStatusMap
 } from '../types/provider'
-import { agentLoadOffSchema, modelRefSchema, workersPrefSchema } from '../provider-schemas'
+import {
+  agentLoadOffSchema,
+  modelRefSchema,
+  voiceEndPauseMsSchema,
+  voiceIdSchema,
+  voiceSpeakPolicySchema,
+  voiceSpeedSchema,
+  workersPrefSchema
+} from '../provider-schemas'
 import type { CodexLoadData, CursorLoadData, LoadCatalogueData } from '../types/agent-load'
 import type { CommandInfo } from '../types/commands'
 import type { PluginProgress, PluginRow } from '../types/plugins'
 import type { PlanSnapshot, SessionUsage, UsageReport } from '../types/usage'
 import type { Group } from '../types/group'
+import type {
+  MicStatus,
+  VoiceEngineState,
+  VoiceErrorCode,
+  VoiceModelProgress,
+  VoiceModelStatus
+} from '../types/voice'
 import type {
   AcceptAllResult,
   AcceptOutcome,
@@ -89,6 +104,8 @@ function checkMessageFiles(
     ctx.addIssue({ code: 'custom', path: [textPath], message: `${textPath} is required` })
   }
 }
+
+const voiceUtteranceIdSchema = z.string().min(1).max(64)
 
 export const channelSchemas = {
   'app:ping': z.object({}).strict(),
@@ -203,7 +220,12 @@ export const channelSchemas = {
       'usage.checkClaudePlanOnLaunch': z.boolean().optional(),
       'knowledge.suggestOnFinish': z.boolean().optional(),
       'approvals.skipAllByDefault': z.boolean().optional(),
-      'agents.loadOff': agentLoadOffSchema.optional()
+      'agents.loadOff': agentLoadOffSchema.optional(),
+      'voice.voiceId': voiceIdSchema.optional(),
+      'voice.speed': voiceSpeedSchema.optional(),
+      'voice.speakPolicy': voiceSpeakPolicySchema.optional(),
+      'voice.muted': z.boolean().optional(),
+      'voice.endPauseMs': voiceEndPauseMsSchema.optional()
     })
     .strict(),
   'sessions:list': z.object({ groupId: z.string() }).strict(),
@@ -341,6 +363,8 @@ export const channelSchemas = {
     .object({
       sessionId: z.string(),
       text: z.string(),
+      // Set by Nova for a message typed by voice; the brain is not told.
+      spoken: z.boolean().optional(),
       ...attachmentFields
     })
     .strict()
@@ -363,6 +387,20 @@ export const channelSchemas = {
   'usage:get-report': z.object({ range: z.enum(['today', '7d', '30d', 'all']) }).strict(),
   // Dismisses a suggestion for good; the session's snapshot and `usage:changed` follow as pushes.
   'usage:dismiss-suggestion': z.object({ id: z.string() }).strict(),
+  // The speech models: what is on disk, then start (or join) the download, then remove them all.
+  'voice:models-status': z.object({}).strict(),
+  'voice:download-models': z.object({}).strict(),
+  'voice:delete-models': z.object({}).strict(),
+  // The microphone: macOS status, the system prompt (only while undecided), the Privacy settings pane.
+  'voice:mic-status': z.object({}).strict(),
+  'voice:ask-mic': z.object({}).strict(),
+  'voice:open-mic-settings': z.object({}).strict(),
+  // The speech engine and one utterance at a time; audio itself goes over the `voice:pcm` send channel.
+  'voice:open': z.object({}).strict(),
+  'voice:close': z.object({}).strict(),
+  'voice:begin-utterance': z.object({ utteranceId: voiceUtteranceIdSchema }).strict(),
+  'voice:end-utterance': z.object({ utteranceId: voiceUtteranceIdSchema }).strict(),
+  'voice:cancel-utterance': z.object({ utteranceId: voiceUtteranceIdSchema }).strict(),
   'knowledge-suggestions:list': z.object({ sessionId: z.string() }).strict(),
   'knowledge-suggestions:discard': z.object({ id: z.string() }).strict(),
   'attachments:new-draft': z.object({}).strict(),
@@ -541,6 +579,24 @@ export interface ChannelResponses {
   'usage:get-session': SessionUsage
   'usage:get-report': UsageReport
   'usage:dismiss-suggestion': void
+  /** `fake` is true only under `HARNESS_VOICE_MODELS=fake` (e2e), so the renderer uses its stub speech engine. */
+  'voice:models-status': { models: VoiceModelStatus[]; fake?: boolean }
+  /** Returns once the download is running; progress and failures arrive as `voice:model-progress` and `voice:error`. A second call while downloading changes nothing. */
+  'voice:download-models': Record<string, never>
+  'voice:delete-models': Record<string, never>
+  'voice:mic-status': { status: MicStatus }
+  /** Shows the macOS prompt only while the status is `not-determined`; otherwise reports whether access is granted. */
+  'voice:ask-mic': { granted: boolean }
+  /** Opens System Settings at Privacy > Microphone (a fixed address; nothing comes from the renderer). */
+  'voice:open-mic-settings': Record<string, never>
+  /** Starts the speech engine (progress arrives as `voice:engine-state`). Error `VOICE_MODEL_MISSING` while the Whisper model is not ready. */
+  'voice:open': Record<string, never>
+  /** Stops the speech engine and drops any utterance in flight. */
+  'voice:close': Record<string, never>
+  'voice:begin-utterance': Record<string, never>
+  /** Whisper's text for everything sent since `begin`; an empty string when nothing was recognised. */
+  'voice:end-utterance': { text: string }
+  'voice:cancel-utterance': Record<string, never>
   /** The brain's waiting knowledge suggestions of a session, newest first. */
   'knowledge-suggestions:list': KnowledgeSuggestionView[]
   /** Discards a waiting suggestion; an id that is not waiting is ignored. */
@@ -698,6 +754,18 @@ export interface IpcEvents {
   'usage:changed': Record<string, never>
   /** The plan meters or notices changed: the full snapshot. */
   'plan:changed': PlanSnapshot
+  /** A voice model download moved (at most one push per 250 ms per model, and the last state always goes out). */
+  'voice:model-progress': VoiceModelProgress
+  /**
+   * The words heard so far in an open utterance (trimmed, spaces collapsed, lowercase as the model gives it).
+   * At most one per ~150 ms and only when the text changed; none after the utterance ends or is cancelled.
+   * The final text comes from `voice:end-utterance`.
+   */
+  'voice:partial': { utteranceId: string; text: string }
+  /** A voice failure. A failed model download sends `offline` or `model-corrupt`. */
+  'voice:error': { code: VoiceErrorCode; utteranceId?: string }
+  /** The speech engine started, became ready (the first load can take several seconds), failed or stopped. */
+  'voice:engine-state': { state: VoiceEngineState }
   /** A worker changed; at most one push per 250 ms per worker (the last state always goes out). */
   'session:worker-changed': { sessionId: string; seq: number; worker: WorkerView }
   /**
@@ -775,9 +843,41 @@ const eventFlags = {
   'worker:terminal': true,
   'session:attention': true,
   'session:open-attention': true,
-  'session:knowledge-suggestions': true
+  'session:knowledge-suggestions': true,
+  'voice:model-progress': true,
+  'voice:partial': true,
+  'voice:error': true,
+  'voice:engine-state': true
 } satisfies Record<IpcEventName, true>
 
 export const eventNames = Object.keys(eventFlags) as IpcEventName[]
 
 export const channelNames = Object.keys(channelSchemas) as Channel[]
+
+/** One second of mono Int16 at 16 kHz; the most a single `voice:pcm` chunk may carry. */
+export const VOICE_PCM_MAX_BYTES = 32_000
+
+const isArrayBuffer = (v: unknown): v is ArrayBuffer =>
+  Object.prototype.toString.call(v) === '[object ArrayBuffer]'
+
+/**
+ * Fire-and-forget renderer-to-main messages (`window.arc.send`): no reply, and an invalid payload is
+ * dropped. Kept apart from `channelSchemas` so none of these can be invoked.
+ */
+export const sendSchemas = {
+  'voice:pcm': z
+    .object({
+      utteranceId: voiceUtteranceIdSchema,
+      seq: z.number().int().min(0),
+      samples: z
+        .custom<ArrayBuffer>(isArrayBuffer)
+        .refine(
+          (b) => b.byteLength > 0 && b.byteLength <= VOICE_PCM_MAX_BYTES && b.byteLength % 2 === 0
+        )
+    })
+    .strict()
+} as const
+
+export type SendChannel = keyof typeof sendSchemas
+export type SendRequest<C extends SendChannel> = z.infer<(typeof sendSchemas)[C]>
+export const sendNames = Object.keys(sendSchemas) as SendChannel[]

@@ -81,6 +81,8 @@ export const messages = sqliteTable(
     planId: text('plan_id'),
     /** A system message with buttons (`{kind:'continue-workers', workerIds, status}`); null for every other message. */
     promptJson: text('prompt_json'),
+    /** A user message sent by voice from Nova; false for every other message. */
+    spoken: integer('spoken', { mode: 'boolean' }).notNull().default(false),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull()
   },

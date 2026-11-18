@@ -1,0 +1,23 @@
+# Brain for the Nova listening spec: short plain answers to any number of spoken or typed messages.
+{"waitForStdin":"*"}
+{"init":true,"model":"claude-sonnet-5-5","mcp":true}
+{"say":"Title: Nova listen\n\nReady."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Here is a short answer."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Here is a short answer."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Here is a short answer."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Here is a short answer."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Here is a short answer."}
+{"result":true}
+{"waitForStdin":"*"}
+{"say":"Here is a short answer."}
+{"result":true}

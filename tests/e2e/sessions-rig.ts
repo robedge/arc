@@ -36,6 +36,8 @@ export interface RigOptions {
   group?: string
   /** Extra environment for the launch. */
   env?: Record<string, string>
+  /** Extra Chromium or Electron switches, placed before the app entry (for example fake media flags). */
+  args?: string[]
 }
 
 export interface Rig {
@@ -173,7 +175,7 @@ export async function launchRig(options: RigOptions): Promise<Rig> {
   let current = options
   const start = async (): Promise<void> => {
     rig.app = await electron.launch({
-      args: ['out/main/index.js'],
+      args: [...(current.args ?? []), 'out/main/index.js'],
       env: launchEnv(userDataDir, current, logPath, repos)
     })
     rig.page = await mainWindow(rig.app)
